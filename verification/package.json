@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "test": "node source-checks.cjs && node atomic-forms.cjs && node restoration-tests.cjs && node restoration-client-tests.cjs && node assembly.cjs && node conversion.cjs && node conversion-client.cjs"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "typescript": "5.9.3"
+  }
+}

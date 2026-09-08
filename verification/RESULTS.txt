@@ -1,0 +1,186 @@
+KurtiERP local verification — 2026-09-08
+Production build: PASS using clean npm ci of shipped lockfile.
+Standalone type-check: PASS. Configured lint: PASS.
+No live Supabase writes or browser end-to-end verification performed.
+
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> test
+> node source-checks.cjs && node atomic-forms.cjs && node restoration-tests.cjs && node restoration-client-tests.cjs && node assembly.cjs && node conversion.cjs && node conversion-client.cjs
+
+PASS actual restored NewItemModal renders original uploads, colour, composition and specification controls without an Import Key field
+PASS original and current Item Master route wiring selects restored modal
+PASS QC whole-number and conservation validation
+PASS partial job-card stage update does not reset other fields
+PASS invalid audit date is displayed safely
+PASS shared browser client and server validation do not use the old local-login bypass
+PASS sales parent and lines save together
+PASS sales failed child rolls back newly-created parent
+PASS failed sales edit preserves header and existing lines
+PASS sales edit preserves creator
+PASS QC passes 90 accepted pieces forward without subtracting 10 failures again
+PASS impossible QC totals rejected
+PASS failed QC edit rolls back parent and children
+PASS finishing persists with stable retry and original FIN numbering
+PASS next finishing voucher allocated in database
+PASS finishing components reach assembly stock without creating ready goods
+PASS same QC components cannot be finished twice beyond approved quantity
+PASS contractor receive posts component stock, not a ready set
+PASS source component deletion blocked after assembly
+PASS finishing cannot exceed QC quantity per component
+PASS dispatch requires a ready-stock record
+PASS dispatch and finished-goods deduction commit together
+PASS repeated dispatch request does not deduct stock twice
+PASS later dispatch cannot use already-dispatched stock
+PASS dispatch rejects a mismatched job-card reference
+PASS failed voucher insert rolls back stock deduction
+PASS signed-out atomic write rejected
+PASS original create replay preserves IDs and counts
+PASS original colour normalization and manual provenance
+PASS request identity cannot be reused with changed data
+PASS composition failure rolls back style, variant, details and receipt
+PASS original header/detail edit updates together
+PASS wrong-parent detail edit rejected without partial change
+PASS RLS-hidden business reference blocks deletion
+PASS hidden child cannot be cascade-deleted
+PASS denied parent delete rolls back already deleted children
+PASS original last-variant rule deletes parent and compositions
+PASS merge preserves variant IDs and moves compositions to original keeper
+PASS deleting one of several variants preserves parent
+PASS merge rejects unrelated styles
+PASS RLS-hidden children block unsafe merge
+PASS signed-out mutation rejected
+PASS original WIP parser output unchanged byte-for-byte
+PASS lost-response retry across module reload uses original identity
+PASS changed draft cannot replace unresolved save; explicit recovery succeeds
+PASS confirmed transaction rejection clears pending identity
+PASS missing required components cannot create ready goods
+PASS qty per set ratio enforced
+PASS mixed sizes cannot create misleading final item
+PASS 10 Kurta plus 5 Pant plus 5 Dupatta at ratio 2:1:1 creates 5 ready sets
+PASS changed retry cannot silently overwrite saved assembly
+PASS repeated assembly request creates no duplicate ready stock
+PASS previously assembled components cannot be consumed again
+PASS failed ready-stock write rolls back entire assembly
+PASS dispatched assembly cannot be deleted
+PASS deleting undispatched assembly releases component reservations
+PASS combined deployment SQL installs missing Item RPC and can be rerun without resetting data
+PASS 12 Kurta / 10 Pant / 10 Dupatta produces 10 ready sets and leaves 2 Kurta
+PASS conversion cannot consume stock already used in sets
+PASS conversion requires a separate unused item code
+PASS conversion cannot silently change the component colour
+PASS failed ready-stock insert rolls back new master, conversion and component consumption
+PASS remaining components become a distinct named Item Master item and linked ready stock
+PASS retried conversion creates no duplicate item or stock
+PASS saved conversion cannot be retried with changed details
+PASS newly converted standalone item can be dispatched from its own stock
+PASS dispatched conversion cannot release the original components
+PASS conversion requires authenticated session
+PASS conversion lost-response retry across module reload uses original identity
+PASS conversion changed draft cannot replace unresolved save; explicit recovery succeeds
+PASS conversion confirmed transaction rejection clears pending identity
+
+--- Production build ---
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> kurtierp@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.18
+   - Environments: .env
+
+   Creating an optimized production build ...
+Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled successfully in 7.5s
+   Linting and checking validity of types ...
+
+ ⚠ The Next.js plugin was not detected in your ESLint configuration. See https://nextjs.org/docs/app/api-reference/config/eslint#migrating-existing-config
+   Collecting page data ...
+   Generating static pages (0/52) ...
+   Generating static pages (13/52) 
+   Generating static pages (26/52) 
+   Generating static pages (39/52) 
+ ✓ Generating static pages (52/52)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                 Size  First Load JS
+┌ ○ /                                    11.3 kB         289 kB
+├ ○ /_not-found                            148 B         102 kB
+├ ○ /account-master                        188 B         286 kB
+├ ○ /account-master/import               4.63 kB         282 kB
+├ ○ /accounts/printer-ledger               189 B         285 kB
+├ ○ /audit                               2.31 kB         280 kB
+├ ƒ /auth/callback                         148 B         102 kB
+├ ○ /contractor-finishing                  192 B         299 kB
+├ ○ /cutting                               196 B         299 kB
+├ ○ /cutting/embroidery-cutting          8.31 kB         296 kB
+├ ○ /dispatch                            4.32 kB         287 kB
+├ ○ /dyeing-printing                       192 B         298 kB
+├ ○ /embroidery-accessory                  194 B         308 kB
+├ ○ /fabric-inventory                      189 B         291 kB
+├ ƒ /fabric-inventory/[id]                6.5 kB         284 kB
+├ ○ /fabric-stock-tracker                  637 B         103 kB
+├ ○ /finished-goods                        192 B         285 kB
+├ ○ /finishing-entry                       189 B         285 kB
+├ ○ /grey-fabric                           194 B         288 kB
+├ ○ /item-master                           189 B         298 kB
+├ ○ /item-master/import                    188 B         282 kB
+├ ○ /job-card-management                   193 B         308 kB
+├ ○ /job-cards                             193 B         308 kB
+├ ○ /login                               1.46 kB         174 kB
+├ ○ /masters/accounts                      189 B         286 kB
+├ ○ /masters/items                         188 B         298 kB
+├ ○ /masters/items/import                  189 B         282 kB
+├ ○ /masters/operators                     191 B         285 kB
+├ ○ /mfg-compilation                       148 B         102 kB
+├ ○ /mfg-dashboard                         148 B         102 kB
+├ ○ /mfg-master-sets                       148 B         102 kB
+├ ○ /mfg-orders                            148 B         102 kB
+├ ○ /mfg-production                        148 B         102 kB
+├ ○ /operator-master                       191 B         285 kB
+├ ○ /printer-ledger                        189 B         285 kB
+├ ○ /procurement/grey-fabric               192 B         288 kB
+├ ƒ /production-batch/[jobCardId]        7.19 kB         285 kB
+├ ○ /production-workflow                 4.73 kB         293 kB
+├ ○ /production/contractor-finishing       191 B         299 kB
+├ ○ /production/cutting                    196 B         299 kB
+├ ○ /production/dyeing                     193 B         298 kB
+├ ○ /production/embroidery                 194 B         308 kB
+├ ○ /production/fabric-inventory           189 B         291 kB
+├ ○ /production/finished-goods             192 B         285 kB
+├ ○ /production/finishing                  188 B         285 kB
+├ ○ /production/qc                         191 B         289 kB
+├ ○ /production/stitching                  198 B         303 kB
+├ ○ /qc-entry                              191 B         289 kB
+├ ○ /sales-orders                        13.4 kB         291 kB
+├ ○ /settings                            3.09 kB         281 kB
+├ ○ /sign-up-login-screen                1.46 kB         174 kB
+└ ○ /stitching                             199 B         303 kB
++ First Load JS shared by all             102 kB
+  ├ chunks/094400ce-41fe69c131d42050.js  54.2 kB
+  ├ chunks/3714-fb382a1ebee9a3b1.js        46 kB
+  └ other shared chunks (total)          1.93 kB
+
+
+ƒ Middleware                             92.8 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+--- Type check ---
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> kurtierp@0.1.0 type-check
+> tsc --noEmit
+
+
+--- Lint ---
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+> kurtierp@0.1.0 lint
+> eslint src
+
