@@ -1,4 +1,5 @@
 'use client';
+import {salesTotals,sizeBreakupError} from '@/lib/services/orderCalculations';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus, Trash2, FileText, Package, ChevronDown, Search, Loader2 } from 'lucide-react';
@@ -92,6 +93,8 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
     }
     return [emptyItem()];
   });
+  const [gstPercent,setGstPercent]=useState(String(editOrder?.gstPercent??0));
+  const previewTotals=salesTotals(items.map(it=>({qty:Number(it.qty)||0,price:Number(it.price)||0})),Number.isFinite(Number(gstPercent))&&Number(gstPercent)>=0&&Number(gstPercent)<=100?Number(gstPercent):0);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const savingRef=useRef(false);
   const [saving, setSaving] = useState(false);
@@ -217,7 +220,12 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
     if (!date.trim()) errs.date = lang === 'hi' ? 'तारीख आवश्यक है' : 'Date is required';
     if (!vchNo.trim()) errs.vchNo = lang === 'hi' ? 'वाउचर नं आवश्यक है' : 'Voucher No is required';
     if (!partyName.trim()) errs.partyName = lang === 'hi' ? 'पार्टी नाम आवश्यक है' : 'Party name is required';
+    if(!gstPercent.trim()||!Number.isFinite(Number(gstPercent))||Number(gstPercent)<0||Number(gstPercent)>100) errs.gst='GST must be between 0 and 100%.';
     items.forEach((it, i) => {
+      const breakup=it.sizeRows.length?it.sizeRows.map(sr=>`${sr.size}/${sr.qty}`).join(', '):it.paramSize;
+      const sizeError=sizeBreakupError(breakup,Number(it.qty));
+      if(sizeError)errs[`item_size_${i}`]=sizeError;
+      if(!Number.isFinite(Number(it.price))||Number(it.price)<0)errs[`item_qty_${i}`]='Rate must be a non-negative number.';
       if (!it.itemName.trim()) errs[`item_name_${i}`] = lang === 'hi' ? 'आइटम नाम आवश्यक है' : 'Item name required';
       if (!it.qty || isNaN(Number(it.qty)) || Number(it.qty) <= 0)
         errs[`item_qty_${i}`] = lang === 'hi' ? 'मान्य मात्रा दर्ज करें' : 'Enter valid qty';
@@ -251,7 +259,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
       });
 
       const totalQty = parsedItems.reduce((s, i) => s + i.qty, 0);
-      const totalAmount = parsedItems.reduce((s, i) => s + i.amount, 0);
+      const {subtotal,gstAmount,totalAmount}=salesTotals(parsedItems,Number(gstPercent));
 
       const orderPayload = {
         date,
@@ -260,7 +268,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
         partyType,
         items: parsedItems,
         totalQty,
-        totalAmount,
+        totalAmount,subtotal,gstAmount,gstPercent:Number(gstPercent),
         jobCardNo: editOrder?.jobCardNo || '',
         status: (editOrder?.status || 'pending') as 'pending' | 'in_production' | 'completed',
       };
@@ -561,7 +569,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="text-xs text-muted-foreground">
-                        {lang === 'hi' ? 'साइज़ ब्रेकअप' : 'Size Breakup'} <span className="text-muted-foreground/60 text-[10px]">({lang === 'hi' ? 'वैकल्पिक' : 'optional'})</span>
+                        {lang === 'hi' ? 'साइज़ ब्रेकअप' : 'Size Breakup'} <span className="text-muted-foreground/60 text-[10px]">({lang === 'hi' ? 'आवश्यक' : 'required'})</span>
                       </label>
                       <button
                         type="button"
@@ -611,12 +619,14 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                         type="text"
                         value={item.paramSize}
                         onChange={(e) => updateItem(idx, 'paramSize', e.target.value)}
-                        placeholder={lang === 'hi' ? 'साइज़ ब्रेकअप (जैसे S/50, M/100)' : 'Size breakup (optional) e.g. S/50, M/100'}
+                        placeholder={lang === 'hi' ? 'साइज़ ब्रेकअप (जैसे S/50, M/100)' : 'Size breakup e.g. S/50, M/100'}
                         className="input-field text-xs"
                       />
                     )}
                   </div>
 
+                  {errors[`item_size_${idx}`] && <p role="alert" className="text-xs text-red-500">{errors[`item_size_${idx}`]}</p>}
+                  <p className="text-xs text-muted-foreground">Size total: {item.sizeRows.length ? item.sizeRows.reduce((sum,row)=>sum+(Number(row.qty)||0),0) : parseSizeToRows(item.paramSize).reduce((sum,row)=>sum+(Number(row.qty)||0),0)} / {Number(item.qty)||0}</p>
                   {/* Colour */}
                   <div>
                     <label className="text-xs text-muted-foreground block mb-1">
@@ -692,6 +702,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
             </div>
           </div>
 
+          <div><label className="block text-xs font-600 mb-1">GST (%)</label><input type="number" min="0" max="100" step="0.01" className="input-field" value={gstPercent} onChange={e=>setGstPercent(e.target.value)}/>{errors.gst&&<p role="alert" className="text-xs text-red-500">{errors.gst}</p>}</div>
           {/* Total Preview */}
           {items.some((it) => it.qty && it.price) && (
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
@@ -702,13 +713,14 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                 </span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">{lang === 'hi' ? 'कुल राशि' : 'Total Amount'}</span>
+                <span className="text-xs text-muted-foreground">{lang === 'hi' ? 'कर से पहले राशि' : 'Subtotal'}</span>
                 <span className="text-base font-700 text-primary">
-                  ₹{items.reduce((s, it) => s + (Number(it.qty) || 0) * (Number(it.price) || 0), 0).toLocaleString('en-IN')}
+                  ₹{previewTotals.subtotal.toLocaleString('en-IN')}
                 </span>
               </div>
             </div>
           )}
+          <div className="text-sm space-y-2"><div className="flex justify-between"><span>GST ({gstPercent||0}%)</span><span>₹{previewTotals.gstAmount.toFixed(2)}</span></div><div className="flex justify-between font-bold"><span>{lang==='hi'?'GST सहित कुल':'Grand Total (including GST)'}</span><span>₹{previewTotals.totalAmount.toFixed(2)}</span></div></div>
         </div>
 
         {/* Footer */}

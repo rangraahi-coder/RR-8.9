@@ -20,6 +20,9 @@ export interface SalesOrder {
   items: SalesOrderItem[];
   totalQty: number;
   totalAmount: number;
+  subtotal?: number;
+  gstPercent?: number;
+  gstAmount?: number;
   jobCardNo: string;      // auto-generated job card reference
   status: 'pending' | 'in_production' | 'completed';
   // Audit trail

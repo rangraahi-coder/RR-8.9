@@ -21,6 +21,7 @@ const translations: Record<string, Record<Language, string>> = {
   'nav.dyeing': { en: 'Dyeing & Printing', hi: 'रंगाई और छपाई' },
   'nav.fabric': { en: 'Fabric Inventory', hi: 'कपड़ा भंडार' },
   'nav.cutting': { en: 'Cutting', hi: 'कटाई' },
+  'nav.handwork': { en: 'Handwork', hi: 'हैंडवर्क' },
   'nav.embroidery': { en: 'Embroidery', hi: 'कढ़ाई' },
   'nav.stitching': { en: 'Stitching', hi: 'सिलाई' },
   'nav.qc': { en: 'QC', hi: 'गुणवत्ता जाँच' },

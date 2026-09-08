@@ -21,6 +21,7 @@ const REJECTION_REASONS = [
 ];
 
 interface Props {
+  handwork?:boolean;
   issueVouchers: EmbIssueVoucher[];
   preSelectedIssueId?: string;
   onClose: () => void;
@@ -28,7 +29,7 @@ interface Props {
   editVoucher?: EmbReceiveVoucher | null;
 }
 
-export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId, onClose, onSaved, editVoucher }: Props) {
+export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId, onClose, onSaved, editVoucher, handwork=false }: Props) {
   const [voucherNo, setVoucherNo] = useState('');
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedIssueId, setSelectedIssueId] = useState(preSelectedIssueId || '');
@@ -60,7 +61,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
       setReceiveOperatorName((editVoucher as any).receiveOperatorName || '');
       setRemarks(editVoucher.remarks || '');
     } else {
-      embroideryVoucherService.getNextReceiveVoucherNo().then(setVoucherNo);
+      embroideryVoucherService.getNextReceiveVoucherNo(handwork).then(setVoucherNo);
     }
   }, []);
 
@@ -541,7 +542,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                                 className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                               >
                                 <option value="">— Reason —</option>
-                                {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                                {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
                               </select>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
@@ -630,7 +631,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                                 className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                               >
                                 <option value="">— Reason —</option>
-                                {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                                {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
                               </select>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
@@ -755,7 +756,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                                   className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                                 >
                                   <option value="">— Reason —</option>
-                                  {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                                  {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
                                 </select>
                               ) : <span className="text-muted-foreground text-xs">—</span>}
                             </td>

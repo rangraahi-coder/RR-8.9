@@ -1,4 +1,5 @@
 'use client';
+import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Filter, RefreshCw, ArrowUpFromLine, ArrowDownToLine, Clock, CheckCircle2, AlertCircle, ChevronDown, Package, Layers, X, Calendar } from 'lucide-react';
 import { printerFabricService, PrinterFabricIssue, PrinterFabricReceipt } from '@/lib/services/printerFabricService';
@@ -82,6 +83,8 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+  useRealtimeTable('printer_fabric_issues',loadData);
+  useRealtimeTable('printer_fabric_receipts',loadData);
 
   // ─── Derived: per-printer summaries ───────────────────────────────────────
   const printerSummaries: PrinterSummary[] = React.useMemo(() => {
@@ -564,7 +567,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
                     <th className="text-left px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Processed Fabric</th>
                     <th className="text-right px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Processed Qty (m)</th>
                     <th className="text-right px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Shortage</th>
-                    <th className="text-right px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Shrinkage</th>
+                    <th className="text-right px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Shrinkage (m / %)</th>
                     <th className="text-left px-4 py-3 text-xs font-700 text-muted-foreground font-body uppercase tracking-wide">Remarks</th>
                   </tr>
                 </thead>
@@ -580,7 +583,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
                       </td>
                       <td className="px-4 py-3 text-right font-600 text-foreground font-body">{receipt.qtyReceived.toFixed(2)}</td>
                       <td className="px-4 py-3 font-600 text-foreground font-body">{receipt.processedFabricName || '—'}</td>
-                      <td className="px-4 py-3 text-right font-600 text-foreground font-body">{receipt.processedQty.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-right font-600 text-foreground font-body">{receipt.processedQty.toFixed(2)}<div className="text-xs text-muted-foreground">Grey consumed: {(receipt.greyConsumed??receipt.qtyReceived).toFixed(3)} m</div></td>
                       <td className="px-4 py-3 text-right font-body">
                         <span className={(receipt.shortage || 0) > 0 ? 'text-red-600 font-600' : 'text-muted-foreground'}>
                           {(receipt.shortage || 0).toFixed(2)}
@@ -588,7 +591,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
                       </td>
                       <td className="px-4 py-3 text-right font-body">
                         <span className={(receipt.shrinkage || 0) > 0 ? 'text-orange-600 font-600' : 'text-muted-foreground'}>
-                          {(receipt.shrinkage || 0).toFixed(2)}
+                          {(receipt.shrinkage || 0).toFixed(3)} m ({receipt.shrinkagePercent??0}%)
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground font-body text-xs max-w-[160px] truncate">{receipt.remarks || '—'}</td>

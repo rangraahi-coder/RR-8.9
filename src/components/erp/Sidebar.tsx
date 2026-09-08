@@ -64,6 +64,7 @@ const navGroups: NavGroup[] = [
       { key: 'fabric', labelKey: 'nav.fabric', href: '/fabric-inventory', icon: <Layers size={16} /> },
       { key: 'cutting', labelKey: 'nav.cutting', href: '/cutting', icon: <Scissors size={16} /> },
       { key: 'embroidery', labelKey: 'nav.embroidery', href: '/embroidery-accessory', icon: <Star size={16} /> },
+      { key: 'handwork', labelKey: 'nav.handwork', href: '/handwork', icon: <Star size={16} /> },
       { key: 'stitching', labelKey: 'nav.stitching', href: '/stitching', icon: <Zap size={16} /> },
       { key: 'qc', labelKey: 'nav.qc', href: '/qc-entry', icon: <CheckCircle size={16} /> },
       { key: 'contractorfinishing', labelKey: 'nav.contractorfinishing', href: '/contractor-finishing', icon: <Users size={16} /> },

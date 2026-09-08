@@ -689,8 +689,10 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                   <span className="text-sm text-muted-foreground">{lang === 'hi' ? 'कुल नग' : 'Total Qty'}</span>
                   <span className="text-sm font-700 text-foreground">{selectedOrder.totalQty.toLocaleString('en-IN')} {lang === 'hi' ? 'नग' : 'Pcs'}</span>
                 </div>
+                <div className="flex justify-between text-sm"><span>Subtotal</span><span>{formatAmount(selectedOrder.subtotal??selectedOrder.totalAmount)}</span></div>
+                <div className="flex justify-between text-sm"><span>GST ({selectedOrder.gstPercent??0}%)</span><span>{formatAmount(selectedOrder.gstAmount??0)}</span></div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">{lang === 'hi' ? 'कुल राशि' : 'Total Amount'}</span>
+                  <span className="text-sm text-muted-foreground">{lang === 'hi' ? 'GST सहित कुल' : 'Grand Total (including GST)'}</span>
                   <span className="text-base font-700 text-primary">{formatAmount(selectedOrder.totalAmount)}</span>
                 </div>
               </div>

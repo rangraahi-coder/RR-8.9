@@ -10,6 +10,7 @@ export interface PrinterFabricIssue {
   fabricName?: string;
   qtyIssued: number;
   qtyReceived: number;
+  qtyGreyConsumed?: number;
   qtyPending: number;
   status: 'pending' | 'partial' | 'settled';
   remarks?: string;
@@ -28,6 +29,8 @@ export interface PrinterFabricReceipt {
   processedQty: number;
   shortage?: number;
   shrinkage?: number;
+  shrinkagePercent?: number;
+  greyConsumed?: number;
   remarks?: string;
 }
 
@@ -54,7 +57,8 @@ function rowToIssue(row: any): PrinterFabricIssue {
     grayFabricRef: row.gray_fabric_ref,
     fabricName: row.fabric_name || undefined,
     qtyIssued: parseFloat(row.qty_issued) || 0,
-    qtyReceived: parseFloat(row.qty_received) || 0,
+    qtyReceived: Number(row.qty_actual_received ?? row.qty_received) || 0,
+    qtyGreyConsumed: Number(row.qty_received) || 0,
     qtyPending: parseFloat(row.qty_pending) || 0,
     status: row.status || 'pending',
     remarks: row.remarks || undefined,
@@ -75,11 +79,18 @@ function rowToReceipt(row: any): PrinterFabricReceipt {
     processedQty: parseFloat(row.processed_qty) || 0,
     shortage: parseFloat(row.shortage) || 0,
     shrinkage: parseFloat(row.shrinkage) || 0,
+    shrinkagePercent: Number(row.shrinkage_percent) || 0,
+    greyConsumed: Number(row.grey_consumed ?? row.qty_received) || 0,
     remarks: row.remarks || undefined,
   };
 }
 
 export const printerFabricService = {
+  async receiveWithStock(id:string, payload:Record<string,unknown>):Promise<PrinterFabricReceipt> {
+    const {data,error}=await createClient().rpc('receive_printer_fabric_with_stock',{p_id:id,p_receipt:payload});
+    if(error)throw error;
+    return rowToReceipt(data);
+  },
   // ─── Issues ───────────────────────────────────────────────────────────────
 
   async getAllIssues(): Promise<PrinterFabricIssue[]> {

@@ -1,3 +1,4 @@
+import { salesTotals, sizeBreakupError } from './orderCalculations';
 import { createClient } from '@/lib/supabase/client';
 import { SalesOrder, SalesOrderItem } from '@/app/sales-orders/data/salesOrdersData';
 
@@ -41,6 +42,9 @@ function rowToOrder(row: any, items: SalesOrderItem[] = []): SalesOrder {
     items,
     totalQty: row.total_qty || 0,
     totalAmount: Number(row.total_amount) || 0,
+    subtotal: Number(row.subtotal ?? row.total_amount) || 0,
+    gstPercent: Number(row.gst_percent) || 0,
+    gstAmount: Number(row.gst_amount) || 0,
     jobCardNo: row.job_card_no || '',
     status: row.status as 'pending' | 'in_production' | 'completed',
     createdBy: row.created_by || null,
@@ -97,8 +101,10 @@ export const salesOrderService = {
         }
       }
 
+      for (const item of order.items) { const error=sizeBreakupError(item.paramSize,item.qty); if(error)throw new Error(error); }
+      const totals=salesTotals(order.items,order.gstPercent??0);
       const {data:orderRow,error}=await supabase.rpc('save_original_sales_order',{
-        p_id:null,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:order.totalAmount,job_card_no:order.jobCardNo,status:order.status,created_by:username||null,updated_by:username||null},
+        p_id:null,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,created_by:username||null,updated_by:username||null},
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;
@@ -160,8 +166,10 @@ export const salesOrderService = {
           isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
         }
       }
+      for (const item of order.items) { const error=sizeBreakupError(item.paramSize,item.qty); if(error)throw new Error(error); }
+      const totals=salesTotals(order.items,order.gstPercent??0);
       const {data:orderRow,error}=await supabase.rpc('save_original_sales_order',{
-        p_id:id,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:order.totalAmount,job_card_no:order.jobCardNo,status:order.status,updated_by:username||null},
+        p_id:id,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,updated_by:username||null},
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;

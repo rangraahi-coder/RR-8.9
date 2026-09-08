@@ -51,6 +51,7 @@ interface JobCardOption {
 }
 
 interface Props {
+  processScope?:'handwork'|'embroidery';
   jobCards: JobCardOption[];
   onClose: () => void;
   onSaved: () => void;
@@ -65,7 +66,7 @@ function groupFabricsByName(fabrics: FabricStockItem[]): Record<string, FabricSt
   }, {} as Record<string, FabricStockItem[]>);
 }
 
-export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVoucher }: Props) {
+export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVoucher, processScope='embroidery' }: Props) {
   const [voucherNo, setVoucherNo] = useState('');
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedJobCardNo, setSelectedJobCardNo] = useState('');
@@ -74,7 +75,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
   const [operatorName, setOperatorName] = useState('');
   const [issueSource, setIssueSource] = useState<IssueSource>('fresh_cutting');
   const [issueType, setIssueType] = useState<'fabric' | 'accessory' | 'both' | 'cutting' | 'part_component'>('fabric');
-  const [processType, setProcessType] = useState('embroidery');
+  const [processType, setProcessType] = useState(processScope==='handwork'?'handwork':'embroidery');
   const [issuedToType, setIssuedToType] = useState('operator');
   const [fabricItems, setFabricItems] = useState<IssueFabricItem[]>([]);
   const [accessoryItems, setAccessoryItems] = useState<IssueAccessoryItem[]>([]);
@@ -94,7 +95,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
   useEffect(() => {
     async function init() {
       const [nextNo, fabricData, accountData, stockData, mastersData] = await Promise.all([
-        editVoucher ? Promise.resolve(editVoucher.voucherNo) : embroideryVoucherService.getNextIssueVoucherNo(),
+        editVoucher ? Promise.resolve(editVoucher.voucherNo) : embroideryVoucherService.getNextIssueVoucherNo(processScope==='handwork'),
         fabricInventoryService.getAll(),
         accountService.getAll(),
         embroideryVoucherService.getAvailableCuttingStock(),
@@ -115,7 +116,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
         setOperatorName(editVoucher.operatorName || '');
         setIssueSource(editVoucher.issueSource || 'fresh_cutting');
         setIssueType(editVoucher.issueType || 'fabric');
-        setProcessType(editVoucher.processType || 'embroidery');
+        setProcessType(processScope==='handwork'?'handwork':editVoucher.processType || 'embroidery');
         setIssuedToType(editVoucher.issuedToType || 'operator');
         setFabricItems(editVoucher.fabricItems || []);
         setAccessoryItems(editVoucher.accessoryItems || []);
@@ -481,11 +482,12 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
               <div>
                 <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Process / Purpose *</label>
                 <select
+                  disabled={processScope==='handwork'}
                   value={processType}
                   onChange={(e) => setProcessType(e.target.value)}
                   className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20"
                 >
-                  {PROCESS_TYPES.map((pt) => (
+                  {PROCESS_TYPES.filter(p=>processScope==='handwork'?p.value==='handwork':p.value!=='handwork').map((pt) => (
                     <option key={pt.value} value={pt.value}>{pt.label}</option>
                   ))}
                 </select>

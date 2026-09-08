@@ -1,114 +1,26 @@
-Compared with the first original export. Historical migration exclusions described in the report.
-
-ADDED .vercelignore
-ADDED DATABASE-UPDATE.sql
-ADDED FIXES-AND-VERIFICATION.md
-CHANGED README.md
-ADDED eslint.config.mjs
-CHANGED next-env.d.ts
-CHANGED next.config.mjs
-CHANGED package-lock.json
-CHANGED package.json
-CHANGED src/app/account-master/components/AccountMasterContent.tsx
-CHANGED src/app/account-master/import/components/AccountImportContent.tsx
-ADDED src/app/accounts/printer-ledger/page.tsx
-ADDED src/app/audit/components/AuditClient.tsx
-ADDED src/app/audit/page.tsx
-ADDED src/app/auth/callback/route.ts
-CHANGED src/app/components/DashboardContent.tsx
-CHANGED src/app/components/ItemWorkflowProgress.tsx
-CHANGED src/app/contractor-finishing/components/ComponentAssemblyModal.tsx
-ADDED src/app/contractor-finishing/components/ComponentConversionModal.tsx
-CHANGED src/app/contractor-finishing/components/ContractorFinishingContent.tsx
-CHANGED src/app/dispatch/components/DispatchContent.tsx
-CHANGED src/app/embroidery-accessory/components/IssueVoucherModal.tsx
-CHANGED src/app/embroidery-accessory/components/ReceiveVoucherModal.tsx
-CHANGED src/app/fabric-inventory/components/FabricInventoryContent.tsx
-CHANGED src/app/finishing-entry/components/FinishingEntryContent.tsx
-CHANGED src/app/finishing-entry/data/finishingData.ts
-CHANGED src/app/grey-fabric/components/GreyFabricContent.tsx
-CHANGED src/app/item-master/components/ItemMasterContent.tsx
-CHANGED src/app/item-master/import/components/ItemImportContent.tsx
-CHANGED src/app/item-master/import/page.tsx
-CHANGED src/app/item-master/page.tsx
-ADDED src/app/job-cards/page.tsx
-CHANGED src/app/layout.tsx
-ADDED src/app/login/page.tsx
-ADDED src/app/masters/accounts/page.tsx
-ADDED src/app/masters/items/components/ItemMasterClient.tsx
-ADDED src/app/masters/items/components/OriginalItemWorkflows.tsx
-ADDED src/app/masters/items/import/components/ItemImportContent.tsx
-ADDED src/app/masters/items/import/page.tsx
-ADDED src/app/masters/items/page.tsx
-ADDED src/app/masters/operators/page.tsx
-CHANGED src/app/printer-ledger/components/PrinterLedgerContent.tsx
-ADDED src/app/procurement/grey-fabric/page.tsx
-ADDED src/app/production/contractor-finishing/page.tsx
-ADDED src/app/production/cutting/page.tsx
-ADDED src/app/production/dyeing/page.tsx
-ADDED src/app/production/embroidery/page.tsx
-ADDED src/app/production/fabric-inventory/page.tsx
-ADDED src/app/production/finished-goods/page.tsx
-ADDED src/app/production/finishing/page.tsx
-ADDED src/app/production/qc/page.tsx
-ADDED src/app/production/stitching/page.tsx
-CHANGED src/app/production-workflow/components/ProductionWorkflowContent.tsx
-CHANGED src/app/qc-entry/components/QCEntryContent.tsx
-CHANGED src/app/sales-orders/components/NewSalesOrderModal.tsx
-ADDED src/app/settings/components/ConnectionDiagnosticTab.tsx
-ADDED src/app/settings/page.tsx
-CHANGED src/app/sign-up-login-screen/page.tsx
-CHANGED src/components/AppLayout.tsx
-ADDED src/components/erp/ERPLayout.tsx
-ADDED src/components/erp/LoadingSkeleton.tsx
-ADDED src/components/erp/PageHeader.tsx
-ADDED src/components/erp/Sidebar.tsx
-ADDED src/components/erp/TopBar.tsx
-CHANGED src/components/ui/AuditBadge.tsx
-CHANGED src/contexts/AuthContext.tsx
-ADDED src/contexts/LanguageContext.tsx
-CHANGED src/contexts/RealtimeDataContext.tsx
-CHANGED src/lib/auditTrail.ts
-CHANGED src/lib/hooks/useJobCards.ts
-CHANGED src/lib/hooks/useRealtimeTable.ts
-ADDED src/lib/quantityValidation.ts
-CHANGED src/lib/services/accountService.ts
-CHANGED src/lib/services/componentAssemblyService.ts
-ADDED src/lib/services/componentConversionService.ts
-CHANGED src/lib/services/contractorFinishingService.ts
-CHANGED src/lib/services/dispatchService.ts
-CHANGED src/lib/services/embroideryVoucherService.ts
-ADDED src/lib/services/finishingEntryService.ts
-CHANGED src/lib/services/itemImportService.ts
-CHANGED src/lib/services/jobCardService.ts
-ADDED src/lib/services/legacyWorkflowService.ts
-CHANGED src/lib/services/salesOrderService.ts
-CHANGED src/lib/services/workflowStatusService.ts
-CHANGED src/lib/supabase/client.ts
-CHANGED src/lib/supabase/server.ts
-ADDED src/lib/supabase/services/originalItemSave.ts
-CHANGED src/lib/userAccess.ts
-CHANGED src/middleware.ts
-CHANGED src/styles/tailwind.css
-ADDED src/types/erp.ts
-ADDED supabase/migrations/20260908180000_original_item_create.sql
-ADDED supabase/migrations/20260908200000_restore_missing_persistence.sql
-ADDED supabase/migrations/20260908210000_atomic_original_forms.sql
-ADDED supabase/migrations/20260908220000_finishing_atomic_save.sql
-ADDED supabase/migrations/20260908230000_atomic_dispatch.sql
-ADDED supabase/migrations/20260908233000_atomic_component_assembly.sql
-ADDED supabase/migrations/20260908234000_finishing_component_stock.sql
-ADDED supabase/migrations/20260908235000_contractor_component_stock.sql
-ADDED supabase/migrations/20260908235500_component_to_new_item.sql
-CHANGED tailwind.config.js
-ADDED tailwind.legacy.cjs
-ADDED vercel.json
-REMOVED src/app/mfg-compilation/components/SetCompilationContent.tsx
-REMOVED src/app/mfg-dashboard/components/MfgDashboardContent.tsx
-REMOVED src/app/mfg-master-sets/components/MasterSetsContent.tsx
-REMOVED src/app/mfg-orders/components/MfgOrdersContent.tsx
-REMOVED src/app/mfg-orders/data/mfgOrdersData.ts
-REMOVED src/app/mfg-production/components/ProductionTrackingContent.tsx
-REMOVED src/app/sign-up-login-screen/components/AuthScreen.tsx
-REMOVED src/app/sign-up-login-screen/components/LoginForm.tsx
-REMOVED src/app/sign-up-login-screen/components/SignUpForm.tsx
+Changes compared with uploaded RR-8.9-main.zip:
+DATABASE-UPDATE.sql
+LATEST-UPDATE.sql
+UPDATE-NOTES.md
+src/app/components/DashboardContent.tsx
+src/app/embroidery-accessory/components/EmbroideryContent.tsx
+src/app/embroidery-accessory/components/IssueVoucherModal.tsx
+src/app/embroidery-accessory/components/ReceiveVoucherModal.tsx
+src/app/fabric-inventory/components/FabricInventoryContent.tsx
+src/app/handwork/page.tsx
+src/app/printer-ledger/components/PrinterLedgerContent.tsx
+src/app/sales-orders/components/NewSalesOrderModal.tsx
+src/app/sales-orders/components/SalesOrdersContent.tsx
+src/app/sales-orders/data/salesOrdersData.ts
+src/components/Sidebar.tsx
+src/components/erp/Sidebar.tsx
+src/contexts/LanguageContext.tsx
+src/contexts/RealtimeDataContext.tsx
+src/lib/services/embroideryVoucherService.ts
+src/lib/services/orderCalculations.ts
+src/lib/services/printerFabricService.ts
+src/lib/services/salesOrderService.ts
+supabase/migrations/20260909010000_sales_gst_sizes.sql
+supabase/migrations/20260909011000_receive_fabric_shrinkage.sql
+verification/september-client.cjs
+verification/september-updates.cjs

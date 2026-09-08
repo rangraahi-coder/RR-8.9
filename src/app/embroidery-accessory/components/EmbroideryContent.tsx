@@ -125,7 +125,7 @@ function groupFabricsByName(fabrics: FabricStockItem[]): Record<string, FabricSt
   }, {} as Record<string, FabricStockItem[]>);
 }
 
-export default function EmbroideryContent() {
+export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) {
   const { jobCards, refresh: refreshJobCards } = useJobCards();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('issue_vouchers');
@@ -195,12 +195,14 @@ export default function EmbroideryContent() {
       embroideryVoucherService.getAllMovementHistory(),
       embroideryVoucherService.getRealTimeEmbroideryStats(),
     ]);
-    setIssueVouchers(issues);
-    setReceiveVouchers(receives);
+    const scopedIssues=issues.filter(v=>handwork?v.processType==='handwork':v.processType!=='handwork');
+    const ids=new Set(scopedIssues.map(v=>v.id));
+    setIssueVouchers(scopedIssues);
+    setReceiveVouchers(receives.filter(v=>ids.has(v.issueVoucherId)));
     setCuttingStock(stock);
     setMovementHistory(movements);
     setEmbStats(stats);
-  }, []);
+  }, [handwork]);
 
   const loadFabricsAndAccounts = useCallback(async () => {
     setFabricsLoading(true);
@@ -506,10 +508,10 @@ export default function EmbroideryContent() {
         <div>
           <h1 className="text-xl font-700 text-foreground font-display flex items-center gap-2">
             <Sparkles size={20} className="text-primary" />
-            Embroidery &amp; Accessory Sort-Out
+            {handwork?'Handwork':'Embroidery & Accessory Sort-Out'}
           </h1>
           <p className="text-sm text-muted-foreground font-body mt-0.5">
-            Fabric issue → consumption → finished embroidered pieces (Yoke &amp; Border Embroidery)
+            {handwork?'Handwork issue → partial receipts → pending balance, linked to Job Cards and components':'Fabric issue → consumption → finished embroidered pieces (Yoke & Border Embroidery)'}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -1509,6 +1511,7 @@ export default function EmbroideryContent() {
       {/* Issue Voucher Modal */}
       {showIssueModal && (
         <IssueVoucherModal
+          processScope={handwork?'handwork':'embroidery'}
           jobCards={jobCards}
           onClose={() => setShowIssueModal(false)}
           onSaved={() => handleVoucherSaved('Issue Voucher saved successfully.')}
@@ -1518,6 +1521,7 @@ export default function EmbroideryContent() {
       {/* Edit Issue Voucher Modal */}
       {editIssueVoucher && (
         <IssueVoucherModal
+          processScope={handwork?'handwork':'embroidery'}
           jobCards={jobCards}
           editVoucher={editIssueVoucher}
           onClose={() => setEditIssueVoucher(null)}
@@ -1528,6 +1532,7 @@ export default function EmbroideryContent() {
       {/* Receive Voucher Modal */}
       {showReceiveModal && (
         <ReceiveVoucherModal
+          handwork={handwork}
           issueVouchers={issueVouchers}
           preSelectedIssueId={preSelectedIssueId}
           onClose={() => { setShowReceiveModal(false); setPreSelectedIssueId(undefined); }}
@@ -1538,6 +1543,7 @@ export default function EmbroideryContent() {
       {/* Edit Receive Voucher Modal */}
       {editReceiveVoucher && (
         <ReceiveVoucherModal
+          handwork={handwork}
           issueVouchers={issueVouchers}
           editVoucher={editReceiveVoucher}
           onClose={() => setEditReceiveVoucher(null)}

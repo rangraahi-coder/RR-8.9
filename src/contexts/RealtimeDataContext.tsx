@@ -116,6 +116,7 @@ export interface RealtimeDataState {
   stitchingMetrics: StitchingMetrics;
   qcMetrics: QCMetrics;
   embroideryMetrics: EmbroideryMetrics;
+  handworkMetrics: EmbroideryMetrics;
   dyeingMetrics: DyeingMetrics;
   finishingMetrics: FinishingMetrics;
   fabricInventoryMetrics: FabricInventoryMetrics;
@@ -190,6 +191,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
   const [cuttingMetrics, setCuttingMetrics] = useState<CuttingMetrics>(DEFAULT_CUTTING);
   const [stitchingMetrics, setStitchingMetrics] = useState<StitchingMetrics>(DEFAULT_STITCHING);
   const [qcMetrics, setQcMetrics] = useState<QCMetrics>(DEFAULT_QC);
+  const [handworkMetrics,setHandworkMetrics]=useState<EmbroideryMetrics>(DEFAULT_EMBROIDERY);
   const [embroideryMetrics, setEmbroideryMetrics] = useState<EmbroideryMetrics>(DEFAULT_EMBROIDERY);
   const [dyeingMetrics, setDyeingMetrics] = useState<DyeingMetrics>(DEFAULT_DYEING);
   const [finishingMetrics, setFinishingMetrics] = useState<FinishingMetrics>(DEFAULT_FINISHING);
@@ -311,8 +313,8 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         supabase.from('stitch_receive_vouchers').select('id, total_pieces_received'),
         supabase.from('stitch_operators').select('id').eq('is_active', true),
         supabase.from('qc_entries').select('id, status, total_pieces_received, total_pass, total_fail'),
-        supabase.from('emb_issue_vouchers').select('id, status'),
-        supabase.from('emb_receive_vouchers').select('id'),
+        supabase.from('emb_issue_vouchers').select('id, status, process_type'),
+        supabase.from('emb_receive_vouchers').select('id, issue_voucher_id'),
         supabase.from('dyeing_processing_entries').select('id, status'),
         supabase.from('finishing_entries').select('id, status'),
         supabase.from('fabric_inventory').select('id, stock_qty, unit'),
@@ -362,16 +364,15 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         });
       }
 
-      // Embroidery
+      // Separate process metrics while retaining shared stock and voucher lineage.
       if (!embIssueRes.error && embIssueRes.data) {
-        const issued = embIssueRes.data;
-        const received = (embReceiveRes.data || []).length;
-        const pending = issued.filter((r: any) => r.status !== 'fully_received' && r.status !== 'cancelled').length;
-        setEmbroideryMetrics({
-          totalIssueVouchers: issued.length,
-          totalReceiveVouchers: received,
-          pendingVouchers: pending,
-        });
+        for(const handwork of [false,true]){
+          const issued=embIssueRes.data.filter((r:any)=>handwork?r.process_type==='handwork':r.process_type!=='handwork');
+          const ids=new Set(issued.map((r:any)=>r.id));
+          const metrics={totalIssueVouchers:issued.length,totalReceiveVouchers:(embReceiveRes.data||[]).filter((r:any)=>ids.has(r.issue_voucher_id)).length,
+            pendingVouchers:issued.filter((r:any)=>!['fully_received','closed','cancelled'].includes(r.status)).length};
+          if(handwork)setHandworkMetrics(metrics);else setEmbroideryMetrics(metrics);
+        }
       }
 
       // Dyeing
@@ -678,7 +679,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         cuttingMetrics,
         stitchingMetrics,
         qcMetrics,
-        embroideryMetrics,
+        embroideryMetrics,handworkMetrics,
         dyeingMetrics,
         finishingMetrics,
         fabricInventoryMetrics,

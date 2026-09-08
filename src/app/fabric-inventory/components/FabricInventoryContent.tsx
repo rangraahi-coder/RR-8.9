@@ -1,6 +1,8 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
+import {useAuth} from '@/contexts/AuthContext';
 import { Plus, Trash2, Package, CheckCircle, List, PlusCircle, AlertCircle, Loader2, Eye, Pencil, X, Save, ArrowDownToLine, RefreshCw } from 'lucide-react';
 import { fabricInventoryService } from '@/lib/services/fabricInventoryService';
 import { FabricStockItem } from '@/app/fabric-inventory/data/fabricStockData';
@@ -384,6 +386,10 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   const accountsLoading = contextAccountsLoading;
 
   // ── Fabric Receive state ──────────────────────────────────────────────────
+  const {verifiedUser}=useAuth();
+  const receiveBusy=useRef(false);
+  const [shrinkagePercent,setShrinkagePercent]=useState('0');
+  const [processingType,setProcessingType]=useState('printing');
   const [receiveDate, setReceiveDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [receiveReceiptNo, setReceiveReceiptNo] = useState('');
   const [receiveReceiptNoLoading, setReceiveReceiptNoLoading] = useState(false);
@@ -450,77 +456,58 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
 
   const totalReceiveQty = receiveRolls.reduce((s, r) => s + (parseFloat(r.qty) || 0), 0);
 
+  const shrinkageMeters=Math.round(totalReceiveQty*(Number(shrinkagePercent)||0)/100*1000)/1000;
+  const greyConsumption=Math.round((totalReceiveQty+shrinkageMeters)*1000)/1000;
+  const refreshPending=useCallback(async()=>{if(!receivePrinter)return;try{setPendingIssues(await printerFabricService.getIssuesByPrinter(receivePrinter));}catch(e){setReceiveSubmitError((e as Error).message);}},[receivePrinter]);
+  useRealtimeTable('printer_fabric_issues',refreshPending);
   const validateReceive = () => {
     const errs: Record<string, string> = {};
+    if(!shrinkagePercent.trim()||!Number.isFinite(Number(shrinkagePercent))||Number(shrinkagePercent)<0||Number(shrinkagePercent)>100)errs.shrinkage='Shrinkage must be between 0 and 100%.';
     if (!receiveReceiptNo.trim()) errs.receiptNo = 'Receipt No. is required';
     if (!receiveDate) errs.receiveDate = 'Date is required';
-    if (!receivePrinter) errs.receivePrinter = 'Select a printer/account';
+    if (!receivePrinter) errs.receivePrinter = 'Select a printer/dyer account';
     if (!selectedIssueId) errs.selectedIssue = 'Select a fabric issue';
     if (!receiveFinishedFabricName.trim()) errs.finishedFabricName = 'Finished Fabric Name is required before posting to inventory';
     receiveRolls.forEach((roll, idx) => {
-      if (!roll.qty || isNaN(Number(roll.qty)) || Number(roll.qty) <= 0) {
+      if (!roll.qty || !Number.isFinite(Number(roll.qty)) || Number(roll.qty) <= 0) {
         errs[`rqty-${idx}`] = 'Valid qty required';
       }
     });
-    if (selectedIssue && totalReceiveQty > selectedIssue.qtyPending + 0.001) {
-      errs.totalQty = `Total received (${totalReceiveQty.toFixed(3)}) exceeds pending qty (${selectedIssue.qtyPending.toFixed(3)})`;
+    if (selectedIssue && greyConsumption > selectedIssue.qtyPending + 0.00001) {
+      errs.totalQty = `Grey consumption (${greyConsumption.toFixed(3)}) exceeds pending qty (${selectedIssue.qtyPending.toFixed(3)})`;
     }
     setReceiveErrors(errs);
     return Object.keys(errs).length === 0;
   };
 
-  const handleReceiveSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!validateReceive() || !selectedIssue) return;
-    setReceiveSubmitting(true);
-    setReceiveSubmitError(null);
-
-    const finishedName = receiveFinishedFabricName.trim();
-
-    const result = await printerFabricService.createReceipt(
-      {
-        receiptNo: receiveReceiptNo,
-        date: receiveDate,
-        printerAccount: receivePrinter,
-        issueId: selectedIssue.id,
-        grayFabricRef: selectedIssue.grayFabricRef,
-        fabricName: selectedIssue.fabricName,
-        qtyReceived: totalReceiveQty,
-        processedFabricName: finishedName,
-        processedQty: totalReceiveQty,
-        shortage: Math.max(0, selectedIssue.qtyPending - totalReceiveQty),
-        shrinkage: 0,
-        remarks: receiveRemarks.trim() || undefined,
-      },
-      undefined
-    );
-
-    if (!result) {
-      setReceiveSubmitError('Failed to save receipt. Please try again.');
-      setReceiveSubmitting(false);
-      return;
-    }
-
-    // Post to finished inventory (idempotent)
-    await fabricInventoryService.postFinishedFabricReceipt({
-      finishedFabricName: finishedName,
-      receivedQty: totalReceiveQty,
-      category: 'OTHER',
-      unit: 'Metre',
-      sourceModule: 'printer_receipt',
-      sourceReceiptId: receiveReceiptNo,
-      sourceGreyFabricRef: selectedIssue.grayFabricRef || undefined,
-      processorName: receivePrinter || undefined,
-      processingType: 'printing',
-      receivedDate: receiveDate,
-    });
-
-    setLastReceiptNo(receiveReceiptNo);
-    setReceiveSubmitting(false);
-    setReceiveSubmitted(true);
+  const saveReceive = async (recover=false) => {
+    if(receiveBusy.current)return;
+    const key=`erp-printer-receive:${verifiedUser?.id}`;
+    if(!verifiedUser){setReceiveSubmitError('Sign in required');return;}
+    if(!recover&&(!validateReceive()||!selectedIssue))return;
+    receiveBusy.current=true;setReceiveSubmitting(true);setReceiveSubmitError(null);
+    try {
+      const payload={receipt_no:receiveReceiptNo.trim(),date:receiveDate,printer_account:receivePrinter,issue_id:selectedIssue?.id,
+        processed_fabric_name:receiveFinishedFabricName.trim(),qty_received:Math.round(totalReceiveQty*1000)/1000,
+        shrinkage_percent:Number(shrinkagePercent),processing_type:processingType,remarks:receiveRemarks.trim(),
+        rolls:receiveRolls.map((roll,i)=>({roll_no:roll.rollNo||`R${i+1}`,qty:Number(roll.qty),remarks:roll.remarks}))};
+      const cached=sessionStorage.getItem(key);
+      let request=cached?JSON.parse(cached):null;
+      if(recover&&!request)throw new Error('No pending receipt to recover.');
+      if(request&&!recover&&JSON.stringify(request.payload)!==JSON.stringify(payload))throw new Error('A previous receipt is awaiting confirmation. Use Recover Pending Receipt before changing the entry.');
+      if(!request){request={id:crypto.randomUUID(),payload};sessionStorage.setItem(key,JSON.stringify(request));}
+      const result=await printerFabricService.receiveWithStock(request.id,request.payload);
+      sessionStorage.removeItem(key);setLastReceiptNo(result.receiptNo);setReceiveSubmitted(true);
+      void refreshPending();
+    } catch(e:any) {
+      if(e?.code && /^(22|23|42|P0001)/.test(e.code))sessionStorage.removeItem(key);
+      setReceiveSubmitError(e?.message||'Receipt could not be confirmed. Use Recover Pending Receipt.');
+    } finally {receiveBusy.current=false;setReceiveSubmitting(false);}
   };
+  const handleReceiveSubmit = async (e:React.FormEvent)=>{e.preventDefault();await saveReceive();};
 
   const handleReceiveReset = async () => {
+    setShrinkagePercent('0');
     setReceiveRolls([newReceiveRoll(0)]);
     setReceivePrinter('');
     setSelectedIssueId('');
@@ -683,7 +670,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
       if (!line.fabricName.trim()) newErrors[`fabricName-${lineIdx}`] = 'Required';
       if (!line.category) newErrors[`category-${lineIdx}`] = 'Required';
       line.rolls.forEach((roll, rollIdx) => {
-        if (!roll.qty || isNaN(Number(roll.qty)) || Number(roll.qty) <= 0)
+        if (!roll.qty || !Number.isFinite(Number(roll.qty)) || Number(roll.qty) <= 0)
           newErrors[`qty-${lineIdx}-${rollIdx}`] = 'Valid qty required';
       });
     });
@@ -1335,9 +1322,9 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                 {receiveErrors.receiveDate && <span className="text-xs text-red-500">{receiveErrors.receiveDate}</span>}
               </div>
 
-              {/* Printer / Account */}
+              {/* Printer / Dyer Account */}
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-600 text-muted-foreground">Printer / Account *</label>
+                <label className="text-xs font-600 text-muted-foreground">Printer / Dyer Account *</label>
                 <select
                   value={receivePrinter}
                   onChange={(e) => { setReceivePrinter(e.target.value); setSelectedIssueId(''); }}
@@ -1346,7 +1333,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                     receiveErrors.receivePrinter ? 'border-red-400' : 'border-border'
                   }`}
                 >
-                  <option value="">{accountsLoading ? 'Loading...' : 'Select Printer / Account'}</option>
+                  <option value="">{accountsLoading ? 'Loading...' : 'Select Printer / Dyer Account'}</option>
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.name}>{acc.name}</option>
                   ))}
@@ -1396,7 +1383,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
             {!receivePrinter ? (
               <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 rounded-lg">
                 <AlertCircle size={15} className="text-muted-foreground flex-shrink-0" />
-                <p className="text-xs text-muted-foreground">Select a printer/account above to see pending fabric issues.</p>
+                <p className="text-xs text-muted-foreground">Select a printer/dyer account above to see pending fabric issues.</p>
               </div>
             ) : pendingIssuesLoading ? (
               <div className="flex items-center justify-center py-8 gap-2">
@@ -1470,6 +1457,12 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
             )}
           </div>
 
+          <div className="bg-card border border-border rounded-xl p-5 grid sm:grid-cols-2 gap-4">
+            <div><label className="block text-xs font-600 mb-2">Processing Type</label><select className="input-field" value={processingType} onChange={e=>setProcessingType(e.target.value)}><option value="printing">Printing</option><option value="dyeing">Dyeing</option></select></div>
+            <div><label className="block text-xs font-600 mb-2">Shrinkage (%) on received fabric</label><input type="number" min="0" max="100" step="0.01" className="input-field" value={shrinkagePercent} onChange={e=>setShrinkagePercent(e.target.value)}/>{receiveErrors.shrinkage&&<p className="text-xs text-red-500">{receiveErrors.shrinkage}</p>}</div>
+            <p className="text-sm sm:col-span-2">Received: {totalReceiveQty.toFixed(3)} m + Shrinkage: {shrinkageMeters.toFixed(3)} m = Grey consumed: <strong>{greyConsumption.toFixed(3)} m</strong>. Finished inventory receives {totalReceiveQty.toFixed(3)} m.</p>
+            <button type="button" disabled={receiveSubmitting} onClick={()=>void saveReceive(true)} className="btn-secondary">Recover Pending Receipt</button>
+          </div>
           {/* Roll-wise Receipt Entry */}
           {selectedIssue && (
             <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -1549,14 +1542,14 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                   <div className="flex items-center gap-4">
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground">Total Receiving:</span>
-                      <span className={`text-sm font-700 tabular-nums ${totalReceiveQty > (selectedIssue?.qtyPending ?? 0) + 0.001 ? 'text-red-600' : 'text-primary'}`}>
+                      <span className={`text-sm font-700 tabular-nums ${greyConsumption > (selectedIssue?.qtyPending ?? 0) + 0.00001 ? 'text-red-600' : 'text-primary'}`}>
                         {totalReceiveQty.toFixed(3)} Mt.
                       </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs text-muted-foreground">Remaining after receipt:</span>
                       <span className="text-sm font-700 tabular-nums text-amber-600">
-                        {Math.max(0, (selectedIssue?.qtyPending ?? 0) - totalReceiveQty).toFixed(3)} Mt.
+                        {Math.max(0, (selectedIssue?.qtyPending ?? 0) - greyConsumption).toFixed(3)} Mt.
                       </span>
                     </div>
                   </div>

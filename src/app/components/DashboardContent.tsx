@@ -94,7 +94,7 @@ export default function DashboardContent({ lang }: DashboardContentProps) {
     cuttingMetrics,
     stitchingMetrics,
     qcMetrics,
-    embroideryMetrics,
+    embroideryMetrics,handworkMetrics,
     dyeingMetrics,
     fabricInventoryMetrics,
     metricsLoading,
@@ -378,6 +378,25 @@ export default function DashboardContent({ lang }: DashboardContentProps) {
                   <span>{embroideryMetrics.totalReceiveVouchers} {lang === 'hi' ? 'रिसीव' : 'received'}</span>
                   {embroideryMetrics.pendingVouchers > 0 && (
                     <span className="text-amber-600 font-600">{embroideryMetrics.pendingVouchers} {lang === 'hi' ? 'बाकी' : 'pending'}</span>
+                  )}
+                </div>
+              </div>
+            </Link>
+
+            {/* Handwork */}
+            <Link href="/handwork?tab=issue_vouchers&filter=pending" className="block group">
+              <div className="card-surface p-4 group-hover:shadow-md transition-shadow duration-150 cursor-pointer h-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-pink-50 rounded-lg">
+                    <Sparkles size={14} className="text-pink-500" />
+                  </div>
+                  <p className="text-xs font-600 text-muted-foreground">{lang === 'hi' ? 'हैंडवर्क' : 'Handwork'}</p>
+                </div>
+                <p className="text-2xl font-800 tabular-nums text-foreground">{handworkMetrics.totalIssueVouchers}</p>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{handworkMetrics.totalReceiveVouchers} {lang === 'hi' ? 'रिसीव' : 'received'}</span>
+                  {handworkMetrics.pendingVouchers > 0 && (
+                    <span className="text-amber-600 font-600">{handworkMetrics.pendingVouchers} {lang === 'hi' ? 'बाकी' : 'pending'}</span>
                   )}
                 </div>
               </div>

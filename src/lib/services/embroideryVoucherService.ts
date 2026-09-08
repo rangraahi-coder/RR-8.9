@@ -638,7 +638,8 @@ export const embroideryVoucherService = {
     return true;
   },
 
-  async getNextIssueVoucherNo(): Promise<string> {
+  async getNextIssueVoucherNo(handwork=false): Promise<string> {
+    const prefix=handwork?'HWI':'EIV';
     const supabase = createClient();
     const { data } = await supabase
       .from('emb_issue_vouchers')
@@ -646,13 +647,13 @@ export const embroideryVoucherService = {
       .order('created_at', { ascending: false });
     let maxNum = 0;
     for (const row of (data || [])) {
-      const match = (row.voucher_no || '').match(/EIV-(\d+)/);
+      const match = (row.voucher_no || '').match(new RegExp(`^${prefix}-(\\d+)$`));
       if (match) {
         const n = parseInt(match[1], 10);
         if (n > maxNum) maxNum = n;
       }
     }
-    return `EIV-${String(maxNum + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(maxNum + 1).padStart(4, '0')}`;
   },
 
   // ── Receive Vouchers ────────────────────────────────────────────────────────
@@ -855,7 +856,8 @@ export const embroideryVoucherService = {
     return true;
   },
 
-  async getNextReceiveVoucherNo(): Promise<string> {
+  async getNextReceiveVoucherNo(handwork=false): Promise<string> {
+    const prefix=handwork?'HWR':'ERV';
     const supabase = createClient();
     const { data } = await supabase
       .from('emb_receive_vouchers')
@@ -863,13 +865,13 @@ export const embroideryVoucherService = {
       .order('created_at', { ascending: false });
     let maxNum = 0;
     for (const row of (data || [])) {
-      const match = (row.voucher_no || '').match(/ERV-(\d+)/);
+      const match = (row.voucher_no || '').match(new RegExp(`^${prefix}-(\\d+)$`));
       if (match) {
         const n = parseInt(match[1], 10);
         if (n > maxNum) maxNum = n;
       }
     }
-    return `ERV-${String(maxNum + 1).padStart(4, '0')}`;
+    return `${prefix}-${String(maxNum + 1).padStart(4, '0')}`;
   },
 
   async updateReceiveVoucher(
