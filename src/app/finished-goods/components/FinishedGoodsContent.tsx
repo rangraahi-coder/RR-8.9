@@ -11,13 +11,14 @@ interface FinishedGoodsContentProps {
 
 export default function FinishedGoodsContent({ lang = 'en' }: FinishedGoodsContentProps) {
   const [items, setItems] = useState<FinishedGoodsEntry[]>([]);
+  const [error,setError]=useState('');
   const [loading, setLoading] = useState(true);
 
   const loadItems = useCallback(async () => {
     setLoading(true);
-    const data = await contractorFinishingService.getFinishedGoodsByComponentAssembly();
+    try {const data = await contractorFinishingService.getFinishedGoodsByComponentAssembly();
     setItems(data);
-    setLoading(false);
+    setError('');}catch(e){setError(e instanceof Error?e.message:'Ready stock could not load');}finally{setLoading(false);}
   }, []);
 
   useEffect(() => { loadItems(); }, [loadItems]);
@@ -39,6 +40,7 @@ export default function FinishedGoodsContent({ lang = 'en' }: FinishedGoodsConte
 
   return (
     <div className="flex flex-col gap-6">
+<p role="alert" className="text-red-600">{error}</p>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>

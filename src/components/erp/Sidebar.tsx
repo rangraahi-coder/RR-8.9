@@ -32,6 +32,7 @@ interface NavGroup {
 }
 
 const navGroups: NavGroup[] = [
+  {key:'users',labelKey:'nav.users',href:'/users',icon:<Users size={18}/>},
   {
     key: 'dashboard', labelKey: 'nav.dashboard', href: '/',
     icon: <LayoutDashboard size={18} />,
@@ -54,6 +55,7 @@ const navGroups: NavGroup[] = [
   {
     key: 'procurement', labelKey: 'nav.procurement', icon: <Package size={18} />,
     items: [
+      {key:'stocktracker',labelKey:'nav.stocktracker',href:'/fabric-stock-tracker',icon:<Package size={16}/>},
       { key: 'greyfabric', labelKey: 'nav.greyfabric', href: '/grey-fabric', icon: <Box size={16} /> },
     ],
   },
@@ -72,10 +74,6 @@ const navGroups: NavGroup[] = [
       { key: 'finishedgoods', labelKey: 'nav.finishedgoods', href: '/finished-goods', icon: <Package size={16} /> },
     ],
   },
-  {key:'manufacturing',labelKey:'nav.manufacturing',icon:<Factory size={18}/>,items:[
-    {key:'workflow',labelKey:'nav.workflow',href:'/production-workflow',icon:<Layers size={16}/>},
-    {key:'stocktracker',labelKey:'nav.stocktracker',href:'/fabric-stock-tracker',icon:<Package size={16}/>},
-  ]},
   {
     key: 'dispatch', labelKey: 'nav.dispatch', href: '/dispatch',
     icon: <Truck size={18} />,

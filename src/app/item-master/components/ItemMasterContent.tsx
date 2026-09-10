@@ -73,7 +73,7 @@ const CATEGORY_META: Record<DetailCategory, { label: string; icon: React.ReactNo
   product_composition: { label: 'Product Composition', icon: <Package size={13} />, color: 'text-purple-700', bg: 'bg-purple-50 border-purple-200' },
   manufacturing_work: { label: 'Manufacturing Work', icon: <Wrench size={13} />, color: 'text-orange-700', bg: 'bg-orange-50 border-orange-200' },
   accessory_raw_material: { label: 'Accessories / Raw Materials', icon: <ShoppingBag size={13} />, color: 'text-green-700', bg: 'bg-green-50 border-green-200' },
-  production_sub_unit: { label: 'Production Sub Unit', icon: <Package size={13} />, color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200' },
+  production_sub_unit: { label: 'Production Sub-component', icon: <Package size={13} />, color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200' },
 };
 
 const REVIEW_BADGE: Record<string, string> = {
@@ -95,7 +95,7 @@ const UNIT_OPTIONS = ['Pcs', 'Mtr', 'Kg', 'Set', 'Pair', 'Dozen', 'Gram', 'Litre
 const COMPONENT_NAMES = ['Kurta', 'Pant', 'Dupatta', 'Top', 'Bottom', 'Jacket', 'Blouse', 'Skirt', 'Shirt', 'Trouser', 'Lehenga', 'Choli', 'Odhni'];
 
 // ─── Set Type Options ─────────────────────────────────────────────────────────
-const SET_TYPE_OPTIONS = ['3PC', '2PC', '1PC'] as const;
+const SET_TYPE_OPTIONS = ['3PC', '2PC', '1PC', 'CUSTOM'] as const;
 
 const SET_TYPE_COMPONENTS: Record<string, { name: string; qty: number; unit: string }[]> = {
   '3PC': [
@@ -230,7 +230,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
       <div className="flex items-center justify-between px-3 py-2 border-b border-purple-200 bg-purple-50">
         <div className="flex items-center gap-2">
           <Package size={13} className="text-purple-700" />
-          <span className="text-xs font-semibold text-purple-700">Production Sub-Units (Composition)</span>
+          <span className="text-xs font-semibold text-purple-700">Production Sub-components (Composition)</span>
           {compositions.length > 0 && (
             <span className="text-xs text-purple-600 opacity-70">
               ({compositions.length} components · {totalPcsPerSet} pcs/set)
@@ -243,7 +243,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
           className="flex items-center gap-1 px-2 py-1 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium transition-colors"
         >
           <Plus size={11} />
-          Add Sub-Unit
+          Add Sub-component
         </button>
       </div>
 
@@ -354,7 +354,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
         ) : compositions.length === 0 && !addingNew ? (
           <div className="py-4 text-center">
             <Package size={24} className="mx-auto text-purple-300 mb-1.5" />
-            <p className="text-xs text-purple-600 font-medium">No sub-units defined</p>
+            <p className="text-xs text-purple-600 font-medium">No sub-components defined</p>
             <p className="text-xs text-purple-500 mt-0.5">
               Add components like Kurta, Pant, Dupatta for a 3PC set
             </p>
@@ -1200,7 +1200,7 @@ function ItemDetailModal({
             </div>
           </div>
 
-          {/* ── Production Sub-Units (Composition Manager) ── */}
+          {/* ── Production Sub-components (Composition Manager) ── */}
           {styleId && (
             <CompositionManager styleId={styleId} setType={setType} />
           )}
@@ -1747,7 +1747,7 @@ function NewItemModal({
   const [lines, setLines] = useState<NewLine[]>([]);
   const [addingCategory, setAddingCategory] = useState<DetailCategory | ''>('');
 
-  // Production Sub-Units (Composition) state — separate from detail lines
+  // Production Sub-components (Composition) state — separate from detail lines
   type NewComposition = { id: string; component_name: string; qty_per_set: string; unit: string };
   const [compositions, setCompositions] = useState<NewComposition[]>([]);
   const [addingSubUnit, setAddingSubUnit] = useState(false);
@@ -2218,13 +2218,13 @@ function NewItemModal({
             </div>
           </div>
 
-          {/* Production Sub-Units (Composition) — matches CompositionManager style */}
+          {/* Production Sub-components (Composition) — matches CompositionManager style */}
           <div className="border border-purple-200 rounded-xl overflow-hidden bg-purple-50">
             {/* Header */}
             <div className="flex items-center justify-between px-3 py-2 border-b border-purple-200 bg-purple-50">
               <div className="flex items-center gap-2">
                 <Package size={13} className="text-purple-700" />
-                <span className="text-xs font-semibold text-purple-700">Production Sub-Units (Composition)</span>
+                <span className="text-xs font-semibold text-purple-700">Production Sub-components (Composition)</span>
                 {compositions.length > 0 && (
                   <span className="text-xs text-purple-600 opacity-70">
                     ({compositions.length} components · {totalPcsPerSet} pcs/set)
@@ -2237,7 +2237,7 @@ function NewItemModal({
                 className="flex items-center gap-1 px-2 py-1 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium transition-colors"
               >
                 <Plus size={11} />
-                Add Sub-Unit
+                Add Sub-component
               </button>
             </div>
 
@@ -2287,7 +2287,7 @@ function NewItemModal({
               {compositions.length === 0 && !addingSubUnit ? (
                 <div className="py-4 text-center">
                   <Package size={24} className="mx-auto text-purple-300 mb-1.5" />
-                  <p className="text-xs text-purple-600 font-medium">No sub-units defined</p>
+                  <p className="text-xs text-purple-600 font-medium">No sub-components defined</p>
                   <p className="text-xs text-purple-500 mt-0.5">
                     Add components like Kurta, Pant, Dupatta for a 3PC set
                   </p>

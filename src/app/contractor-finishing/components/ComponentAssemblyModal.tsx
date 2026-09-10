@@ -6,6 +6,7 @@ import {
   AssemblyComponentRow,
   FinishingStockRow,
 } from '@/lib/services/componentAssemblyService';
+import {createClient} from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface Props {
@@ -25,6 +26,8 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
 
   const saveRef = useRef(false);
   const requestRef = useRef<string | null>(null);
+  const [styles,setStyles]=useState<{id:string;style_no:string;item_name:string;job_card_no:string}[]>([]);
+  const [linkStyle,setLinkStyle]=useState('');const [linkVersion,setLinkVersion]=useState(0);
   const [composition, setComposition] = useState<{component: string; qtyPerSet: number}[]>([]);
 
   // Header fields
@@ -62,6 +65,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
       ]);
       setVoucherNo(nextNo);
       setJobCardOptions(jobCards);
+      const {data,error}=await createClient().from('item_styles').select('id,style_no,item_name,job_card_no').order('style_no');if(error)throw error;setStyles(data||[]);
       } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
       finally { setLoading(false); }
     }
@@ -79,19 +83,22 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
     const jc = jobCardOptions.find((j) => j.jobCardRef === selectedJobCardRef) || null;
     setSelectedJobCard(jc);
     // Auto-fill final item name from style name
-    if (jc?.styleName && !finalItemName) {
+    if (jc?.styleName) {
       setFinalItemName(jc.styleName);
     }
 
+    let active=true;
+    setComposition([]);setComponentRows([]);setFinishingStock([]);
     async function loadStock() {
       setLoadingStock(true);
       try {
       setError(null);
-      const [stock, required] = await Promise.all([componentAssemblyService.getFinishingStockByJobCard(selectedJobCardRef), componentAssemblyService.getComposition(selectedJobCardRef)]);
+      const stock=await componentAssemblyService.getFinishingStockByJobCard(selectedJobCardRef);if(!active)return;setFinishingStock(stock);
+      const required=await componentAssemblyService.getComposition(selectedJobCardRef);if(!active)return;
       setComposition(required);
       setFinishingStock(stock);
       // Build component rows from finishing stock
-      const rows: AssemblyComponentRow[] = stock.map((s) => ({
+      const rows: AssemblyComponentRow[] = stock.filter(s=>required.some(c=>c.component.trim().toLowerCase()===s.component.trim().toLowerCase())).map((s) => ({
         component: s.component,
         size: s.size,
         colour: s.colour,
@@ -99,11 +106,11 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
         qtyUsed: 0,
       }));
       setComponentRows(rows);
-      } catch (e) { setComposition([]); setComponentRows([]); setError(e instanceof Error ? e.message : String(e)); }
-      finally { setLoadingStock(false); }
+      } catch (e) { if(!active)return;setComposition([]); setComponentRows([]); setError(e instanceof Error ? e.message : String(e)); }
+      finally { if(active)setLoadingStock(false); }
     }
-    loadStock();
-  }, [selectedJobCardRef, jobCardOptions]);
+    loadStock();return()=>{active=false;};
+  }, [selectedJobCardRef, jobCardOptions,linkVersion]);
 
   function updateQtyUsed(idx: number, value: number) {
     setComponentRows((prev) =>
@@ -300,8 +307,8 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
               ) : componentRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-8 gap-2 bg-muted/20 rounded-xl border border-border">
                   <Package size={28} className="text-muted-foreground/40" />
-                  <p className="text-sm text-muted-foreground font-body">No finished sub-components found for this job card.</p>
-                  <p className="text-xs text-muted-foreground font-body">Complete Finishing Receive for all sub-components first.</p>
+                  <p className="text-sm text-muted-foreground font-body">{finishingStock.length?'Received sub-components are available. Resolve the Item Master composition below.':'No available sub-components found for this Job Card.'}</p>
+                  <p className="text-xs text-muted-foreground font-body">Received, unassembled sub-components will appear here.</p>
                 </div>
               ) : (
                 <>
@@ -388,7 +395,8 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
           </div>
 
           {/* Error */}
-          {error && (
+          {error&&selectedJobCardRef&&composition.length===0&&<div className="p-4 border border-amber-300 rounded-xl mb-3"><p className="text-sm mb-2">Confirm which Item Master item this Job Card assembles:</p><select className="input-field w-full" value={linkStyle} onChange={e=>setLinkStyle(e.target.value)}><option value="">Select Item Master item</option>{styles.map(item=><option key={item.id} value={item.id}>{item.item_name||item.style_no||item.job_card_no} — {item.job_card_no}</option>)}</select><button type="button" disabled={!linkStyle||saving} className="btn-secondary mt-2" onClick={async()=>{setSaving(true);try{const {error}=await createClient().rpc('erp_link_assembly_item',{p_job_ref:selectedJobCardRef,p_style_id:linkStyle});if(error)throw error;setLinkVersion(v=>v+1);}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setSaving(false);}}}>Link selected item</button></div>}
+            {error && (
             <div className="flex items-start gap-2 p-3 bg-danger-bg border border-danger-border rounded-xl">
               <AlertCircle size={14} className="text-danger mt-0.5 shrink-0" />
               <p className="text-xs text-danger font-body">{error}</p>

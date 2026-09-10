@@ -8,7 +8,6 @@ import React, {
   useRef,
 } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -121,6 +120,7 @@ export interface RealtimeDataState {
   finishingMetrics: FinishingMetrics;
   fabricInventoryMetrics: FabricInventoryMetrics;
   metricsLoading: boolean;
+  refreshErrors: Record<string, string>;
   // Notifications: recent changes (last 10 events)
   recentEvents: RealtimeEvent[];
   // Item Variants (for Item Master screen)
@@ -168,8 +168,8 @@ const DEFAULT_FABRIC: FabricInventoryMetrics = { totalRolls: 0, totalMeters: 0, 
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
-export function RealtimeDataProvider({ children }: { children: React.ReactNode }) {
-  const {sessionStatus}=useAuth();
+function RealtimeDataInner({ children }: { children: React.ReactNode }) {
+  const {sessionStatus,isAdmin,accessLoading,can}=useAuth();
   const [jobCards, setJobCards] = useState<JobCardSummary[]>([]);
   const [jobCardsLoading, setJobCardsLoading] = useState(true);
 
@@ -198,9 +198,22 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
   const [fabricInventoryMetrics, setFabricInventoryMetrics] = useState<FabricInventoryMetrics>(DEFAULT_FABRIC);
   const [metricsLoading, setMetricsLoading] = useState(true);
 
+  const [refreshErrors, setRefreshErrors] = useState<Record<string, string>>({});
+  const recordRefresh = useCallback((source: string, error?: unknown) => {
+    setRefreshErrors(previous => {
+      const next = { ...previous };
+      if (error) {
+        const detail = error as {message?: string; code?: string};
+        next[source] = [detail.code, detail.message || 'Request failed. Please retry.'].filter(Boolean).join(': ');
+      } else delete next[source];
+      return next;
+    });
+  }, []);
+
   // ── Fetch helpers ─────────────────────────────────────────────────────────
 
   const fetchJobCards = useCallback(async () => {
+    if(!['jobs','sales','cutting','embroidery','handwork','stitching','qc','contractor','finishing','ready','dispatch'].some(m=>can(m))){setJobCards([]);setJobCardsLoading(false);return;}
     try {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -208,6 +221,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         .select('id, job_card_no, style_en, design_code, party_name, po_no, stage, total_pieces, completed_pieces, is_blocked, updated_at, colors, sizes, size_ratios, due_date')
         .order('updated_at', { ascending: false });
       if(error)throw error;
+      recordRefresh('Job Cards');
       if (data) {
         setJobCards(
           data.map((r: any) => ({
@@ -231,13 +245,14 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Job Cards could not refresh',{id:'job-cards-refresh'});
+      recordRefresh('Job Cards', error);
     } finally {
       setJobCardsLoading(false);
     }
-  }, []);
+  }, [recordRefresh,can]);
 
   const fetchSalesOrders = useCallback(async () => {
+    if(!can('sales')){setSalesOrders([]);setSalesOrdersLoading(false);return;}
     try {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -245,6 +260,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         .select('id, vch_no, party_name, status, total_qty, total_amount, updated_at')
         .order('updated_at', { ascending: false });
       if(error)throw error;
+      recordRefresh('Sales Orders');
       if (data) {
         setSalesOrders(
           data.map((r: any) => ({
@@ -259,13 +275,14 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'ERP data could not refresh',{id:'erp-refresh'});
+      recordRefresh('Sales Orders', error);
     } finally {
       setSalesOrdersLoading(false);
     }
-  }, []);
+  }, [recordRefresh,can]);
 
   const fetchAccounts = useCallback(async () => {
+    if(!['accounts','sales','grey','dyeing','stitching','contractor','dispatch','ledger','jobs','fabric'].some(m=>can(m))){setAccounts([]);setAccountsLoading(false);return;}
     try {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -273,6 +290,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         .select('id, name, parent_group')
         .order('name', { ascending: true });
       if(error)throw error;
+      recordRefresh('Accounts');
       if (data) {
         setAccounts(
           data.map((r: any) => ({
@@ -283,13 +301,14 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         );
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'ERP data could not refresh',{id:'erp-refresh'});
+      recordRefresh('Accounts', error);
     } finally {
       setAccountsLoading(false);
     }
-  }, []);
+  }, [recordRefresh,can]);
 
   const fetchModuleMetrics = useCallback(async () => {
+    if(!isAdmin){setMetricsLoading(false);return;}
     setMetricsLoading(true);
     try {
       const supabase = createClient();
@@ -319,10 +338,20 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         supabase.from('finishing_entries').select('id, status'),
         supabase.from('fabric_inventory').select('id, stock_qty, unit'),
         supabase.from('cutting_sub_components').select('total_pieces'),
-      ]);
+      ].map(async query => {
+        try { return await query; }
+        catch (error) { return { data: null, error: error as { message: string; code?: string } }; }
+      }));
 
-      const failed=[cuttingRes,stitchIssueRes,stitchReceiveRes,stitchOperatorsRes,qcRes,embIssueRes,embReceiveRes,dyeingRes,finishingRes,fabricRes,subComponentsRes].find(r=>r.error);
-      if(failed?.error)throw failed.error;
+      const sources = [
+        ['Cutting', cuttingRes], ['Stitching issues', stitchIssueRes],
+        ['Stitching receipts', stitchReceiveRes], ['Operators', stitchOperatorsRes],
+        ['QC', qcRes], ['Embroidery/Handwork issues', embIssueRes],
+        ['Embroidery/Handwork receipts', embReceiveRes], ['Dyeing/Printing', dyeingRes],
+        ['Finishing', finishingRes], ['Fabric Inventory', fabricRes], ['Sub-components', subComponentsRes],
+      ] as const;
+      for (const [source, result] of sources) recordRefresh(source, result.error);
+      recordRefresh('Module metrics');
 
       // Total Units: sum of all sub-component quantities
       if (!subComponentsRes.error && subComponentsRes.data) {
@@ -341,6 +370,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
       }
 
       // Stitching
+      if (!stitchIssueRes.error && !stitchReceiveRes.error && !stitchOperatorsRes.error) {
       const issuedPieces = (stitchIssueRes.data || []).reduce((s: number, r: any) => s + (r.total_pieces || 0), 0);
       const receivedPieces = (stitchReceiveRes.data || []).reduce((s: number, r: any) => s + (r.total_pieces_received || 0), 0);
       setStitchingMetrics({
@@ -349,6 +379,8 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         pendingPieces: Math.max(0, issuedPieces - receivedPieces),
         activeOperators: (stitchOperatorsRes.data || []).length,
       });
+
+      }
 
       // QC
       if (!qcRes.error && qcRes.data) {
@@ -365,7 +397,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
       }
 
       // Separate process metrics while retaining shared stock and voucher lineage.
-      if (!embIssueRes.error && embIssueRes.data) {
+      if (!embIssueRes.error && !embReceiveRes.error && embIssueRes.data) {
         for(const handwork of [false,true]){
           const issued=embIssueRes.data.filter((r:any)=>handwork?r.process_type==='handwork':r.process_type!=='handwork');
           const ids=new Set(issued.map((r:any)=>r.id));
@@ -407,11 +439,11 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         });
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'ERP data could not refresh',{id:'erp-refresh'});
+      recordRefresh('Module metrics', error);
     } finally {
       setMetricsLoading(false);
     }
-  }, []);
+  }, [recordRefresh,can,isAdmin]);
 
   const refreshAll = useCallback(() => {
     fetchJobCards();
@@ -435,12 +467,12 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
   // ── Initial load ──────────────────────────────────────────────────────────
 
   useEffect(() => {
-    if(sessionStatus!=='signed-in'){setJobCards([]);setSalesOrders([]);setAccounts([]);setRecentEvents([]);return;}
+    if(sessionStatus!=='signed-in'||accessLoading){setJobCards([]);setSalesOrders([]);setAccounts([]);setRecentEvents([]);return;}
     refreshAll();
     const refresh=()=>{if(document.visibilityState==='visible')refreshAll();};
     const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);window.addEventListener('online',refresh);window.addEventListener('erp-data-changed',refresh);
     return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);window.removeEventListener('erp-data-changed',refresh);};
-  }, [refreshAll,sessionStatus]);
+  }, [refreshAll,sessionStatus,isAdmin,accessLoading]);
 
   // ── Real-time subscriptions ───────────────────────────────────────────────
 
@@ -463,7 +495,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     const supabase = createClient();
 
-    if(sessionStatus!=='signed-in')return;
+    if(sessionStatus!=='signed-in'||!isAdmin||accessLoading)return;
     const channel = supabase
       .channel('global_erp_realtime_'+crypto.randomUUID())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'job_cards' }, (payload) => {
@@ -648,7 +680,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [sessionStatus]);
+  }, [sessionStatus,isAdmin,accessLoading]);
 
   // ── Derived counters ──────────────────────────────────────────────────────
 
@@ -684,6 +716,7 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
         finishingMetrics,
         fabricInventoryMetrics,
         metricsLoading,
+        refreshErrors,
         recentEvents,
         itemVariantsLoading,
         fabricInventoryLoading,
@@ -699,4 +732,9 @@ export function RealtimeDataProvider({ children }: { children: React.ReactNode }
       {children}
     </RealtimeDataContext.Provider>
   );
+}
+
+export function RealtimeDataProvider({children}:{children:React.ReactNode}){
+ const {verifiedUser,accessProfile}=useAuth();
+ return <RealtimeDataInner key={`${verifiedUser?.id||'signed-out'}:${JSON.stringify(accessProfile)}`} >{children}</RealtimeDataInner>;
 }

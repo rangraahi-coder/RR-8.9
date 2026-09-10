@@ -526,218 +526,15 @@ export const contractorFinishingService = {
     items: PendingContractorItem[],
     username?: string | null
   ): Promise<ContractorReceiveVoucher | null> {
-    const supabase = createClient();
-
-    const totalReceived = items.reduce((s, it) => s + (it.receivedToday || 0), 0);
-
-    const { data: vRow, error: vErr } = await supabase
-      .from('contractor_receive_vouchers')
-      .insert({
-        voucher_no: voucher.voucherNo,
-        voucher_date: voucher.voucherDate,
-        contractor_name: voucher.contractorName,
-        job_card_ref: voucher.jobCardRef,
-        total_received: totalReceived,
-        remarks: voucher.remarks || null,
-        created_by: username || null,
-        updated_by: username || null,
-      })
-      .select()
-      .single();
-
-    if (vErr || !vRow) { console.error('[createReceiveVoucher]', vErr); return null; }
-
-    // Insert receive items and update issue item balances
-    for (const it of items) {
-      if ((it.receivedToday || 0) <= 0) continue;
-
-      await supabase.from('contractor_receive_items').insert({
-        receive_voucher_id: vRow.id,
-        issue_item_id: it.issueItemId,
-        item: it.item,
-        colour: it.colour || null,
-        size: it.size || null,
-        issued_qty: it.totalIssued,
-        already_received: it.alreadyReceived,
-        balance_before: it.balance,
-        received_today: it.receivedToday,
-      });
-
-      const newReceived = it.alreadyReceived + it.receivedToday;
-      const newBalance = it.totalIssued - newReceived;
-      await supabase
-        .from('contractor_issue_items')
-        .update({ received_qty: newReceived, balance_qty: newBalance, updated_at: new Date().toISOString() })
-        .eq('id', it.issueItemId);
-
-      // Component stock is posted by the receive-item database trigger.
-
-    }
-
-    const { data: full, error: fErr } = await supabase
-      .from('contractor_receive_vouchers')
-      .select('*, contractor_receive_items(*)')
-      .eq('id', vRow.id)
-      .single();
-    if (fErr) return null;
-    return rowToReceiveVoucher(full);
+    const supabase=createClient();
+    const {data,error}=await supabase.rpc('erp_save_contractor_receive',{p_id:crypto.randomUUID(),p_header:voucher,p_items:items.filter(i=>i.receivedToday>0),p_edit:false});
+    if(error)throw error;window.dispatchEvent(new Event('erp-data-changed'));return rowToReceiveVoucher(data);
   },
-
-  async deleteReceiveVoucher(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // ── Step 1: Fetch receive voucher + items BEFORE deleting to restore balances ──
-    const { data: vRow } = await supabase
-      .from('contractor_receive_vouchers')
-      .select('*, contractor_receive_items(*)')
-      .eq('id', id)
-      .single();
-
-    if (vRow) {
-      // Restore each issue item's received_qty and balance_qty
-      for (const item of (vRow.contractor_receive_items || [])) {
-        const receivedToday = item.received_today || 0;
-        if (receivedToday <= 0) continue;
-
-        const { data: issueItem } = await supabase
-          .from('contractor_issue_items').select('issued_qty, received_qty').eq('id', item.issue_item_id)
-          .single();
-
-        if (issueItem) {
-          const restoredReceived = Math.max(0, (issueItem.received_qty || 0) - receivedToday);
-          const restoredBalance = (issueItem.issued_qty || 0) - restoredReceived;
-          await supabase
-            .from('contractor_issue_items')
-            .update({
-              received_qty: restoredReceived,
-              balance_qty: restoredBalance,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', item.issue_item_id);
-        }
-      }
-
-      // ── Step 2: Delete finished_goods entries created by this receive voucher ──
-      await supabase
-        .from('finished_goods').delete().eq('source_voucher_id', id);
-    }
-
-    // ── Step 3: Delete receive items then the voucher ──
-    await supabase.from('contractor_receive_items').delete().eq('receive_voucher_id', id);
-
-    const { error } = await supabase.from('contractor_receive_vouchers').delete().eq('id', id);
-    if (error) { console.error('[deleteReceiveVoucher]', error); return false; }
-    return true;
+  async deleteReceiveVoucher(id:string):Promise<boolean>{
+    const {error}=await createClient().rpc('erp_delete_contractor_receive',{p_id:id});if(error)throw error;window.dispatchEvent(new Event('erp-data-changed'));return true;
   },
-
-  async updateReceiveVoucher(
-    id: string,
-    voucher: { voucherDate: string; contractorName: string; jobCardRef: string; remarks?: string },
-    items: PendingContractorItem[],
-    username?: string | null
-  ): Promise<ContractorReceiveVoucher | null> {
-    const supabase = createClient();
-
-    // ── Step 1: Fetch existing receive items to reverse their impact ──
-    const { data: oldVRow } = await supabase
-      .from('contractor_receive_vouchers').select('*, contractor_receive_items(*)').eq('id', id)
-      .single();
-
-    if (oldVRow) {
-      for (const oldItem of (oldVRow.contractor_receive_items || [])) {
-        const oldReceivedToday = oldItem.received_today || 0;
-        if (oldReceivedToday <= 0) continue;
-
-        const { data: issueItem } = await supabase
-          .from('contractor_issue_items').select('issued_qty, received_qty').eq('id', oldItem.issue_item_id)
-          .single();
-
-        if (issueItem) {
-          const restoredReceived = Math.max(0, (issueItem.received_qty || 0) - oldReceivedToday);
-          const restoredBalance = (issueItem.issued_qty || 0) - restoredReceived;
-          await supabase
-            .from('contractor_issue_items')
-            .update({
-              received_qty: restoredReceived,
-              balance_qty: restoredBalance,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', oldItem.issue_item_id);
-        }
-      }
-
-      // Delete old finished_goods entries for this voucher
-      await supabase.from('finished_goods').delete().eq('source_voucher_id', id);
-    }
-
-    // ── Step 2: Update voucher header ──
-    const totalReceived = items.reduce((s, it) => s + (it.receivedToday || 0), 0);
-
-    const { error: vErr } = await supabase
-      .from('contractor_receive_vouchers')
-      .update({
-        voucher_date: voucher.voucherDate,
-        contractor_name: voucher.contractorName,
-        job_card_ref: voucher.jobCardRef,
-        total_received: totalReceived,
-        remarks: voucher.remarks || null,
-        updated_by: username || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (vErr) { console.error('[updateReceiveVoucher]', vErr); return null; }
-
-    // ── Step 3: Delete old items and re-insert with new quantities ──
-    await supabase.from('contractor_receive_items').delete().eq('receive_voucher_id', id);
-
-    for (const it of items) {
-      if ((it.receivedToday || 0) <= 0) continue;
-
-      await supabase.from('contractor_receive_items').insert({
-        receive_voucher_id: id,
-        issue_item_id: it.issueItemId,
-        item: it.item,
-        colour: it.colour || null,
-        size: it.size || null,
-        issued_qty: it.totalIssued,
-        already_received: it.alreadyReceived,
-        balance_before: it.balance,
-        received_today: it.receivedToday,
-      });
-
-      // Apply new received qty to issue item
-      const { data: issueItem } = await supabase
-        .from('contractor_issue_items').select('issued_qty, received_qty').eq('id', it.issueItemId)
-        .single();
-
-      if (issueItem) {
-        const newReceived = (issueItem.received_qty || 0) + it.receivedToday;
-        const newBalance = (issueItem.issued_qty || 0) - newReceived;
-        await supabase
-          .from('contractor_issue_items')
-          .update({
-            received_qty: newReceived,
-            balance_qty: newBalance,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', it.issueItemId);
-      }
-
-      // Re-create finished_goods entry
-      const { data: voucherRow } = await supabase
-        .from('contractor_receive_vouchers').select('voucher_no').eq('id', id)
-        .single();
-
-      // Component stock is posted by the receive-item database trigger.
-
-    }
-
-    const { data: full, error: fErr } = await supabase
-      .from('contractor_receive_vouchers').select('*, contractor_receive_items(*)').eq('id', id)
-      .single();
-    if (fErr) return null;
-    return rowToReceiveVoucher(full);
+  async updateReceiveVoucher(id:string,voucher:{voucherDate:string;contractorName:string;jobCardRef:string;remarks?:string},items:PendingContractorItem[],username?:string|null):Promise<ContractorReceiveVoucher|null>{
+    const {data,error}=await createClient().rpc('erp_save_contractor_receive',{p_id:id,p_header:voucher,p_items:items.filter(i=>i.receivedToday>0),p_edit:true});if(error)throw error;window.dispatchEvent(new Event('erp-data-changed'));return rowToReceiveVoucher(data);
   },
 
   // ── NEW: Stitching Receive References ─────────────────────────────────────
@@ -1234,7 +1031,7 @@ export const contractorFinishingService = {
       .select('*')
       .in('source', ['component_assembly', 'component_conversion'])
       .order('created_at', { ascending: false });
-    if (error) { console.error('[getFinishedGoodsByComponentAssembly]', error); return []; }
+    if(error)throw error;
     return (data || []).map((row: any): FinishedGoodsEntry => ({
       id: row.id,
       jobCardRef: row.job_card_ref || '',

@@ -17,6 +17,7 @@ export interface DispatchVoucher {
   vehicleNo?: string;
   driverName?: string;
   invoiceNo?: string;
+  referencePo?: string;
   remarks?: string;
   status: string;
   createdBy?: string | null;
@@ -39,6 +40,7 @@ function rowToVoucher(row: any): DispatchVoucher {
     dispatchedPieces: row.dispatched_pieces || 0,
     vehicleNo: row.vehicle_no || undefined,
     driverName: row.driver_name || undefined,
+    referencePo: row.reference_po || undefined,
     invoiceNo: row.invoice_no || undefined,
     remarks: row.remarks || undefined,
     status: row.status || 'dispatched',
@@ -48,6 +50,7 @@ function rowToVoucher(row: any): DispatchVoucher {
 }
 
 export const dispatchService = {
+  async cancel(id:string,reason:string){const {error}=await createClient().rpc('erp_cancel_dispatch',{p_id:id,p_reason:reason});if(error)throw error;window.dispatchEvent(new Event('erp-data-changed'));},
   async getNextDispatchNo(): Promise<string> {
     const supabase = createClient();
     const { count } = await supabase
@@ -63,7 +66,7 @@ export const dispatchService = {
       .from('dispatch_vouchers')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) { console.error('[dispatchService.getAll]', error); return []; }
+    if(error)throw error;
     return (data || []).map(rowToVoucher);
   },
 
@@ -82,6 +85,7 @@ export const dispatchService = {
       vehicleNo?: string;
       driverName?: string;
       invoiceNo?: string;
+  referencePo?: string;
       remarks?: string;
     },
     username?: string | null,
@@ -104,6 +108,7 @@ export const dispatchService = {
         dispatched_pieces: voucher.dispatchedPieces,
         vehicle_no: voucher.vehicleNo || null,
         driver_name: voucher.driverName || null,
+        reference_po: voucher.referencePo || null,
         invoice_no: voucher.invoiceNo || null,
         remarks: voucher.remarks || null,
         status: 'dispatched',

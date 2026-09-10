@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface MetricCardProps {
@@ -50,30 +50,14 @@ export default function MetricCard({
   className = '',
   children,
 }: MetricCardProps) {
-  const [localLang, setLocalLang] = useState<'en' | 'hi'>(lang);
-  const label = localLang === 'hi' ? labelHi : labelEn;
-  const displayValue = localLang === 'hi' && subUnitValue !== undefined ? subUnitValue : value;
+  const label = lang === 'hi' ? labelHi : labelEn;
+  const displayValue = value;
 
   return (
     <div className={`card-surface p-5 ${VARIANT_STYLES[variant]} ${className}`}>
       <div className="flex items-start justify-between mb-4">
         <p className="section-label">{label}</p>
         <div className="flex items-center gap-2">
-          {/* Total PC / Total Unit toggle */}
-          <div className="flex items-center rounded-xl overflow-hidden bg-muted text-xs font-600">
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocalLang('en'); }}
-              className={`px-2.5 py-1 transition-colors duration-150 font-body ${localLang === 'en' ? 'bg-primary text-white rounded-xl' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
-            >
-              Total PC
-            </button>
-            <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setLocalLang('hi'); }}
-              className={`px-2.5 py-1 transition-colors duration-150 font-body ${localLang === 'hi' ? 'bg-primary text-white rounded-xl' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
-            >
-              Sub Unit
-            </button>
-          </div>
           <span className={`p-2 rounded-xl ${ICON_VARIANT_STYLES[variant]}`}>
             {icon}
           </span>

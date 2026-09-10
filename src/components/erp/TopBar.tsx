@@ -10,7 +10,7 @@ import type { Language } from '@/types/erp';
 
 export default function TopBar({onSearch}:{onSearch?:(value:string)=>void}) {
   const { lang, setLang, t } = useLanguage();
-  const { verifiedUser, sessionStatus, authError, signOut } = useAuth();
+  const { verifiedUser, sessionStatus, authError, signOut, canAccessRoute } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -113,12 +113,12 @@ export default function TopBar({onSearch}:{onSearch?:(value:string)=>void}) {
             {showUserMenu && (
               <div className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-modal border border-border z-50 animate-slide-up">
                 <div className="p-1">
-                  <Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
+                  {canAccessRoute('/settings')&&<Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
                     <User size={15} className="text-slate-400" /> Profile
-                  </Link>
-                  <Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
+                  </Link>}
+                  {canAccessRoute('/settings')&&<Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
                     <Settings size={15} className="text-slate-400" /> Settings
-                  </Link>
+                  </Link>}
                   <div className="border-t border-border my-1" />
                   <button
                     onClick={handleSignOut}

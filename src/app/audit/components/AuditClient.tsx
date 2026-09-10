@@ -35,13 +35,12 @@ export default function AuditClient() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
-        .from('stitch_audit_trail')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100);
-      if (err) throw new Error(err.message);
-      setRows((data ?? []) as AuditRow[]);
+      const [legacy,current]=await Promise.all([
+        supabase.from('stitch_audit_trail').select('*').order('created_at',{ascending:false}).limit(100),
+        supabase.from('erp_activity_log').select('*').order('created_at',{ascending:false}).limit(100)
+      ]);
+      if(legacy.error||current.error)throw new Error(legacy.error?.message||current.error?.message);
+      setRows([...(legacy.data||[]),...(current.data||[])].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at))).slice(0,100));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load audit trail');
     } finally {

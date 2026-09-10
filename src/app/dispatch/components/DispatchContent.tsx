@@ -15,7 +15,8 @@ interface DispatchContentProps {
 
 export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user,can } = useAuth();
+  const [loadError,setLoadError]=useState('');
   const { jobCards, refresh: refreshJobCards } = useJobCards();
 
   const [entries, setEntries] = useState<DispatchVoucher[]>([]);
@@ -39,18 +40,21 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
     vehicleNo: '',
     driverName: '',
     invoiceNo: '',
+    referencePo: '',
     remarks: '',
   });
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    try {
     const [dispatchData, fgData] = await Promise.all([
       dispatchService.getAll(),
       contractorFinishingService.getFinishedGoodsByComponentAssembly(),
     ]);
     setEntries(dispatchData);
     setFinishedGoods(fgData);
-    setLoading(false);
+    setLoadError('');
+    }catch(e){setLoadError(e instanceof Error?e.message:'Dispatch data could not load');}finally{setLoading(false);}
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -59,8 +63,8 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
   useRealtimeTable('dispatch_vouchers', loadData);
   useRealtimeTable('finished_goods', loadData);
 
-  const totalDispatched = entries.reduce((s, e) => s + e.dispatchedPieces, 0);
-  const totalOrdered = entries.reduce((s, e) => s + e.orderedPieces, 0);
+  const totalDispatched = entries.filter(e=>e.status!=='cancelled').reduce((s, e) => s + e.dispatchedPieces, 0);
+  const totalOrdered = jobCards.filter(j=>entries.some(e=>e.jobCardRef===j.jobCardNo&&e.status!=='cancelled')).reduce((s,j)=>s+j.totalPieces,0);
 
   const handleJobCardChange = (jobCardNo: string) => {
     if (jobCardNo === '__create_new__') {
@@ -97,7 +101,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
         jobCardRef: fg.jobCardRef || f.jobCardRef,
         styleName: fg.styleName || f.styleName,
         partyName: fg.partyName || f.partyName,
-        orderedPieces: String(fg.availableForDispatch),
+        orderedPieces: String(jobCards.find(j=>j.jobCardNo===fg.jobCardRef)?.totalPieces||0),
       }));
     }
   };
@@ -108,7 +112,8 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
     setSaving(true);
     try{
 
-    const dispatched = parseInt(form.dispatchedPieces) || 0;
+    const dispatched=Number(form.dispatchedPieces);
+    if(!Number.isInteger(dispatched)||dispatched<=0)throw new Error('Enter a positive whole ready-item quantity.');
     const ordered = parseInt(form.orderedPieces) || 0;
 
     if (!form.finishedGoodsId) throw new Error('Select an assembled ready item before dispatch.');
@@ -137,6 +142,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
         dispatchedPieces: dispatched,
         vehicleNo: form.vehicleNo || undefined,
         driverName: form.driverName || undefined,
+        referencePo: form.referencePo || undefined,
         invoiceNo: form.invoiceNo || undefined,
         remarks: form.remarks || undefined,
       },
@@ -161,6 +167,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
         vehicleNo: '',
         driverName: '',
         invoiceNo: '',
+    referencePo: '',
         remarks: '',
       });
       await loadData();
@@ -169,6 +176,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
   };
 
   const statusColor: Record<string, string> = {
+    cancelled: 'bg-red-50 text-red-700',
     pending: 'bg-warning-bg text-warning border border-warning-border',
     dispatched: 'bg-info-bg text-info border border-info-border',
     delivered: 'bg-success-bg text-success border border-success-border',
@@ -178,13 +186,14 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
 
   return (
     <div className="flex flex-col gap-6">
+      {loadError&&<div role="alert" className="p-4 border border-red-300 rounded-xl">{loadError}<button className="btn-secondary ml-3" onClick={loadData}>Retry</button></div>}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-700 text-foreground">Dispatch</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Final dispatch from finished goods inventory — Step 9</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+        <button disabled={!can('dispatch','create')||!!loadError||loading} onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
           <Plus size={14} />
           New Dispatch Entry
         </button>
@@ -194,26 +203,27 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Total Dispatches</p>
-          <p className="text-2xl font-700 text-foreground mt-1">{loading ? '—' : entries.length}</p>
+          <p className="text-2xl font-700 text-foreground mt-1">{loading || loadError ? '—' : entries.length}</p>
           <p className="text-xs text-muted-foreground">Entries</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Pieces Ordered</p>
-          <p className="text-2xl font-700 text-primary mt-1">{loading ? '—' : totalOrdered.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-700 text-primary mt-1">{loading || loadError ? '—' : totalOrdered.toLocaleString('en-IN')}</p>
           <p className="text-xs text-muted-foreground">Total</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Pieces Dispatched</p>
-          <p className="text-2xl font-700 text-success mt-1">{loading ? '—' : totalDispatched.toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-700 text-success mt-1">{loading || loadError ? '—' : totalDispatched.toLocaleString('en-IN')}</p>
           <p className="text-xs text-muted-foreground">Sent out</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Available in FG</p>
-          <p className="text-2xl font-700 text-warning mt-1">{loading ? '—' : finishedGoods.reduce((s, g) => s + g.availableForDispatch, 0).toLocaleString('en-IN')}</p>
+          <p className="text-2xl font-700 text-warning mt-1">{loading || loadError ? '—' : finishedGoods.reduce((s, g) => s + g.availableForDispatch, 0).toLocaleString('en-IN')}</p>
           <p className="text-xs text-muted-foreground">Ready to Dispatch</p>
         </div>
       </div>
 
+      <p className="text-sm text-muted-foreground">Only assembled ready items can be dispatched. Sub-components cannot be dispatched. Reference PO is optional.</p>
       {/* Table */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
@@ -233,7 +243,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                 <th className="text-right px-4 py-3 text-xs font-600 text-muted-foreground">Dispatched</th>
                 <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Vehicle / Driver</th>
                 <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Invoice No</th>
-                <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Status</th>
+                <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Status / Action</th>
               </tr>
             </thead>
             <tbody>
@@ -267,11 +277,12 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                     <td className="px-4 py-3 text-xs text-muted-foreground">
                       {entry.vehicleNo || '—'}{entry.driverName ? ` / ${entry.driverName}` : ''}
                     </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{entry.invoiceNo || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-muted-foreground">{entry.invoiceNo || '—'}{entry.referencePo&&<div>PO: {entry.referencePo}</div>}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-600 ${statusColor[entry.status] || statusColor['dispatched']}`}>
                         {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                       </span>
+                      {entry.status!=='cancelled'&&can('dispatch','delete')&&<button className="block text-xs text-red-600 mt-2" onClick={async()=>{const reason=window.prompt('Reason for cancelling this dispatch:');if(!reason?.trim())return;try{await dispatchService.cancel(entry.id,reason);await loadData();}catch(e){toast.error(e instanceof Error?e.message:'Cancellation failed');}}}>Cancel dispatch</button>}
                     </td>
                   </tr>
                 ))
@@ -301,6 +312,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                 </div>
               </div>
 
+              <label className="text-xs font-600">Reference PO (optional)<input className="input-field w-full mt-1" value={form.referencePo} onChange={e=>setForm(f=>({...f,referencePo:e.target.value}))}/></label>
               {/* Finished Goods selector */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground flex items-center gap-1.5">
@@ -308,11 +320,11 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                   Select from Finished Goods
                 </label>
                 <select
-                  value={form.finishedGoodsId}
+                  required value={form.finishedGoodsId}
                   onChange={(e) => handleFinishedGoodsChange(e.target.value)}
                   className="input-field text-sm"
                 >
-                  <option value="">-- Select Ready Item (optional) --</option>
+                  <option value="">-- Select Ready Item — required --</option>
                   {availableFGItems.map((fg) => (
                     <option key={fg.id} value={fg.id}>
                       {fg.item || fg.styleName} {fg.colour ? `| ${fg.colour}` : ''} {fg.size ? `| ${fg.size}` : ''} — {fg.availableForDispatch} pcs available
@@ -329,7 +341,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Job Card Ref</label>
-                <select value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
+                <select disabled value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
                   <option value="">-- Select Job Card --</option>
                   <option value="__create_new__" className="text-primary font-600">+ Create New Job Card</option>
                   {jobCards.map((jc) => (
@@ -363,14 +375,14 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Ordered Pieces *</label>
-                  <input type="number" required min="0" placeholder="0" value={form.orderedPieces} onChange={(e) => setForm((f) => ({ ...f, orderedPieces: e.target.value }))} className="input-field text-sm" />
+                  <input type="number" readOnly min="0" placeholder="0" value={form.orderedPieces} onChange={(e) => setForm((f) => ({ ...f, orderedPieces: e.target.value }))} className="input-field text-sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Dispatched Pieces *</label>
-                  <input type="number" required min="0" placeholder="0" value={form.dispatchedPieces} onChange={(e) => setForm((f) => ({ ...f, dispatchedPieces: e.target.value }))} className="input-field text-sm" />
+                  <input type="number" required min="1" step="1" placeholder="0" value={form.dispatchedPieces} onChange={(e) => setForm((f) => ({ ...f, dispatchedPieces: e.target.value }))} className="input-field text-sm" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Vehicle No</label>
@@ -390,7 +402,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
 
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1 disabled:opacity-60">
+                <button type="submit" disabled={saving||!!loadError||!can('dispatch','create')} className="btn-primary flex-1 disabled:opacity-60">
                   {saving ? 'Saving...' : 'Save Dispatch'}
                 </button>
               </div>

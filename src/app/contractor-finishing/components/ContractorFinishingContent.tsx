@@ -32,7 +32,7 @@ function ProcessBadge({ process }: { process: string }) {
 }
 
 export default function ContractorFinishingContent() {
-  const { username } = useAuth();
+  const { username,can } = useAuth();
   const { jobCards, refresh: refreshJobCards } = useJobCards();
   const [activeTab, setActiveTab] = useState<ActiveTab>('issue');
 
@@ -174,10 +174,10 @@ export default function ContractorFinishingContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          {activeTab === 'assembly' && <button className="btn-secondary" onClick={()=>setShowConversion(true)}>New Item from Component</button>}
+          {activeTab === 'assembly' && <button className="btn-secondary" disabled={!can('contractor','create')} onClick={()=>setShowConversion(true)}>New Item from Pending Sub-components</button>}
           {activeTab === 'assembly' && (
             <button
-              onClick={() => setShowAssemblyModal(true)}
+              disabled={!can('contractor','create')} onClick={() => setShowAssemblyModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-600 hover:bg-primary/90 transition-colors"
             >
               <Layers size={16} /> New Assembly
@@ -185,7 +185,7 @@ export default function ContractorFinishingContent() {
           )}
           {activeTab === 'issue' && (
             <button
-              onClick={() => setShowIssueModal(true)}
+              disabled={!can('contractor','create')} onClick={() => setShowIssueModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-600 hover:bg-primary/90 transition-colors"
             >
               <Plus size={16} /> Contractor Issue
@@ -193,7 +193,7 @@ export default function ContractorFinishingContent() {
           )}
           {activeTab === 'receive' && (
             <button
-              onClick={() => setShowReceiveModal(true)}
+              disabled={!can('contractor','create')} onClick={() => setShowReceiveModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-600 hover:bg-primary/90 transition-colors"
             >
               <Plus size={16} /> Contractor Receive
@@ -321,7 +321,7 @@ export default function ContractorFinishingContent() {
                               <Eye size={14} />
                             </button>
                             <button
-                              onClick={() => setDeleteAssemblyTarget(v)}
+                              disabled={!can('contractor','delete')} onClick={() => setDeleteAssemblyTarget(v)}
                               className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors"
                             >
                               <Trash2 size={14} />
@@ -407,7 +407,7 @@ export default function ContractorFinishingContent() {
                               <button onClick={() => setEditIssueVoucher(v)} className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors">
                                 <Pencil size={14} />
                               </button>
-                              <button onClick={() => setDeleteIssueTarget(v)} className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors">
+                              <button disabled={!can('contractor','delete')} onClick={() => setDeleteIssueTarget(v)} className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors">
                                 <Trash2 size={14} />
                               </button>
                             </div>
@@ -475,7 +475,7 @@ export default function ContractorFinishingContent() {
                             <button onClick={() => setEditReceiveVoucher(v)} className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors">
                               <Pencil size={14} />
                             </button>
-                            <button onClick={() => setDeleteReceiveTarget(v)} className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors">
+                            <button disabled={!can('contractor','delete')} onClick={() => setDeleteReceiveTarget(v)} className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors">
                               <Trash2 size={14} />
                             </button>
                           </div>

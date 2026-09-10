@@ -91,13 +91,8 @@ function rowToVoucher(row: any): ComponentAssemblyVoucher {
 export const componentAssemblyService = {
 
   async getComposition(jobCardRef: string): Promise<{ component: string; qtyPerSet: number }[]> {
-    const client = createClient();
-    const { data: style, error } = await client.from('item_styles').select('id').eq('job_card_no', jobCardRef).single();
-    if (error) throw new Error('Link exactly one Item Master style to this job card before assembly.');
-    const { data, error: compError } = await client.from('item_compositions').select('component_name, qty_per_set').eq('style_id', style.id);
-    if (compError) throw compError;
-    if (!data?.length) throw new Error('Define the required sub-components in Item Master before assembly.');
-    return data.map(c => ({ component: c.component_name, qtyPerSet: c.qty_per_set }));
+    const {data,error}=await createClient().rpc('erp_assembly_composition',{p_job_ref:jobCardRef});if(error)throw error;
+    if(!data?.length)throw new Error('Define the required sub-components in Item Master before assembly.');return data;
   },
 
   async getNextVoucherNo(): Promise<string> {
@@ -121,91 +116,10 @@ export const componentAssemblyService = {
 
   // Get finishing_stock rows for a job card — these are the finished sub-components
   async getFinishingStockByJobCard(jobCardRef: string): Promise<FinishingStockRow[]> {
-    const supabase = createClient();
-
-    // Step 1: Fetch all finishing_stock rows for this job card
-    const { data, error } = await supabase
-      .from('finishing_stock')
-      .select('*')
-      .eq('job_card_ref', jobCardRef)
-      .gt('finished_qty', 0)
-      .order('component');
-    if (error) throw error;
-
-    const rows = data || [];
-    if (rows.length === 0) return [];
-
-    // Step 3: Aggregate finishing_stock by component+size+colour
-    // (there may be multiple rows for the same component+size across different stitch_receive_refs)
-    const aggregated: Record<string, {
-      component: string;
-      size: string;
-      colour: string;
-      finishedQty: number;
-      stitchReceivedQty: number;
-      ids: string[];
-      stitchReceiveRef: string;
-    }> = {};
-
-    for (const row of rows) {
-      const component = row.component || '';
-      const size = row.size || '';
-      const colour = row.colour || '';
-
-      const aggKey = `${component.trim().toLowerCase()}|${size.trim().toLowerCase()}|${colour.trim().toLowerCase()}`;
-      if (!aggregated[aggKey]) {
-        aggregated[aggKey] = {
-          component,
-          size,
-          colour,
-          finishedQty: 0,
-          stitchReceivedQty: 0,
-          ids: [],
-          stitchReceiveRef: row.stitch_receive_ref || '',
-        };
-      }
-      aggregated[aggKey].finishedQty += row.finished_qty || 0;
-      aggregated[aggKey].stitchReceivedQty += row.stitch_received_qty || 0;
-      aggregated[aggKey].ids.push(row.id);
-    }
-
-    // Step 4: Subtract already-assembled qty from component_assembly_items for this job card
-    const { data: vouchers, error: voucherError } = await supabase.from('component_assembly_vouchers').select('id').eq('job_card_ref', jobCardRef);
-    if (voucherError) throw voucherError;
-    const ids = (vouchers || []).map(v => v.id);
-    const { data: assembledItems, error: itemError } = ids.length
-      ? await supabase.from('component_assembly_items').select('component, size, colour, qty_used').in('assembly_voucher_id', ids)
-      : { data: [], error: null };
-    if (itemError) throw itemError;
-
-    const assembledMap: Record<string, number> = {};
-    if (assembledItems) {
-      for (const item of assembledItems) {
-        const component = item.component || '';
-        const size = item.size || '';
-        let colour = item.colour || '';
-        const key = `${component.trim().toLowerCase()}|${size.trim().toLowerCase()}|${colour.trim().toLowerCase()}`;
-        assembledMap[key] = (assembledMap[key] || 0) + (item.qty_used || 0);
-      }
-    }
-
-    // Step 5: Build final rows with correct available qty
-    return Object.values(aggregated).map((agg): FinishingStockRow => {
-      const key = `${agg.component.trim().toLowerCase()}|${agg.size.trim().toLowerCase()}|${agg.colour.trim().toLowerCase()}`;
-      const alreadyAssembled = assembledMap[key] || 0;
-      const availableQty = Math.max(0, agg.finishedQty - alreadyAssembled);
-      return {
-        id: agg.ids[0],
-        jobCardRef,
-        stitchReceiveRef: agg.stitchReceiveRef,
-        component: agg.component,
-        size: agg.size,
-        colour: agg.colour,
-        stitchReceivedQty: agg.stitchReceivedQty,
-        finishedQty: agg.finishedQty,
-        pendingQty: availableQty,
-      };
-    }).filter((r) => r.pendingQty > 0);
+    const {data,error}=await createClient().rpc('erp_pending_components',{p_job_ref:jobCardRef});if(error)throw error;return data||[];
+  },
+  async getAllPendingComponents():Promise<(FinishingStockRow&{styleName?:string})[]>{
+    const {data,error}=await createClient().rpc('erp_pending_components',{p_job_ref:null});if(error)throw error;return data||[];
   },
 
   // Get distinct job card refs that have finishing_stock entries
@@ -213,9 +127,10 @@ export const componentAssemblyService = {
     const supabase = createClient();
 
     // Step 1: Get all job_card_nos that actually exist in job_cards table
-    const { data: validJcData } = await supabase
+    const { data: validJcData, error: jcError } = await supabase
       .from('job_cards')
       .select('id, job_card_no, style_en, party_name');
+    if(jcError)throw jcError;
     const validJcMap: Record<string, { id: string; style_en?: string; party_name?: string }> = {};
     for (const jc of (validJcData || [])) {
       if (jc.job_card_no) validJcMap[jc.job_card_no] = jc;
@@ -226,7 +141,7 @@ export const componentAssemblyService = {
       .from('finishing_stock')
       .select('job_card_ref')
       .gt('finished_qty', 0);
-    if (error) { console.error('[getJobCardsWithFinishingStock]', error); return []; }
+    if(error)throw error;
 
     // Step 3: Filter to only refs that exist in job_cards
     const uniqueRefs = [...new Set((data || []).map((r: any) => r.job_card_ref as string))]

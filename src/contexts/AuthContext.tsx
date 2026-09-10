@@ -1,7 +1,7 @@
 'use client';
-import { getUserAccess, canAccessRoute as legacyCanAccessRoute, getDefaultRoute as legacyDefaultRoute } from '@/lib/userAccess';
+import {routeAllowed,hasPermission,type AccessProfile,type Action} from '@/lib/moduleAccess';
 
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 
 // Session verification status — surfaced to consumers
@@ -428,15 +428,31 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return data;
   };
 
-  const legacyNames: Record<string,string> = {'kapil@kurtierp.com':'KPL','ishu@kurtierp.com':'Ishu','ashish@kurtierp.com':'Ashish','raghav@kurtierp.com':'Raghav','sheetal@kurtierp.com':'Sheetal'};
-  const username = verifiedUser ? (legacyNames[verifiedUser.email ?? ''] ?? verifiedUser.email?.split('@')[0] ?? 'User') : null;
-  const userAccess = username ? getUserAccess(username) : null;
+  const [accessProfile,setAccessProfile]=useState<AccessProfile|null>(null);
+  const [accessLoading,setAccessLoading]=useState(true);
+  const [accessError,setAccessError]=useState('');
+  const accessGeneration=useRef(0);
+  const refreshAccess=useCallback(async()=>{
+    const generation=++accessGeneration.current;
+    if(!verifiedUser?.id){setAccessProfile(null);setAccessLoading(false);return;}
+    try{const {data,error}=await supabase.from('erp_user_access').select('*').eq('user_id',verifiedUser.id).maybeSingle();
+      if(generation!==accessGeneration.current)return;
+      if(error)throw error;setAccessProfile(data);setAccessError('');
+    }catch{if(generation===accessGeneration.current){setAccessProfile(null);setAccessError('Could not load access permissions. Please retry.');}}
+    finally{if(generation===accessGeneration.current)setAccessLoading(false);}
+  },[verifiedUser?.id]);
+  useEffect(()=>{setAccessProfile(null);setAccessLoading(true);void refreshAccess();const timer=setInterval(refreshAccess,30000);window.addEventListener('focus',refreshAccess);return()=>{++accessGeneration.current;clearInterval(timer);window.removeEventListener('focus',refreshAccess);};},[refreshAccess]);
+  const effectiveProfile=accessProfile?.user_id===verifiedUser?.id?accessProfile:null;
+  const username=verifiedUser?(accessProfile?.display_name||verifiedUser.email?.split('@')[0]||'User'):null;
+  const canAccessRoute=useCallback((path:string)=>sessionStatus==='signed-in'&&routeAllowed(effectiveProfile,path),[sessionStatus,effectiveProfile]);
+  const can=useCallback((module:string,action:Action='view')=>sessionStatus==='signed-in'&&hasPermission(effectiveProfile,module,action),[sessionStatus,effectiveProfile]);
   const value = {
-    username, userAccess,
-    isAuthenticated: () => sessionStatus === 'signed-in',
+    username, userAccess:null,accessProfile:effectiveProfile,accessLoading,accessError,refreshAccess,can,
+    isAdmin:!!effectiveProfile?.active&&!!effectiveProfile?.is_admin,
+    isAuthenticated: () => sessionStatus === 'signed-in' && !!effectiveProfile?.active,
     isLocalAuth: () => false,
-    canAccessRoute: (path: string) => sessionStatus === 'signed-in' && (!userAccess || legacyCanAccessRoute(username!, path)),
-    getDefaultRoute: () => userAccess ? legacyDefaultRoute(username!) : '/',
+    canAccessRoute,
+    getDefaultRoute: () => effectiveProfile?.active ? '/' : '/access-denied',
 
     user,
     session,

@@ -1,0 +1,18 @@
+Local verification — 10 September 2026
+
+TypeScript: PASS
+Next.js production build: PASS (placeholder compilation environment)
+Module route/action tests: PASS
+
+PASS: all combined migrations install and can be rerun
+PASS: exact packaged SQL validates the Owner email and links the existing account atomically
+PASS: Owner unrestricted/protected; worker cannot escalate authority
+PASS: receive posts available components, retry is idempotent, over-receive blocked
+PASS: two source items assemble into one new item; exact remaining stock and retry checks
+PASS: optional PO, ready-only dispatch, partial stock, duplicate protection and cancellation restoration
+PASS: normal assembly uses the selected item only; both source receipts remain protected
+PASS: failed ready-stock save rolls back new item and component consumption
+PASS: unassigned user cannot read ready stock or invoke dispatch
+PASS: deactivation revokes existing-session authority
+
+No live database writes, live user creation or deployment performed.

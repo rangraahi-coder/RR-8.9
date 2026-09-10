@@ -1,7 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "test": "node source-checks.cjs && node atomic-forms.cjs && node restoration-tests.cjs && node restoration-client-tests.cjs && node assembly.cjs && node conversion.cjs && node conversion-client.cjs"
+    "test": "node source-checks.cjs && node atomic-forms.cjs && node restoration-tests.cjs && node restoration-client-tests.cjs && node assembly.cjs && node conversion.cjs && node conversion-client.cjs",
+    "test:combined": "node module-access.cjs && node combined-update.cjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.8",

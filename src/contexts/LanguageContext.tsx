@@ -155,7 +155,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: string): string => {
-      return translations[key]?.[lang] ?? ({'nav.manufacturing':{en:'Workflow',hi:'वर्कफ़्लो'},'nav.workflow':{en:'Production Workflow',hi:'उत्पादन वर्कफ़्लो'},'nav.stocktracker':{en:'Fabric Stock Tracker',hi:'फैब्रिक स्टॉक'}} as Record<string,Record<string,string>>)[key]?.[lang] ?? key;
+      return translations[key]?.[lang] ?? ({'nav.users':{en:'Users & Access',hi:'यूज़र और अधिकार'},'nav.manufacturing':{en:'Workflow',hi:'वर्कफ़्लो'},'nav.workflow':{en:'Production Workflow',hi:'उत्पादन वर्कफ़्लो'},'nav.stocktracker':{en:'Fabric Stock Tracker',hi:'फैब्रिक स्टॉक'}} as Record<string,Record<string,string>>)[key]?.[lang] ?? key;
     },
     [lang]
   );

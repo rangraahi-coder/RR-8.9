@@ -1,6 +1,7 @@
 import {supabase} from '@/lib/supabase/client';
 export interface ComponentConversionRequest {
- jobCardRef:string;component:string;size:string;sourceColour:string;targetColour:string;
+ jobCardRef?:string;component?:string;size:string;sourceColour?:string;targetColour:string;
+ components?:{jobCardRef:string;component:string;size:string;colour:string;qtyPerItem:number}[];
  itemName:string;itemCode:string;quantity:number;date:string;remarks:string;createdBy:string|null;
 }
 interface Pending {id:string;request:ComponentConversionRequest}

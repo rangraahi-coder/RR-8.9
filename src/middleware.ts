@@ -1,3 +1,4 @@
+import {routeAllowed} from '@/lib/moduleAccess';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
@@ -57,6 +58,13 @@ export async function middleware(request: NextRequest) {
     return redirect;
   }
 
+  if(pathname!=='/access-denied'){
+    const {data:profile,error:accessError}=await supabase.from('erp_user_access').select('*').eq('user_id',user.id).maybeSingle();
+    if(accessError||!routeAllowed(profile,pathname)){
+      const denied=NextResponse.redirect(new URL('/access-denied',request.url));
+      response.cookies.getAll().forEach(cookie=>denied.cookies.set(cookie));return denied;
+    }
+  }
   return response;
 }
 
