@@ -1,7 +1,7 @@
 -- KurtiERP combined update, 10 September 2026.
 -- Replace ONLY the email below with the EXISTING Rangraahi Supabase login email.
 -- The exact email is required; display names are not used to guess account ownership.
-SELECT set_config('erp.owner_email', 'REPLACE_WITH_EXISTING_RANGRAAHI_LOGIN_EMAIL', false);
+SELECT set_config('erp.owner_email', 'Rangraahi@gmail.com', false);
 BEGIN;
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM auth.users WHERE lower(email)=lower(trim(current_setting('erp.owner_email')))) THEN
