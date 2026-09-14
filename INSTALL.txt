@@ -1,0 +1,12 @@
+FULL SOURCE FOLDER REPAIR
+
+This package contains the complete src folder, not a partial patch.
+It restores the source from commit 32b1a70 and preserves all six dashboard files pushed in commit 303cead.
+
+1. Extract this ZIP.
+2. In your existing cloned RR-8.9 project, replace the src folder with this complete src folder.
+3. GitHub Desktop: Commit to main, then Push origin.
+   Summary: Restore complete source folder with dashboard update
+4. Wait for the new Vercel deployment to show Ready.
+
+No Supabase SQL or environment changes are required. Keep package.json and all other root files as they are.
