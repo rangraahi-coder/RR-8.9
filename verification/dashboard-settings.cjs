@@ -1,0 +1,11 @@
+const {PGlite}=require('@electric-sql/pglite'),fs=require('fs'),assert=require('node:assert/strict');
+(async()=>{const db=new PGlite();try{
+ await db.exec(`CREATE ROLE anon;CREATE ROLE authenticated;CREATE SCHEMA auth;GRANT USAGE ON SCHEMA auth,public TO authenticated;CREATE TABLE auth.users(id uuid PRIMARY KEY);CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$SELECT nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;CREATE TABLE public.erp_user_access(user_id uuid,active boolean,is_admin boolean);GRANT SELECT ON public.erp_user_access TO authenticated;CREATE FUNCTION public.erp_can(text,text) RETURNS boolean LANGUAGE sql SECURITY DEFINER AS $$SELECT EXISTS(SELECT 1 FROM public.erp_user_access WHERE user_id=auth.uid() AND active AND is_admin)$$;
+ INSERT INTO auth.users VALUES('00000000-0000-0000-0000-000000000001'),('00000000-0000-0000-0000-000000000002');INSERT INTO erp_user_access VALUES('00000000-0000-0000-0000-000000000001',true,true),('00000000-0000-0000-0000-000000000002',true,false);`);
+ const sql=fs.readFileSync('DASHBOARD-SETTINGS.sql','utf8');await db.exec(sql);await db.exec(sql);
+ const act=async n=>{await db.exec('RESET ROLE');await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",['00000000-0000-0000-0000-'+String(n).padStart(12,'0')]);await db.exec('SET ROLE authenticated');};
+ await act(1);assert.equal((await db.query('SELECT inactivity_days FROM erp_dashboard_settings')).rows[0].inactivity_days,3);await db.query('SELECT erp_save_dashboard_settings(4)');await assert.rejects(()=>db.query('SELECT erp_save_dashboard_settings(0)'),/1 to 30/);
+ await act(2);assert.equal((await db.query('SELECT inactivity_days FROM erp_dashboard_settings')).rows[0].inactivity_days,4);await assert.rejects(()=>db.query('SELECT erp_save_dashboard_settings(5)'),/Administrator/);await assert.rejects(()=>db.query('UPDATE erp_dashboard_settings SET inactivity_days=5'),/permission denied/);
+ await db.exec('RESET ROLE;UPDATE erp_user_access SET active=false WHERE NOT is_admin');await act(2);assert.equal((await db.query('SELECT * FROM erp_dashboard_settings')).rows.length,0);
+ console.log('PASS: idempotent migration, shared setting, admin-only writes, range constraint, inactive access denied');
+ }finally{await db.close();}})().catch(e=>{console.error(e);process.exit(1)});

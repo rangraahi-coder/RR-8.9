@@ -38,6 +38,10 @@ export default function ItemMasterClient() {
     channel.subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [load]);
+  useEffect(() => {
+    const styleId=new URLSearchParams(window.location.search).get('styleId');
+    if(styleId&&variants.length){const match=variants.find(v=>v.item_styles?.id===styleId);if(match){setSearch(match.style_no||match.job_card_no);setSelected(match);}}
+  }, [variants]);
   const patchVariant = (patch: Partial<Variant> & { id: string }) => {
     setVariants(rows => rows.map(v => v.id === patch.id ? { ...v, ...patch } : v));
     setSelected(v => v?.id === patch.id ? { ...v, ...patch } : v);
