@@ -329,11 +329,7 @@ export const contractorFinishingService = {
     items: { item: string; colour: string; size: string; issuedQty: number }[],
     username?: string | null
   ): Promise<ContractorIssueVoucher | null> {
-    const supabase = createClient();
-
-    const { data: vRow, error: vErr } = await supabase
-      .from('contractor_issue_vouchers')
-      .insert({
+ const supabase=createClient();const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'contractor_issue',p_id:null,p_header:{
         voucher_no: voucher.voucherNo,
         voucher_date: voucher.voucherDate,
         job_card_id: voucher.jobCardId || null,
@@ -350,34 +346,7 @@ export const contractorFinishingService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      })
-      .select()
-      .single();
-
-    if (vErr || !vRow) { console.error('[createIssueVoucher]', vErr); return null; }
-
-    if (items.length > 0) {
-      const itemRows = items.map((it) => ({
-        issue_voucher_id: vRow.id,
-        item: it.item,
-        colour: it.colour || null,
-        size: it.size || null,
-        issued_qty: it.issuedQty,
-        received_qty: 0,
-        balance_qty: it.issuedQty,
-      }));
-      const { error: iErr } = await supabase.from('contractor_issue_items').insert(itemRows);
-      if (iErr) console.error('[createIssueVoucher items]', iErr);
-    }
-
-    // Re-fetch with items
-    const { data: full, error: fErr } = await supabase
-      .from('contractor_issue_vouchers')
-      .select('*, contractor_issue_items(*)')
-      .eq('id', vRow.id)
-      .single();
-    if (fErr) return null;
-    return rowToIssueVoucher(full);
+      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError)throw new Error(readError.message);return rowToIssueVoucher(full);
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
@@ -393,11 +362,7 @@ export const contractorFinishingService = {
     items: { item: string; colour: string; size: string; issuedQty: number }[],
     username?: string | null
   ): Promise<ContractorIssueVoucher | null> {
-    const supabase = createClient();
-
-    const { error: vErr } = await supabase
-      .from('contractor_issue_vouchers')
-      .update({
+ const supabase=createClient();const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'contractor_issue',p_id:id,p_header:{
         voucher_date: voucher.voucherDate,
         job_card_id: voucher.jobCardId || null,
         job_card_ref: voucher.jobCardRef,
@@ -412,35 +377,7 @@ export const contractorFinishingService = {
         stitch_receive_voucher_id: voucher.stitchReceiveVoucherId || null,
         remarks: voucher.remarks || null,
         updated_by: username || null,
-      })
-      .eq('id', id);
-
-    if (vErr) { console.error('[updateIssueVoucher]', vErr); return null; }
-
-    // Delete existing items and re-insert
-    await supabase.from('contractor_issue_items').delete().eq('issue_voucher_id', id);
-
-    if (items.length > 0) {
-      const itemRows = items.map((it) => ({
-        issue_voucher_id: id,
-        item: it.item,
-        colour: it.colour || null,
-        size: it.size || null,
-        issued_qty: it.issuedQty,
-        received_qty: 0,
-        balance_qty: it.issuedQty,
-      }));
-      const { error: iErr } = await supabase.from('contractor_issue_items').insert(itemRows);
-      if (iErr) console.error('[updateIssueVoucher items]', iErr);
-    }
-
-    const { data: full, error: fErr } = await supabase
-      .from('contractor_issue_vouchers')
-      .select('*, contractor_issue_items(*)')
-      .eq('id', id)
-      .single();
-    if (fErr) return null;
-    return rowToIssueVoucher(full);
+      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError)throw new Error(readError.message);return rowToIssueVoucher(full);
   },
 
   // ── Pending Items for Receive ──────────────────────────────────────────────

@@ -62,6 +62,7 @@ export async function middleware(request: NextRequest) {
     return redirect;
   }
 
+  if(user.user_metadata?.must_change_password&&pathname!=='/change-password'){const redirect=NextResponse.redirect(new URL('/change-password',request.url));response.cookies.getAll().forEach(cookie=>redirect.cookies.set(cookie));return redirect;}
   if(pathname!=='/access-denied'){
     const {data:profile,error:accessError}=await supabase.from('erp_user_access').select('*').eq('user_id',user.id).maybeSingle();
     const decision=accessDecision(accessError,routeAllowed(profile,pathname));

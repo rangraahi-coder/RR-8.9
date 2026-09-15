@@ -1,4 +1,5 @@
 'use client';
+import {staffEmail} from '@/lib/teamProfiles';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -22,7 +23,7 @@ export default function LoginPage() {
       // singleton client. signIn() performs A/B/C/D verification internally and
       // logs sanitized [AuthDiag] measurements to the console.
       // It throws if sign-in fails or if the session cannot be persisted (A=yes, B=no).
-      await signIn(email.trim(), password);
+      await signIn(email.includes('@')?email.trim():staffEmail(email), password);
 
       // Navigate on success — AuthContext is already updated by signIn()
       const next = new URLSearchParams(window.location.search).get('redirect');
@@ -54,16 +55,16 @@ export default function LoginPage() {
             {/* Email */}
             <div>
               <label htmlFor="login-email" className="block text-sm font-medium text-slate-700 mb-1">
-                Email address
+                Username or email
               </label>
               <input
                 id="login-email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="username"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
+                placeholder="Your username or email"
                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
               />
             </div>

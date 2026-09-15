@@ -270,75 +270,8 @@ export const cuttingService = {
       created_by: username || null,
     };
 
-    const { data: savedEntry, error } = await supabase
-      .from('cutting_entries')
-      .insert(row)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[cuttingService.create] error:', error);
-      return null;
-    }
-
-    // Insert sub-components
-    if (entry.subComponentDetails.length > 0) {
-      const scRows = entry.subComponentDetails.map((sc) => ({
-        cutting_entry_id: savedEntry.id,
-        component: sc.component,
-        total_pieces: sc.totalPieces,
-        rejections: sc.rejections,
-        net_pieces: sc.netPieces,
-        size_breakdown: sc.sizes,
-      }));
-
-      const { error: scError } = await supabase
-        .from('cutting_sub_components')
-        .insert(scRows);
-
-      if (scError) {
-        console.error('[cuttingService.create] sub_components error:', scError);
-      }
-    }
-
-    // Deduct consumed qty from fabric inventory for each roll
-    if (entry.rollDetails && entry.rollDetails.length > 0) {
-      await fabricInventoryService.deductFabricStock(
-        entry.rollDetails.map((r) => ({
-          fabricRollId: r.fabricRollId,
-          consumedQty: r.fabricConsumedQty,
-        }))
-      );
-    }
-
-    // Deduct pieces from cutting_stock for each emb-received item used
-    if (resolvedEmbItems.length > 0) {
-      for (const item of resolvedEmbItems) {
-        if (item.piecesUsed > 0) {
-          await embroideryVoucherService.deductCuttingStock(item.cuttingStockId, item.piecesUsed, username);
-          // Log movement for traceability
-          await embroideryVoucherService.logMovement({
-            cuttingStockId: item.cuttingStockId,
-            movementType: 'issued_to_cutting_master',
-            voucherType: 'cutting_entry',
-            voucherId: savedEntry.id,
-            voucherNo: savedEntry.entry_no,
-            fromEntity: 'Embroidery Receive Stock',
-            toEntity: entry.cuttingMaster || 'Cutting',
-            toEntityType: 'cutting_master',
-            pieces: item.piecesUsed,
-            jobCardRef: entry.jobCardRef,
-            styleName: entry.styleName,
-            component: item.component,
-            processType: 'cutting',
-            remarks: `Issued for cutting via ${savedEntry.entry_no}`,
-            movementDate: entry.date,
-            createdBy: username || undefined,
-          });
-        }
-      }
-    }
-
+    const {data:savedEntry,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'cutting',p_id:null,p_header:row,p_lines:entry.subComponentDetails.map(sc=>({component:sc.component,total_pieces:sc.totalPieces,rejections:sc.rejections,net_pieces:sc.netPieces,size_breakdown:sc.sizes}))});
+    if(error)throw new Error(error.message);
     return rowToCuttingEntry(savedEntry, entry.subComponentDetails.map((sc) => ({
       component: sc.component,
       total_pieces: sc.totalPieces,
@@ -394,98 +327,8 @@ export const cuttingService = {
       updated_by: username || null,
     };
 
-    const { data: savedEntry, error } = await supabase
-      .from('cutting_entries')
-      .update(row)
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('[cuttingService.update] error:', error);
-      return null;
-    }
-
-    // Delete existing sub-components and re-insert
-    await supabase.from('cutting_sub_components').delete().eq('cutting_entry_id', id);
-
-    if (entry.subComponentDetails.length > 0) {
-      const scRows = entry.subComponentDetails.map((sc) => ({
-        cutting_entry_id: id,
-        component: sc.component,
-        total_pieces: sc.totalPieces,
-        rejections: sc.rejections,
-        net_pieces: sc.netPieces,
-        size_breakdown: sc.sizes,
-      }));
-
-      const { error: scError } = await supabase
-        .from('cutting_sub_components')
-        .insert(scRows);
-
-      if (scError) {
-        console.error('[cuttingService.update] sub_components error:', scError);
-      }
-    }
-
-    // Restore old consumed qty back to fabric inventory, then deduct new consumed qty
-    const oldRollDetails: Array<{ fabricRollId: string; fabricConsumedQty: number }> =
-      Array.isArray(existingRow?.roll_details) ? existingRow.roll_details : [];
-
-    if (oldRollDetails.length > 0) {
-      await fabricInventoryService.restoreFabricStock(
-        oldRollDetails.map((r) => ({
-          fabricRollId: r.fabricRollId,
-          consumedQty: r.fabricConsumedQty,
-        }))
-      );
-    }
-
-    if (entry.rollDetails && entry.rollDetails.length > 0) {
-      await fabricInventoryService.deductFabricStock(
-        entry.rollDetails.map((r) => ({
-          fabricRollId: r.fabricRollId,
-          consumedQty: r.fabricConsumedQty,
-        }))
-      );
-    }
-
-    // Restore old emb-received cutting stock, then deduct new
-    const oldEmbReceiveItems: EmbReceiveItem[] =
-      Array.isArray(existingRow?.emb_receive_items) ? existingRow.emb_receive_items : [];
-
-    for (const item of oldEmbReceiveItems) {
-      if (item.piecesUsed > 0) {
-        await embroideryVoucherService.restoreCuttingStock(item.cuttingStockId, item.piecesUsed, username);
-      }
-    }
-
-    if (resolvedEmbItems.length > 0) {
-      for (const item of resolvedEmbItems) {
-        if (item.piecesUsed > 0) {
-          await embroideryVoucherService.deductCuttingStock(item.cuttingStockId, item.piecesUsed, username);
-          await embroideryVoucherService.logMovement({
-            cuttingStockId: item.cuttingStockId,
-            movementType: 'issued_to_cutting_master',
-            voucherType: 'cutting_entry',
-            voucherId: id,
-            voucherNo: entry.entryNo,
-            fromEntity: 'Embroidery Receive Stock',
-            toEntity: entry.cuttingMaster || 'Cutting',
-            toEntityType: 'cutting_master',
-            pieces: item.piecesUsed,
-            jobCardRef: entry.jobCardRef,
-            styleName: entry.styleName,
-            component: item.component,
-            processType: 'cutting',
-            remarks: `Updated cutting entry ${entry.entryNo}`,
-            movementDate: entry.date,
-            createdBy: username || undefined,
-          });
-        }
-      }
-    }
-
+    const {data:savedEntry,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'cutting',p_id:id,p_header:row,p_lines:entry.subComponentDetails.map(sc=>({component:sc.component,total_pieces:sc.totalPieces,rejections:sc.rejections,net_pieces:sc.netPieces,size_breakdown:sc.sizes}))});
+    if(error)throw new Error(error.message);
     return rowToCuttingEntry(savedEntry, entry.subComponentDetails.map((sc) => ({
       component: sc.component,
       total_pieces: sc.totalPieces,
@@ -523,12 +366,7 @@ export const cuttingService = {
       Array.isArray(existingRow?.roll_details) ? existingRow.roll_details : [];
 
     if (oldRollDetails.length > 0) {
-      await fabricInventoryService.restoreFabricStock(
-        oldRollDetails.map((r) => ({
-          fabricRollId: r.fabricRollId,
-          consumedQty: r.fabricConsumedQty,
-        }))
-      );
+      /* Stock is posted by the database voucher transaction. */
     }
 
     // Restore cutting_stock pieces for each emb-received item that was used
@@ -537,7 +375,7 @@ export const cuttingService = {
 
     for (const item of oldEmbReceiveItems) {
       if (item.piecesUsed > 0) {
-        await embroideryVoucherService.restoreCuttingStock(item.cuttingStockId, item.piecesUsed);
+        /* Stock is posted by the database voucher transaction. */
       }
     }
 

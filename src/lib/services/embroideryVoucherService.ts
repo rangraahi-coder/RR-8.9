@@ -347,17 +347,13 @@ export const embroideryVoucherService = {
 
     // Deduct fabric stock for each issued fabric roll
     if (v.fabricItems && v.fabricItems.length > 0) {
-      await fabricInventoryService.deductFabricStock(
-        v.fabricItems
-          .filter((f) => f.rollId && f.issuedQty > 0)
-          .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.issuedQty }))
-      );
+      /* Stock is posted by the database voucher transaction. */
     }
 
     // If issuing from cutting stock, deduct available pieces and log movement
     if (v.issueSource === 'processed_cutting' && v.cuttingStockId && v.cuttingItems.length > 0) {
       const totalPieces = v.cuttingItems.reduce((s, c) => s + c.pieces, 0);
-      await this.deductCuttingStock(v.cuttingStockId, totalPieces, username);
+      /* Stock is posted by the database voucher transaction. */
       // Log movement
       for (const ci of v.cuttingItems) {
         await this.logMovement({
@@ -446,196 +442,11 @@ export const embroideryVoucherService = {
     newData: Partial<Pick<EmbIssueVoucher, 'voucherDate' | 'operatorId' | 'operatorName' | 'issuedToName' | 'issuedToType' | 'processType' | 'remarks' | 'fabricItems' | 'accessoryItems' | 'cuttingItems'>>,
     username?: string | null
   ): Promise<boolean> {
-    const supabase = createClient();
-
-    // ── 1. Reverse OLD fabric stock impacts ──────────────────────────────────
-    const oldFabricItems = oldVoucher.fabricItems || [];
-    if (oldFabricItems.length > 0) {
-      // Restore what was previously deducted
-      await fabricInventoryService.restoreFabricStock(
-        oldFabricItems
-          .filter((f) => f.rollId && f.issuedQty > 0)
-          .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.issuedQty }))
-      );
-    }
-
-    // ── 2. Reverse OLD cutting stock impacts ─────────────────────────────────
-    if (
-      oldVoucher.issueSource === 'processed_cutting' &&
-      oldVoucher.cuttingStockId &&
-      !oldVoucher.cuttingStockId.startsWith('rv-') &&
-      oldVoucher.cuttingItems.length > 0
-    ) {
-      const oldTotalPieces = oldVoucher.cuttingItems.reduce((s, c) => s + c.pieces, 0);
-      await this.restoreCuttingStock(oldVoucher.cuttingStockId, oldTotalPieces, username);
-      // Remove old movement history entries for this voucher
-      await supabase
-        .from('cutting_movement_history')
-        .delete()
-        .eq('voucher_id', id);
-    }
-
-    // ── 3. Apply NEW fabric stock impacts ────────────────────────────────────
-    const newFabricItems = newData.fabricItems || [];
-    if (newFabricItems.length > 0) {
-      await fabricInventoryService.deductFabricStock(
-        newFabricItems
-          .filter((f) => f.rollId && f.issuedQty > 0)
-          .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.issuedQty }))
-      );
-    }
-
-    // ── 4. Apply NEW cutting stock impacts ───────────────────────────────────
-    const newCuttingItems = newData.cuttingItems || [];
-    if (
-      oldVoucher.issueSource === 'processed_cutting' &&
-      oldVoucher.cuttingStockId &&
-      !oldVoucher.cuttingStockId.startsWith('rv-') &&
-      newCuttingItems.length > 0
-    ) {
-      const newTotalPieces = newCuttingItems.reduce((s, c) => s + c.pieces, 0);
-      await this.deductCuttingStock(oldVoucher.cuttingStockId, newTotalPieces, username);
-      // Log new movement entries
-      for (const ci of newCuttingItems) {
-        await this.logMovement({
-          cuttingStockId: oldVoucher.cuttingStockId,
-          movementType: this._processTypeToMovementType(newData.processType || oldVoucher.processType),
-          voucherType: 'issue_voucher',
-          voucherId: id,
-          voucherNo: oldVoucher.voucherNo,
-          fromEntity: 'Cutting Stock',
-          toEntity: newData.issuedToName || newData.operatorName || oldVoucher.operatorName,
-          toEntityType: newData.issuedToType || oldVoucher.issuedToType,
-          pieces: ci.pieces,
-          jobCardRef: oldVoucher.jobCardRef,
-          styleName: oldVoucher.styleName,
-          component: ci.component,
-          processType: newData.processType || oldVoucher.processType,
-          remarks: newData.remarks || oldVoucher.remarks,
-          movementDate: newData.voucherDate || oldVoucher.voucherDate,
-          createdBy: username || undefined,
-        });
-      }
-    }
-
-    // ── 5. Persist updated voucher fields ────────────────────────────────────
-    const updates: Record<string, unknown> = { updated_by: username || null };
-    if (newData.voucherDate !== undefined) updates.voucher_date = newData.voucherDate;
-    if (newData.operatorId !== undefined) updates.operator_id = newData.operatorId || null;
-    if (newData.operatorName !== undefined) updates.operator_name = newData.operatorName || null;
-    if (newData.issuedToName !== undefined) updates.issued_to_name = newData.issuedToName || null;
-    if (newData.issuedToType !== undefined) updates.issued_to_type = newData.issuedToType || null;
-    if (newData.processType !== undefined) updates.process_type = newData.processType || null;
-    if (newData.remarks !== undefined) updates.remarks = newData.remarks || null;
-    if (newData.fabricItems !== undefined) updates.fabric_items = newData.fabricItems;
-    if (newData.accessoryItems !== undefined) updates.accessory_items = newData.accessoryItems;
-    if (newData.cuttingItems !== undefined) updates.cutting_items = newData.cuttingItems;
-
-    const { error } = await supabase
-      .from('emb_issue_vouchers')
-      .update(updates)
-      .eq('id', id);
-    if (error) { console.error('[embVoucher.updateIssueVoucherWithRecalc]', error); return false; }
-
-    // ── 6. Recalculate issue voucher status based on active receive vouchers ─
-    await this._updateIssueVoucherStatusAfterReceive(id, username);
-
-    return true;
+    return this.updateIssueVoucher(id,newData,username);
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // Step 0: Fetch the issue voucher BEFORE deleting so we can reverse its impacts
-    const { data: issueRow } = await supabase
-      .from('emb_issue_vouchers')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (issueRow) {
-      const issueVoucher = rowToIssueVoucher(issueRow);
-
-      // Reverse fabric stock deductions made when this voucher was created
-      if (issueVoucher.fabricItems && issueVoucher.fabricItems.length > 0) {
-        await fabricInventoryService.restoreFabricStock(
-          issueVoucher.fabricItems
-            .filter((f) => f.rollId && f.issuedQty > 0)
-            .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.issuedQty }))
-        );
-      }
-
-      // Reverse cutting stock deductions made when this voucher was created
-      if (
-        issueVoucher.issueSource === 'processed_cutting' &&
-        issueVoucher.cuttingStockId &&
-        issueVoucher.cuttingItems.length > 0
-      ) {
-        const totalPieces = issueVoucher.cuttingItems.reduce((s, c) => s + c.pieces, 0);
-        if (!issueVoucher.cuttingStockId.startsWith('rv-')) {
-          await this.restoreCuttingStock(issueVoucher.cuttingStockId, totalPieces, null);
-        }
-        // Delete movement history entries linked to this voucher
-        await supabase
-          .from('cutting_movement_history')
-          .delete()
-          .eq('voucher_id', id);
-      }
-
-      // Also reverse fabric stock that was restored by linked receive vouchers
-      // (when we delete the issue, we also delete receives — so we must re-deduct what receives restored)
-      const { data: linkedReceives } = await supabase
-        .from('emb_receive_vouchers')
-        .select('*')
-        .eq('issue_voucher_id', id);
-
-      for (const rvRow of (linkedReceives || [])) {
-        const rv = rowToReceiveVoucher(rvRow);
-        // Receives restored fabric stock — we need to re-deduct it
-        if (rv.fabricItems && rv.fabricItems.length > 0) {
-          await fabricInventoryService.deductFabricStock(
-            rv.fabricItems
-              .filter((f) => f.rollId && (f.receivedQty || 0) > 0)
-              .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.receivedQty }))
-          );
-        }
-        // Receives may have created cutting_stock rows — delete them
-        if (rv.cuttingItems && rv.cuttingItems.length > 0) {
-          const { data: stockRows } = await supabase
-            .from('cutting_stock')
-            .select('id')
-            .eq('receive_voucher_id', rvRow.id);
-          for (const sr of (stockRows || [])) {
-            await supabase.from('cutting_stock').delete().eq('id', sr.id);
-          }
-        }
-        // Delete movement history for receive voucher
-        await supabase
-          .from('cutting_movement_history')
-          .delete()
-          .eq('voucher_id', rvRow.id);
-      }
-    }
-
-    // Step 1: Delete all receive vouchers linked to this issue voucher first
-    const { error: receiveDeleteError } = await supabase
-      .from('emb_receive_vouchers')
-      .delete()
-      .eq('issue_voucher_id', id);
-
-    if (receiveDeleteError) {
-      console.error('[embVoucher.deleteIssueVoucher] Failed to delete linked receive vouchers', receiveDeleteError);
-      return false;
-    }
-
-    // Step 2: Now delete the issue voucher itself
-    const { error } = await supabase
-      .from('emb_issue_vouchers')
-      .delete()
-      .eq('id', id);
-
-    if (error) { console.error('[embVoucher.deleteIssueVoucher]', error); return false; }
-    return true;
+    const {error}=await createClient().from('emb_issue_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
   },
 
   async getNextIssueVoucherNo(handwork=false): Promise<string> {
@@ -713,11 +524,7 @@ export const embroideryVoucherService = {
 
     // Restore fabric stock for received fabric items
     if (v.fabricItems && v.fabricItems.length > 0) {
-      await fabricInventoryService.restoreFabricStock(
-        v.fabricItems
-          .filter((f) => f.rollId && f.receivedQty > 0)
-          .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.receivedQty }))
-      );
+      /* Stock is posted by the database voucher transaction. */
     }
 
     // If cutting items received, create cutting stock entries and log movement
@@ -735,7 +542,7 @@ export const embroideryVoucherService = {
 
         if (issueVoucher?.cuttingStockId) {
           // Restore pieces to existing cutting stock
-          await this.restoreCuttingStock(issueVoucher.cuttingStockId, ci.receivedPieces, username);
+          /* Stock is posted by the database voucher transaction. */
           // Log movement
           await this.logMovement({
             cuttingStockId: issueVoucher.cuttingStockId,
@@ -797,63 +604,13 @@ export const embroideryVoucherService = {
     }
 
     // Update issue voucher status
-    await this._updateIssueVoucherStatusAfterReceive(v.issueVoucherId, username);
+    /* Status is posted atomically with the receipt. */
 
     return saved;
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // First, fetch the receive voucher to restore cutting stock
-    const { data: rvRow } = await supabase
-      .from('emb_receive_vouchers')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (rvRow) {
-      const rv = rowToReceiveVoucher(rvRow);
-
-      // Restore fabric stock
-      if (rv.fabricItems && rv.fabricItems.length > 0) {
-        await fabricInventoryService.deductFabricStock(
-          rv.fabricItems
-            .filter((f) => f.rollId && f.receivedQty > 0)
-            .map((f) => ({ fabricRollId: f.rollId, consumedQty: f.receivedQty }))
-        );
-      }
-
-      // Restore cutting stock: reduce available_pieces for each cutting item received
-      if (rv.cuttingItems && rv.cuttingItems.length > 0) {
-        // Find cutting_stock entries linked to this receive voucher
-        const { data: stockRows } = await supabase
-          .from('cutting_stock')
-          .select('*')
-          .eq('receive_voucher_id', id);
-
-        for (const ci of rv.cuttingItems) {
-          if ((ci.receivedPieces || 0) <= 0) continue;
-          const stockRow = (stockRows || []).find((s: any) => s.component === ci.component);
-          if (stockRow) {
-            // Delete the cutting_stock row entirely (it was created by this receive voucher)
-            await supabase.from('cutting_stock').delete().eq('id', stockRow.id);
-          }
-        }
-      }
-
-      // Update issue voucher status back
-      if (rv.issueVoucherId) {
-        await this._updateIssueVoucherStatusAfterReceive(rv.issueVoucherId, null);
-      }
-    }
-
-    const { error } = await supabase
-      .from('emb_receive_vouchers')
-      .delete()
-      .eq('id', id);
-    if (error) { console.error('[embVoucher.deleteReceiveVoucher]', error); return false; }
-    return true;
+    const {error}=await createClient().from('emb_receive_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
   },
 
   async getNextReceiveVoucherNo(handwork=false): Promise<string> {
@@ -902,7 +659,7 @@ export const embroideryVoucherService = {
       .eq('id', id)
       .single();
     if (rvRow?.issue_voucher_id) {
-      await this._updateIssueVoucherStatusAfterReceive(rvRow.issue_voucher_id, username);
+      /* Status is posted atomically with the receipt. */
     }
 
     return true;

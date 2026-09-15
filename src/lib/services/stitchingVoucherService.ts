@@ -329,11 +329,8 @@ export const stitchingVoucherService = {
     components: Omit<StitchIssueComponent, 'id' | 'issueVoucherId' | 'receivedQty' | 'pendingQty'>[],
     username?: string | null
   ): Promise<StitchIssueVoucher | null> {
-    const supabase = createClient();
-
-    const { data: vRow, error: vErr } = await supabase
-      .from('stitch_issue_vouchers')
-      .insert({
+    const supabase=createClient();
+    const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_issue',p_id:null,p_header:{
         voucher_no: voucher.voucherNo,
         voucher_date: voucher.voucherDate,
         job_card_id: voucher.jobCardId || null,
@@ -348,43 +345,9 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      })
-      .select()
-      .single();
-
-    if (vErr || !vRow) { console.error('[createIssueVoucher]', vErr); return null; }
-
-    if (components.length > 0) {
-      const compRows = components.map((c) => ({
-        issue_voucher_id: vRow.id,
-        component: c.component,
-        issued_qty: c.issuedQty,
-        received_qty: 0,
-        pending_qty: c.issuedQty,
-        unit: c.unit || 'Pcs',
-        size_breakdown: c.sizeBreakdown ? JSON.stringify(c.sizeBreakdown) : null,
-        remarks: c.remarks || null,
-      }));
-      const { error: cErr } = await supabase.from('stitch_issue_components').insert(compRows);
-      if (cErr) console.error('[createIssueVoucher components]', cErr);
-    }
-
-    // Audit trail
-    for (const c of components) {
-      await stitchingVoucherService._insertAudit({
-        transactionType: 'issue',
-        voucherId: vRow.id,
-        voucherNo: voucher.voucherNo,
-        jobCardRef: voucher.jobCardRef,
-        component: c.component,
-        quantity: c.issuedQty,
-        operatorId: voucher.operatorId,
-        operatorName: voucher.operatorName,
-        performedBy: username || undefined,
-      });
-    }
-
-    return stitchingVoucherService.getIssueVoucherById(vRow.id);
+      },p_lines:components.map(c=>({component:c.component,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+    if(error)throw new Error(error.message);
+    return stitchingVoucherService.getIssueVoucherById(data.id);
   },
 
   async updateIssueVoucher(
@@ -393,11 +356,8 @@ export const stitchingVoucherService = {
     components: Omit<StitchIssueComponent, 'id' | 'issueVoucherId' | 'receivedQty' | 'pendingQty'>[],
     username?: string | null
   ): Promise<StitchIssueVoucher | null> {
-    const supabase = createClient();
-
-    const { error: vErr } = await supabase
-      .from('stitch_issue_vouchers')
-      .update({
+    const supabase=createClient();
+    const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_issue',p_id:id,p_header:{
         voucher_date: voucher.voucherDate,
         operator_id: voucher.operatorId || null,
         operator_name: voucher.operatorName,
@@ -405,69 +365,13 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         updated_by: username || null,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (vErr) { console.error('[updateIssueVoucher]', vErr); return null; }
-
-    // Replace components
-    await supabase.from('stitch_issue_components').delete().eq('issue_voucher_id', id);
-    if (components.length > 0) {
-      const compRows = components.map((c) => ({
-        issue_voucher_id: id,
-        component: c.component,
-        issued_qty: c.issuedQty,
-        received_qty: 0,
-        pending_qty: c.issuedQty,
-        unit: c.unit || 'Pcs',
-        size_breakdown: c.sizeBreakdown ? JSON.stringify(c.sizeBreakdown) : null,
-        remarks: c.remarks || null,
-      }));
-      await supabase.from('stitch_issue_components').insert(compRows);
-    }
-
-    return stitchingVoucherService.getIssueVoucherById(id);
+      },p_lines:components.map(c=>({component:c.component,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+    if(error)throw new Error(error.message);
+    return stitchingVoucherService.getIssueVoucherById(data.id);
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // 1. Find all receive vouchers linked to this issue voucher
-    const { data: receiveVouchers, error: rvFetchError } = await supabase
-      .from('stitch_receive_vouchers')
-      .select('id')
-      .eq('issue_voucher_id', id);
-    if (rvFetchError) { console.error('[deleteIssueVoucher] fetch receive vouchers', rvFetchError); return false; }
-
-    const receiveVoucherIds = (receiveVouchers || []).map((r: any) => r.id);
-
-    // 2. Delete receive components for those receive vouchers
-    if (receiveVoucherIds.length > 0) {
-      const { error: rcError } = await supabase
-        .from('stitch_receive_components')
-        .delete()
-        .in('receive_voucher_id', receiveVoucherIds);
-      if (rcError) { console.error('[deleteIssueVoucher] delete receive components', rcError); return false; }
-
-      // 3. Delete the receive vouchers themselves
-      const { error: rvError } = await supabase
-        .from('stitch_receive_vouchers')
-        .delete()
-        .in('id', receiveVoucherIds);
-      if (rvError) { console.error('[deleteIssueVoucher] delete receive vouchers', rvError); return false; }
-    }
-
-    // 4. Delete issue components
-    const { error: icError } = await supabase
-      .from('stitch_issue_components')
-      .delete()
-      .eq('issue_voucher_id', id);
-    if (icError) { console.error('[deleteIssueVoucher] delete issue components', icError); return false; }
-
-    // 5. Finally delete the issue voucher
-    const { error } = await supabase.from('stitch_issue_vouchers').delete().eq('id', id);
-    if (error) { console.error('[deleteIssueVoucher]', error); return false; }
-    return true;
+ const {error}=await createClient().from('stitch_issue_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
   },
 
   // ── Receive Vouchers ───────────────────────────────────────────────────────
@@ -507,11 +411,8 @@ export const stitchingVoucherService = {
     components: Omit<StitchReceiveComponent, 'id' | 'receiveVoucherId'>[],
     username?: string | null
   ): Promise<StitchReceiveVoucher | null> {
-    const supabase = createClient();
-
-    const { data: vRow, error: vErr } = await supabase
-      .from('stitch_receive_vouchers')
-      .insert({
+    const supabase=createClient();
+    const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_receive',p_id:null,p_header:{
         voucher_no: voucher.voucherNo,
         voucher_date: voucher.voucherDate,
         issue_voucher_id: voucher.issueVoucherId,
@@ -526,64 +427,9 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      })
-      .select()
-      .single();
-
-    if (vErr || !vRow) { console.error('[createReceiveVoucher]', vErr); return null; }
-
-    if (components.length > 0) {
-      const compRows = components.map((c) => ({
-        receive_voucher_id: vRow.id,
-        issue_component_id: c.issueComponentId,
-        component: c.component,
-        issued_qty: c.issuedQty,
-        received_qty: c.receivedQty,
-        balance_qty: c.balanceQty,
-        unit: c.unit || 'Pcs',
-        stitching_charge_per_pc: c.stitchingChargePerPc || 0,
-        remarks: c.remarks || null,
-      }));
-      const { error: cErr } = await supabase.from('stitch_receive_components').insert(compRows);
-      if (cErr) console.error('[createReceiveVoucher components]', cErr);
-
-      // Update pending qty on issue components
-      for (const c of components) {
-        const { data: ic } = await supabase
-          .from('stitch_issue_components')
-          .select('received_qty, issued_qty')
-          .eq('id', c.issueComponentId)
-          .single();
-        if (ic) {
-          const newReceived = (ic.received_qty || 0) + c.receivedQty;
-          const newPending = (ic.issued_qty || 0) - newReceived;
-          await supabase
-            .from('stitch_issue_components')
-            .update({ received_qty: newReceived, pending_qty: Math.max(0, newPending) })
-            .eq('id', c.issueComponentId);
-        }
-      }
-
-      // Update issue voucher status
-      await stitchingVoucherService._updateIssueVoucherStatus(voucher.issueVoucherId);
-    }
-
-    // Audit trail
-    for (const c of components) {
-      await stitchingVoucherService._insertAudit({
-        transactionType: 'receive',
-        voucherId: vRow.id,
-        voucherNo: voucher.voucherNo,
-        jobCardRef: voucher.jobCardRef,
-        component: c.component,
-        quantity: c.receivedQty,
-        operatorId: voucher.operatorId,
-        operatorName: voucher.operatorName,
-        performedBy: username || undefined,
-      });
-    }
-
-    return stitchingVoucherService.getReceiveVoucherById(vRow.id);
+      },p_lines:components.map(c=>({issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
+    if(error)throw new Error(error.message);
+    return stitchingVoucherService.getReceiveVoucherById(data.id);
   },
 
   async updateReceiveVoucher(
@@ -592,11 +438,8 @@ export const stitchingVoucherService = {
     components: Omit<StitchReceiveComponent, 'id' | 'receiveVoucherId'>[],
     username?: string | null
   ): Promise<StitchReceiveVoucher | null> {
-    const supabase = createClient();
-
-    const { error: vErr } = await supabase
-      .from('stitch_receive_vouchers')
-      .update({
+    const supabase=createClient();
+    const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_receive',p_id:id,p_header:{
         voucher_date: voucher.voucherDate,
         operator_id: voucher.operatorId || null,
         operator_name: voucher.operatorName,
@@ -605,118 +448,13 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         updated_by: username || null,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (vErr) { console.error('[updateReceiveVoucher]', vErr); return null; }
-
-    // Revert old component received quantities before replacing
-    const { data: oldComps } = await supabase
-      .from('stitch_receive_components')
-      .select('*')
-      .eq('receive_voucher_id', id);
-
-    if (oldComps) {
-      for (const oc of oldComps) {
-        const { data: ic } = await supabase
-          .from('stitch_issue_components')
-          .select('received_qty, issued_qty')
-          .eq('id', oc.issue_component_id)
-          .single();
-        if (ic) {
-          const revertedReceived = Math.max(0, (ic.received_qty || 0) - oc.received_qty);
-          const revertedPending = (ic.issued_qty || 0) - revertedReceived;
-          await supabase
-            .from('stitch_issue_components')
-            .update({ received_qty: revertedReceived, pending_qty: Math.max(0, revertedPending) })
-            .eq('id', oc.issue_component_id);
-        }
-      }
-    }
-
-    await supabase.from('stitch_receive_components').delete().eq('receive_voucher_id', id);
-
-    if (components.length > 0) {
-      const compRows = components.map((c) => ({
-        receive_voucher_id: id,
-        issue_component_id: c.issueComponentId,
-        component: c.component,
-        issued_qty: c.issuedQty,
-        received_qty: c.receivedQty,
-        balance_qty: c.balanceQty,
-        unit: c.unit || 'Pcs',
-        stitching_charge_per_pc: c.stitchingChargePerPc || 0,
-        remarks: c.remarks || null,
-      }));
-      await supabase.from('stitch_receive_components').insert(compRows);
-
-      for (const c of components) {
-        const { data: ic } = await supabase
-          .from('stitch_issue_components')
-          .select('received_qty, issued_qty')
-          .eq('id', c.issueComponentId)
-          .single();
-        if (ic) {
-          const newReceived = (ic.received_qty || 0) + c.receivedQty;
-          const newPending = (ic.issued_qty || 0) - newReceived;
-          await supabase
-            .from('stitch_issue_components')
-            .update({ received_qty: newReceived, pending_qty: Math.max(0, newPending) })
-            .eq('id', c.issueComponentId);
-        }
-      }
-
-      if (voucher.issueVoucherId) {
-        await stitchingVoucherService._updateIssueVoucherStatus(voucher.issueVoucherId);
-      }
-    }
-
-    return stitchingVoucherService.getReceiveVoucherById(id);
+      },p_lines:components.map(c=>({issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
+    if(error)throw new Error(error.message);
+    return stitchingVoucherService.getReceiveVoucherById(data.id);
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // Revert issue component quantities
-    const { data: comps } = await supabase
-      .from('stitch_receive_components')
-      .select('*')
-      .eq('receive_voucher_id', id);
-
-    let issueVoucherId: string | null = null;
-    const { data: rv } = await supabase
-      .from('stitch_receive_vouchers')
-      .select('issue_voucher_id')
-      .eq('id', id)
-      .single();
-    if (rv) issueVoucherId = rv.issue_voucher_id;
-
-    if (comps) {
-      for (const c of comps) {
-        const { data: ic } = await supabase
-          .from('stitch_issue_components')
-          .select('received_qty, issued_qty')
-          .eq('id', c.issue_component_id)
-          .single();
-        if (ic) {
-          const revertedReceived = Math.max(0, (ic.received_qty || 0) - c.received_qty);
-          const revertedPending = (ic.issued_qty || 0) - revertedReceived;
-          await supabase
-            .from('stitch_issue_components')
-            .update({ received_qty: revertedReceived, pending_qty: Math.max(0, revertedPending) })
-            .eq('id', c.issue_component_id);
-        }
-      }
-    }
-
-    const { error } = await supabase.from('stitch_receive_vouchers').delete().eq('id', id);
-    if (error) { console.error('[deleteReceiveVoucher]', error); return false; }
-
-    if (issueVoucherId) {
-      await stitchingVoucherService._updateIssueVoucherStatus(issueVoucherId);
-    }
-
-    return true;
+ const {error}=await createClient().from('stitch_receive_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
   },
 
   // ── Audit Trail ────────────────────────────────────────────────────────────

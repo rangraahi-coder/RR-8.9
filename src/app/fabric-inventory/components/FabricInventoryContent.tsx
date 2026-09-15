@@ -365,7 +365,7 @@ interface FabricInventoryContentProps {lang?:'en'|'hi';}
 
 export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryContentProps) {
   const { accounts: contextAccounts, accountsLoading: contextAccountsLoading, fabricInventoryLoading: _fabricSignal } = useRealtimeData();
-  const [activeTab, setActiveTab] = useState<'entry' | 'receive' | 'inventory'>('entry');
+  const [activeTab, setActiveTab] = useState<'entry' | 'receive' | 'inventory'>('inventory');
   const [voucherDate, setVoucherDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [voucherCount, setVoucherCount] = useState(0);
   const [voucherNo, setVoucherNo] = useState('FV-001');
@@ -386,7 +386,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   const accountsLoading = contextAccountsLoading;
 
   // ── Fabric Receive state ──────────────────────────────────────────────────
-  const {verifiedUser}=useAuth();
+  const {verifiedUser,can}=useAuth();
   const receiveBusy=useRef(false);
   const [shrinkagePercent,setShrinkagePercent]=useState('0');
   const [processingType,setProcessingType]=useState('printing');
@@ -481,6 +481,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   };
 
   const saveReceive = async (recover=false) => {
+    if(!can('receive','create')){setReceiveSubmitError('Fabric Receive permission required');return;}
     if(receiveBusy.current)return;
     const key=`erp-printer-receive:${verifiedUser?.id}`;
     if(!verifiedUser){setReceiveSubmitError('Sign in required');return;}
@@ -863,7 +864,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
         {/* Tab switcher */}
         <div className="flex items-center gap-1 bg-muted/50 rounded-lg p-1">
           <button
-            onClick={() => setActiveTab('entry')}
+            hidden={!can('fabric','create')} onClick={() => setActiveTab('entry')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-600 rounded-md transition-colors ${
               activeTab === 'entry' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -872,7 +873,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
             New Entry
           </button>
           <button
-            onClick={() => setActiveTab('receive')}
+            hidden={!can('receive')} onClick={() => setActiveTab('receive')}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-600 rounded-md transition-colors ${
               activeTab === 'receive' ? 'bg-white shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -898,7 +899,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
       </div>
 
       {/* ── ENTRY TAB ── */}
-      {activeTab === 'entry' && (
+      {activeTab === 'entry' && can('fabric','create') && (
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
           {/* Submit error banner */}
           {submitError && (
@@ -1273,7 +1274,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
       )}
 
       {/* ── FABRIC RECEIVE TAB ── */}
-      {activeTab === 'receive' && (
+      {activeTab === 'receive' && can('receive') && (
         <form onSubmit={handleReceiveSubmit} className="flex flex-col gap-6">
           {/* Error banner */}
           {receiveSubmitError && (
@@ -1641,7 +1642,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                 </p>
               </div>
               <button
-                onClick={() => setActiveTab('entry')}
+                hidden={!can('fabric','create')} onClick={() => setActiveTab('entry')}
                 className="flex items-center gap-1.5 px-4 py-2 bg-primary text-white text-sm font-600 rounded-lg hover:bg-primary/90 transition-colors"
               >
                 <PlusCircle size={14} />
@@ -1673,7 +1674,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                     Refresh
                   </button>
                   <button
-                    onClick={() => setActiveTab('entry')}
+                    hidden={!can('fabric','create')} onClick={() => setActiveTab('entry')}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-600 rounded-lg hover:bg-primary/20 transition-colors"
                   >
                     <Plus size={13} />

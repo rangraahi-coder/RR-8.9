@@ -34,7 +34,7 @@ function ProcessBadge({ process }: { process: string }) {
 export default function ContractorFinishingContent() {
   const { username,can } = useAuth();
   const { jobCards, refresh: refreshJobCards } = useJobCards();
-  const [activeTab, setActiveTab] = useState<ActiveTab>('issue');
+  const [activeTab, setActiveTab] = useState<ActiveTab>(can('contractor')?'issue':'assembly');
 
   const [showConversion,setShowConversion]=useState(false);
 
@@ -66,24 +66,26 @@ export default function ContractorFinishingContent() {
 
   const loadAssembly = useCallback(async () => {
     setAssemblyLoading(true);
-    try {const data = await componentAssemblyService.getAll();setAssemblyVouchers(data);}
+    try {const data = await componentAssemblyService.getAll();setAssemblyVouchers(data.filter(v=>can(v.assemblyKind==='component_conversion'?'conversion':'assembly')));}
     catch(e){toast.error(e instanceof Error?e.message:String(e));}
     finally{setAssemblyLoading(false);}
-  }, []);
+  }, [can]);
 
   const loadIssue = useCallback(async () => {
+    if(!can('contractor')){setIssueLoading(false);return;}
     setIssueLoading(true);
     const data = await contractorFinishingService.getIssueVouchers();
     setIssueVouchers(data);
     setIssueLoading(false);
-  }, []);
+  }, [can]);
 
   const loadReceive = useCallback(async () => {
+    if(!can('contractor')){setReceiveLoading(false);return;}
     setReceiveLoading(true);
     const data = await contractorFinishingService.getReceiveVouchers();
     setReceiveVouchers(data);
     setReceiveLoading(false);
-  }, []);
+  }, [can]);
 
   useEffect(() => {
     loadAssembly();
@@ -174,10 +176,10 @@ export default function ContractorFinishingContent() {
           </p>
         </div>
         <div className="flex gap-2">
-          {activeTab === 'assembly' && <button className="btn-secondary" disabled={!can('contractor','create')} onClick={()=>setShowConversion(true)}>New Item from Pending Sub-components</button>}
+          {activeTab === 'assembly' && <button className="btn-secondary" hidden={!can('conversion')} disabled={!can('conversion','create')} onClick={()=>setShowConversion(true)}>New Item from Pending Sub-components</button>}
           {activeTab === 'assembly' && (
             <button
-              disabled={!can('contractor','create')} onClick={() => setShowAssemblyModal(true)}
+              hidden={!can('assembly')} disabled={!can('assembly','create')} onClick={() => setShowAssemblyModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl text-sm font-600 hover:bg-primary/90 transition-colors"
             >
               <Layers size={16} /> New Assembly
@@ -225,7 +227,7 @@ export default function ContractorFinishingContent() {
       {/* Tabs */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden">
         <div className="flex border-b border-border">
-          {tabs.map((tab) => (
+          {tabs.filter(tab=>tab.key==='assembly'?(can('assembly')||can('conversion')):can('contractor')).map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
@@ -321,7 +323,7 @@ export default function ContractorFinishingContent() {
                               <Eye size={14} />
                             </button>
                             <button
-                              disabled={!can('contractor','delete')} onClick={() => setDeleteAssemblyTarget(v)}
+                              disabled={!can('assembly','delete')&&!can('conversion','delete')} onClick={() => setDeleteAssemblyTarget(v)}
                               className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors"
                             >
                               <Trash2 size={14} />
