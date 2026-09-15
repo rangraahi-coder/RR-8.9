@@ -430,16 +430,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const [accessProfile,setAccessProfile]=useState<AccessProfile|null>(null);
   const [accessLoading,setAccessLoading]=useState(true);
+  const [accessResolvedFor,setAccessResolvedFor]=useState<string|null>(null);
   const [accessError,setAccessError]=useState('');
   const accessGeneration=useRef(0);
   const refreshAccess=useCallback(async()=>{
     const generation=++accessGeneration.current;
-    if(!verifiedUser?.id){setAccessProfile(null);setAccessLoading(false);return;}
+    if(!verifiedUser?.id){setAccessProfile(null);setAccessResolvedFor(null);setAccessLoading(false);return;}
     try{const {data,error}=await supabase.from('erp_user_access').select('*').eq('user_id',verifiedUser.id).maybeSingle();
       if(generation!==accessGeneration.current)return;
       if(error)throw error;setAccessProfile(data);setAccessError('');
     }catch{if(generation===accessGeneration.current){setAccessProfile(null);setAccessError('Could not load access permissions. Please retry.');}}
-    finally{if(generation===accessGeneration.current)setAccessLoading(false);}
+    finally{if(generation===accessGeneration.current){setAccessResolvedFor(verifiedUser.id);setAccessLoading(false);}}
   },[verifiedUser?.id]);
   useEffect(()=>{setAccessProfile(null);setAccessLoading(true);void refreshAccess();const resume=()=>{if(document.visibilityState==='visible')void refreshAccess();};const timer=setInterval(resume,30000);window.addEventListener('focus',resume);window.addEventListener('online',resume);document.addEventListener('visibilitychange',resume);return()=>{++accessGeneration.current;clearInterval(timer);window.removeEventListener('focus',resume);window.removeEventListener('online',resume);document.removeEventListener('visibilitychange',resume);};},[refreshAccess]);
   const effectiveProfile=accessProfile?.user_id===verifiedUser?.id?accessProfile:null;
@@ -447,7 +448,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const canAccessRoute=useCallback((path:string)=>sessionStatus==='signed-in'&&routeAllowed(effectiveProfile,path),[sessionStatus,effectiveProfile]);
   const can=useCallback((module:string,action:Action='view')=>sessionStatus==='signed-in'&&hasPermission(effectiveProfile,module,action),[sessionStatus,effectiveProfile]);
   const value = {
-    username, userAccess:null,accessProfile:effectiveProfile,accessLoading,accessError,refreshAccess,can,
+    username, userAccess:null,accessProfile:effectiveProfile,accessLoading:accessLoading || (!!verifiedUser?.id && accessResolvedFor!==verifiedUser.id),accessError,refreshAccess,can,
     isAdmin:!!effectiveProfile?.active&&!!effectiveProfile?.is_admin,
     isAuthenticated: () => sessionStatus === 'signed-in' && !!effectiveProfile?.active,
     isLocalAuth: () => false,
