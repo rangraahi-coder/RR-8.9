@@ -1,12 +1,24 @@
-FULL SOURCE FOLDER REPAIR
+ORDER QUANTITY + CUTTING AVERAGE UPDATE
 
-This package contains the complete src folder, not a partial patch.
-It restores the source from commit 32b1a70 and preserves all six dashboard files pushed in commit 303cead.
+INSTALL
+1. Run the entire ORDER-QUANTITY-UPDATE.sql in a new Supabase SQL Editor query. No email substitution is needed. Existing dashboard settings and Owner SQL do not need to be rerun.
+2. Replace your existing project src folder with the COMPLETE src folder in this ZIP.
+3. GitHub Desktop: Commit and Push origin.
+Summary: Add Active Pending order quantities and cutting averages
+4. Wait for Vercel Ready and refresh the app.
 
-1. Extract this ZIP.
-2. In your existing cloned RR-8.9 project, replace the src folder with this complete src folder.
-3. GitHub Desktop: Commit to main, then Push origin.
-   Summary: Restore complete source folder with dashboard update
-4. Wait for the new Vercel deployment to show Ready.
+ORDER COUNTS
+Active means all non-cancelled order-line quantities, including completed orders, as requested for the total-order view. Pending is a subset, never an extra total to add.
+Sub-components are calculated from the uniquely matching Item Master composition, not cutting output. Missing/ambiguous compositions are flagged rather than estimated.
+Click either card for the item-by-item calculation. Both cards share the Active/Pending selector.
+Because fabric inventory currently has no order-line coverage linkage, confirm the total fabric-ready OR process-started quantity using the pencil option in the breakdown. This is a cumulative union: count each piece once. Example 100 ordered, 40 ready/started => 60 pending. For a three-component item: 300 required, 180 pending components.
+Confirmation is required for existing lines; unknown quantities are not silently shown as zero. Sales edit authority is required to save. Values are stored in the database and shared across sessions. This coverage does not auto-update from fabric receipts; update the confirmation when coverage changes.
+Produced sub-components are shown separately in department totals, summing net cutting lines once by their IDs and excluding cancelled parent entries. This is not an assertion that the live total 1,179 was incorrect: live data could not be queried from this workspace.
+Your Modules has been removed; sidebar navigation remains.
 
-No Supabase SQL or environment changes are required. Keep package.json and all other root files as they are.
+CUTTING TABLE AVERAGE
+New Cutting Entry shows consumed fabric / cut pieces and consumed fabric / net pieces, for each component and its unit. Zero-piece cases show a dash. These are live calculated values, not editable rates.
+Saved multi-component vouchers currently lack reliable per-component roll allocation; their component average is explicitly unavailable rather than duplicating the entire voucher's consumption per component. This update does not repair historic roll allocation or change stock writes.
+
+VALIDATION
+Build and TypeScript passed against the restored full source. Order examples, cancellations, missing readiness/composition, stale coverage, and database permissions/bounds tests passed locally. Live login and stock acceptance tests remain to be performed by the Owner.
