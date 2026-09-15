@@ -132,9 +132,9 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       {/* Logo */}
       <div className={`flex items-center h-16 border-b border-sidebar px-4 flex-shrink-0 ${collapsed ? 'justify-center' : 'justify-between'}`}>
         {!collapsed && (
-          <div className="flex items-center gap-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
             <AppLogo size={32} />
-            <span className="font-bold text-white text-base tracking-tight">KurtiERP</span>
+            <span className="font-bold text-white text-sm leading-tight tracking-tight">Rangraahi Powerhouse</span>
           </div>
         )}
         {collapsed && <AppLogo size={28} />}
@@ -244,7 +244,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             </div>
             <div className="min-w-0">
               <p className="text-white text-xs font-semibold truncate">{verifiedUser?.email?.split("@")[0] ?? "User"}</p>
-              <p className="text-slate-400 text-xs truncate">KurtiERP</p>
+              <p className="text-slate-400 text-xs truncate">Rangraahi Powerhouse</p>
             </div>
           </div>
         </div>

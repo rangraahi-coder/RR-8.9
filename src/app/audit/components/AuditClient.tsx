@@ -55,7 +55,7 @@ export default function AuditClient() {
     <ERPLayout>
       <PageHeader
         title="Audit Trail"
-        breadcrumbs={[{ label: 'KurtiERP' }, { label: 'Audit Trail' }]}
+        breadcrumbs={[{ label: 'Rangraahi Powerhouse' }, { label: 'Audit Trail' }]}
       />
 
       <div className="card p-0 overflow-hidden">

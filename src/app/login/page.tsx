@@ -44,7 +44,7 @@ export default function LoginPage() {
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-primary text-white font-bold text-xl mb-3">
             K
           </div>
-          <h1 className="text-xl font-semibold text-slate-800">KurtiERP</h1>
+          <h1 className="text-xl font-semibold text-slate-800">Rangraahi Powerhouse</h1>
           <p className="text-sm text-slate-500 mt-1">Sign in to your account</p>
         </div>
 

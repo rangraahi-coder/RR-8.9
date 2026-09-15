@@ -53,7 +53,7 @@ export default function ItemMasterClient() {
     .some(value => (value || '').toLowerCase().includes(q)));
 
   return <>
-    <PageHeader title="Item Master" breadcrumbs={[{ label: 'KurtiERP' }, { label: 'Masters' }, { label: 'Item Master' }]}
+    <PageHeader title="Item Master" breadcrumbs={[{ label: 'Rangraahi Powerhouse' }, { label: 'Masters' }, { label: 'Item Master' }]}
       actions={<div className="flex flex-wrap items-center gap-2">
         <Link href="/masters/items/import" className="btn-secondary"><Upload size={15} />Import</Link>
         <button className="btn-secondary" onClick={() => setMerging(true)}><GitMerge size={15} />Merge duplicates</button>

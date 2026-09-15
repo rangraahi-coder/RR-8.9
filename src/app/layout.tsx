@@ -14,7 +14,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'KurtiERP — Kurti Factory Production & Accounts',
+  title: 'Rangraahi Powerhouse — Kurti Factory Production & Accounts',
   description: 'Complete ERP for kurti manufacturing — job cards, contractor tracking, production stages, and accounting for Indian garment factories.',
   icons: {
     icon: [{ url: '/favicon.ico', type: 'image/x-icon' }],

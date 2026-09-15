@@ -441,7 +441,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }catch{if(generation===accessGeneration.current){setAccessProfile(null);setAccessError('Could not load access permissions. Please retry.');}}
     finally{if(generation===accessGeneration.current)setAccessLoading(false);}
   },[verifiedUser?.id]);
-  useEffect(()=>{setAccessProfile(null);setAccessLoading(true);void refreshAccess();const timer=setInterval(refreshAccess,30000);window.addEventListener('focus',refreshAccess);return()=>{++accessGeneration.current;clearInterval(timer);window.removeEventListener('focus',refreshAccess);};},[refreshAccess]);
+  useEffect(()=>{setAccessProfile(null);setAccessLoading(true);void refreshAccess();const resume=()=>{if(document.visibilityState==='visible')void refreshAccess();};const timer=setInterval(resume,30000);window.addEventListener('focus',resume);window.addEventListener('online',resume);document.addEventListener('visibilitychange',resume);return()=>{++accessGeneration.current;clearInterval(timer);window.removeEventListener('focus',resume);window.removeEventListener('online',resume);document.removeEventListener('visibilitychange',resume);};},[refreshAccess]);
   const effectiveProfile=accessProfile?.user_id===verifiedUser?.id?accessProfile:null;
   const username=verifiedUser?(accessProfile?.display_name||verifiedUser.email?.split('@')[0]||'User'):null;
   const canAccessRoute=useCallback((path:string)=>sessionStatus==='signed-in'&&routeAllowed(effectiveProfile,path),[sessionStatus,effectiveProfile]);
