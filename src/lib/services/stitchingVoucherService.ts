@@ -16,6 +16,8 @@ export interface StitchOperator {
 }
 
 export interface StitchIssueComponent {
+  cuttingComponentId?: string;
+  stitchingRate?: number;
   id: string;
   issueVoucherId: string;
   component: string;
@@ -125,7 +127,7 @@ function rowToIssueComponent(row: any): StitchIssueComponent {
   return {
     id: row.id,
     issueVoucherId: row.issue_voucher_id,
-    component: row.component,
+    component: row.component, cuttingComponentId: row.cutting_component_id, stitchingRate: row.stitching_rate == null ? undefined : Number(row.stitching_rate),
     issuedQty: row.issued_qty || 0,
     receivedQty: row.received_qty || 0,
     pendingQty: row.pending_qty || 0,
@@ -345,7 +347,7 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      },p_lines:components.map(c=>({component:c.component,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
     return stitchingVoucherService.getIssueVoucherById(data.id);
   },
@@ -365,7 +367,7 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         updated_by: username || null,
         updated_at: new Date().toISOString(),
-      },p_lines:components.map(c=>({component:c.component,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
     return stitchingVoucherService.getIssueVoucherById(data.id);
   },

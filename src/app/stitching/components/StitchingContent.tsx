@@ -446,7 +446,7 @@ export default function StitchingContent() {
                                       </span>
                                     </div>
                                     <div className="flex gap-3 text-muted-foreground">
-                                      <span>Issued: <span className="font-600 text-foreground">{c.issuedQty}</span></span>
+                                      <span>Issued: <span className="font-600 text-foreground">{c.issuedQty}</span></span><span>Rate: ₹{c.stitchingRate??'—'} / piece · Amount: ₹{c.stitchingRate==null?'—':(c.issuedQty*c.stitchingRate).toFixed(2)}</span>
                                       <span>Received: <span className="font-600 text-foreground">{c.receivedQty}</span></span>
                                     </div>
                                   </div>
@@ -827,7 +827,7 @@ export default function StitchingContent() {
                     <div key={c.id} className="bg-muted/30 rounded-lg px-3 py-2.5 flex items-center justify-between text-xs">
                       <span className="font-700 text-foreground">{c.component}</span>
                       <div className="flex gap-3 text-muted-foreground">
-                        <span>Issued: <span className="font-600 text-foreground">{c.issuedQty}</span></span>
+                        <span>Issued: <span className="font-600 text-foreground">{c.issuedQty}</span></span><span>Rate: ₹{c.stitchingRate??'—'} / piece · Amount: ₹{c.stitchingRate==null?'—':(c.issuedQty*c.stitchingRate).toFixed(2)}</span>
                         <span>Received: <span className="font-600 text-success">{c.receivedQty}</span></span>
                         <span>Pending: <span className={`font-600 ${c.pendingQty > 0 ? 'text-warning' : 'text-success'}`}>{c.pendingQty}</span></span>
                       </div>

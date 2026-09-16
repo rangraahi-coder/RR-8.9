@@ -41,9 +41,9 @@ export default function TopBar({onSearch}:{onSearch?:(value:string)=>void}) {
         </div>
       )}
 
-      <header className="h-14 bg-white border-b border-border flex items-center justify-between px-6 flex-shrink-0 z-30">
+      <header className="h-14 bg-white border-b border-border flex items-center justify-between gap-2 px-3 md:px-6 flex-shrink-0 z-30">
         {/* Search */}
-        <div className="flex items-center gap-2 bg-slate-50 border border-border rounded-lg px-3 py-1.5 w-64">
+        <div className="flex items-center gap-2 bg-slate-50 border border-border rounded-lg px-3 py-1.5 w-28 sm:w-64 min-w-0">
           <Search size={15} className="text-slate-400 flex-shrink-0" />
           <input
             type="text"
@@ -53,7 +53,7 @@ export default function TopBar({onSearch}:{onSearch?:(value:string)=>void}) {
           />
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           {/* Language Toggle */}
           <div className="flex items-center bg-slate-100 rounded-lg p-0.5 gap-0.5">
             {(['en', 'hi'] as Language[]).map((l) => (
@@ -113,9 +113,9 @@ export default function TopBar({onSearch}:{onSearch?:(value:string)=>void}) {
             {showUserMenu && (
               <div className="absolute right-0 top-10 w-48 bg-white rounded-xl shadow-modal border border-border z-50 animate-slide-up">
                 <div className="p-1">
-                  {canAccessRoute('/settings')&&<Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
+                  <Link href="/profile" onClick={()=>setShowUserMenu(false)} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
                     <User size={15} className="text-slate-400" /> Profile
-                  </Link>}
+                  </Link>
                   {canAccessRoute('/settings')&&<Link href="/settings" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-700 hover:bg-slate-100 transition-colors">
                     <Settings size={15} className="text-slate-400" /> Settings
                   </Link>}

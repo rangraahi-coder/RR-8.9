@@ -1,4 +1,5 @@
 'use client';
+import PasswordInput from '@/components/PasswordInput';
 import {staffEmail} from '@/lib/teamProfiles';
 
 import React, { useState } from 'react';
@@ -74,9 +75,9 @@ export default function LoginPage() {
               <label htmlFor="login-password" className="block text-sm font-medium text-slate-700 mb-1">
                 Password
               </label>
-              <input
+              <PasswordInput
                 id="login-password"
-                type="password"
+                
                 autoComplete="current-password"
                 required
                 value={password}
@@ -111,7 +112,7 @@ export default function LoginPage() {
                 'Sign in'
               )}
             </button>
-          </form>
+          <p className="text-sm text-muted-foreground mt-3">Forgot password? Ask your Owner to reset it in Users &amp; Access.</p></form>
         </div>
       </div>
     </div>

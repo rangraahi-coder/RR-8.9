@@ -1,5 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import {createClient} from '@/lib/supabase/client';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Scissors, Info } from 'lucide-react';
 import { stitchingVoucherService, StitchOperator, StitchIssueVoucher,  } from '@/lib/services/stitchingVoucherService';
 import { cuttingService } from '@/lib/services/cuttingService';
@@ -17,6 +18,8 @@ interface JobCardOption {
 }
 
 interface ComponentRow {
+  cuttingComponentId?: string;
+  stitchingRate?: number;
   tempId: string;
   component: string;
   issuedQty: number;
@@ -41,6 +44,9 @@ function makeRow(): ComponentRow {
 
 export default function StitchIssueModal({ jobCards, onClose, onSaved, editVoucher }: Props) {
   const { username } = useAuth();
+  const [rateSources,setRateSources]=useState<any[]>([]);
+  const sourceRequest = useRef(0);
+  const issuedRequest = useRef(0);
   const [voucherNo, setVoucherNo] = useState('');
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedJobCardNo, setSelectedJobCardNo] = useState('');
@@ -103,15 +109,22 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
 
   // Fetch cutting quantities whenever job card changes
   async function fetchCuttingQty(jobCardNo: string) {
+    const request = ++sourceRequest.current;
     if (!jobCardNo) { setCuttingQtyMap([]); return; }
+    const {data:sources,error:sourceError}=await createClient().rpc('erp_stitch_rate_sources',{p_job:jobCardNo});
+    if (request !== sourceRequest.current) return;
+    if(sourceError){setError(sourceError.message);setRateSources([]);}else setRateSources(sources||[]);
     const data = await cuttingService.getCuttingQtyByComponentSize(jobCardNo);
+    if (request !== sourceRequest.current) return;
     setCuttingQtyMap(data);
   }
 
   // Fetch already-issued quantities for the selected job card
   async function fetchIssuedQty(jobCardNo: string) {
+    const request = ++issuedRequest.current;
     if (!jobCardNo) { setIssuedQtyMap([]); return; }
     const data = await stitchingVoucherService.getIssuedQtyByJobCard(jobCardNo, editVoucher?.id);
+    if (request !== issuedRequest.current) return;
     setIssuedQtyMap(data);
   }
 
@@ -136,7 +149,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
           editVoucher.components.length > 0
             ? editVoucher.components.map((c) => ({
                 tempId: c.id,
-                component: c.component,
+                component: c.component, cuttingComponentId:c.cuttingComponentId, stitchingRate:c.stitchingRate,
                 issuedQty: c.issuedQty,
                 unit: c.unit,
                 size: c.sizeBreakdown && c.sizeBreakdown.length === 1 ? c.sizeBreakdown[0].size : '',
@@ -156,7 +169,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   }, [editVoucher, jobCards]);
 
   function handleJobCardChange(val: string) {
-    setSelectedJobCardNo(val);
+    setSelectedJobCardNo(val);setRateSources([]);setComponents([makeRow()]);
     const jc = jobCards.find((j) => j.jobCardNo === val);
     setJobCardInfo(jc || null);
     if (val) setFieldErrors((prev) => ({ ...prev, jobCard: '' }));
@@ -177,6 +190,8 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     setComponents((prev) => prev.map((r) => {
       if (r.tempId !== tempId) return r;
       const updated = { ...r, [field]: value };
+      if(field==='component'){const sources=rateSources.filter(s=>s.component===value);updated.cuttingComponentId=sources.length===1?sources[0].id:undefined;updated.stitchingRate=sources.length===1?Number(sources[0].stitching_rate):undefined;}
+      if(field==='cuttingComponentId'){const source=rateSources.find(s=>s.id===value);updated.stitchingRate=source?.stitching_rate==null?undefined:Number(source.stitching_rate);}
       if (field === 'component' && value) {
         setFieldErrors((prev2) => ({ ...prev2, [`component_${tempId}`]: '' }));
       }
@@ -189,6 +204,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
+    if(components.some(c=>!c.cuttingComponentId||!c.stitchingRate||c.stitchingRate<=0)){setError('Select a Cutting Issue with a stitching rate for every component.');return;}
 
     if (!selectedJobCardNo) newErrors.jobCard = 'Job Card is required.';
     if (!operatorId) newErrors.operator = 'Operator is required.';
@@ -237,7 +253,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
         remarks,
       };
       const compData = components.map((c) => ({
-        component: c.component,
+        component: c.component, cuttingComponentId:c.cuttingComponentId, stitchingRate:c.stitchingRate,
         issuedQty: c.issuedQty,
         unit: c.unit,
         sizeBreakdown: c.size
@@ -369,7 +385,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                       {fieldErrors[`component_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`component_${row.tempId}`]}</p>}
                     </div>
                     <div className="flex flex-col gap-1 w-28">
-                      <label className="text-xs font-600 text-muted-foreground">Size</label>
+                      <label className="text-xs font-600 text-muted-foreground">Cutting Issue / Rate *</label><select required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'}</option>)}</select><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
                       <select
                         value={row.size}
                         onChange={(e) => updateRow(row.tempId, 'size', e.target.value)}

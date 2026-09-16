@@ -36,6 +36,7 @@ interface ReceiveRow {
   unit: string;
   overrideAllowed: boolean;
   stitchingChargePerPc: number;
+  rateFromCutting?: boolean;
   sizeBreakdown?: { size: string; qty: number }[];
 }
 
@@ -109,7 +110,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
               receiveQty: existingReceive?.receivedQty || 0,
               unit: ic.unit,
               overrideAllowed: false,
-              stitchingChargePerPc: existingReceive?.stitchingChargePerPc || 0,
+              stitchingChargePerPc: existingReceive?.stitchingChargePerPc ?? ic.stitchingRate ?? 0,
+              rateFromCutting: Number(ic.stitchingRate) > 0,
               sizeBreakdown: ic.sizeBreakdown,
             };
           });
@@ -148,7 +150,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
         receiveQty: 0,
         unit: ic.unit,
         overrideAllowed: false,
-        stitchingChargePerPc: 0,
+        stitchingChargePerPc: ic.stitchingRate || 0,
+        rateFromCutting: Number(ic.stitchingRate) > 0,
         sizeBreakdown: ic.sizeBreakdown,
       })));
     }
@@ -419,7 +422,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                               type="number"
                               min="0"
                               step="0.01"
-                              value={r.stitchingChargePerPc || ''}
+                              readOnly={r.rateFromCutting} value={r.stitchingChargePerPc || ''}
+                              title={r.rateFromCutting ? 'Rate from Cutting Issue' : 'Earlier issue: enter its agreed stitching rate'}
                               onChange={(e) => updateChargePerPc(r.issueComponentId, parseFloat(e.target.value) || 0)}
                               className="input-field text-sm tabular-nums w-24 text-right"
                               placeholder="0.00"

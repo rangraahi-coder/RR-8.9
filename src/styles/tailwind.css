@@ -332,3 +332,14 @@
   animation: pulse-highlight 0.6s ease-in-out;
 }
 :root {--font-body:'Plus Jakarta Sans Variable',sans-serif;--font-sans:'Plus Jakarta Sans Variable',sans-serif;--font-plus-jakarta:'Plus Jakarta Sans Variable';}
+
+/* Mobile workspace: preserve native form behavior and keep wide tables scrollable. */
+@media (max-width: 767px) {
+ .erp-workspace input, .erp-workspace select, .erp-workspace textarea { font-size:16px; max-width:100%; }
+ .erp-workspace .grid-cols-2, .erp-workspace .grid-cols-3, .erp-workspace .grid-cols-4 { grid-template-columns:minmax(0,1fr); }
+ .erp-workspace table { display:block; overflow-x:auto; max-width:100%; }
+ .erp-workspace [class*="fixed inset-0"] { padding:8px; z-index:60; }
+ .erp-workspace [class*="max-h-"] { max-height:85dvh; }
+ .erp-workspace form .flex.items-center.gap-3 { flex-wrap:wrap; }
+ .erp-workspace button { min-height:40px; }
+}

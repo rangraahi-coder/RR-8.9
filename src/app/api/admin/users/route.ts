@@ -13,8 +13,21 @@ export async function POST(request:NextRequest){
   const {data:profile,error:profileError}=await caller.from('erp_user_access').select('active,is_owner').eq('user_id',user.id).single();
   if(profileError||!profile?.active||!profile.is_owner)return NextResponse.json({error:'Owner access required'},{status:403});
   const body=await request.json();
+  if(body.operation==='reset-team-password'){
+   const preset=TEAM_PROFILES.find(p=>p.username===body.username);
+   if(!preset||typeof body.password!=='string'||body.password.length<6)return NextResponse.json({error:'Approved username and 6+ character password required'},{status:400});
+   const secret=process.env.SUPABASE_SERVICE_ROLE_KEY;
+   if(!secret)return NextResponse.json({error:'User management server key missing'},{status:503});
+   const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
+   let target:any=null;
+   for(let page=1;;page++){const {data,error}=await admin.auth.admin.listUsers({page,perPage:100});if(error)throw error;target=data.users.find(u=>u.email?.toLowerCase()===staffEmail(preset.username));if(target||data.users.length<100)break;}
+   if(!target)return NextResponse.json({error:'Existing team account not found; no account created.'},{status:404});
+   if(target.id===user.id)return NextResponse.json({error:'Use the existing Rangraahi Owner login to reset this account.'},{status:400});
+   const {error:resetError}=await admin.auth.admin.updateUserById(target.id,{password:body.password,user_metadata:{...target.user_metadata,must_change_password:true}});
+   return resetError?NextResponse.json({error:resetError.message},{status:400}):NextResponse.json({ok:true});
+  }
   if(body.operation==='reset-password'){
-   if(typeof body.userId!=='string'||typeof body.password!=='string'||body.password.length<12)return NextResponse.json({error:'User and password (12+ characters) required'},{status:400});
+   if(typeof body.userId!=='string'||typeof body.password!=='string'||body.password.length<6)return NextResponse.json({error:'User and password (6+ characters) required'},{status:400});
    const secret=process.env.SUPABASE_SERVICE_ROLE_KEY;
    if(!secret)return NextResponse.json({error:'Set SUPABASE_SERVICE_ROLE_KEY in Vercel to enable user management.'},{status:503});
    const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});
@@ -33,7 +46,7 @@ export async function POST(request:NextRequest){
    return error?NextResponse.json({error:error.message},{status:400}):NextResponse.json({ok:true});
   }
   const email=preset?staffEmail(preset.username):body.email;
-  if(typeof email!=='string'||typeof body.password!=='string'||body.password.length<12)return NextResponse.json({error:'Email/username and a password of at least 12 characters are required'},{status:400});
+  if(typeof email!=='string'||typeof body.password!=='string'||body.password.length<6)return NextResponse.json({error:'Email/username and a password of at least 6 characters are required'},{status:400});
   const secret=process.env.SUPABASE_SERVICE_ROLE_KEY;
   if(!secret)return NextResponse.json({error:'Set SUPABASE_SERVICE_ROLE_KEY in Vercel to enable user creation.'},{status:503});
   const admin=createClient(url,secret,{auth:{persistSession:false,autoRefreshToken:false}});

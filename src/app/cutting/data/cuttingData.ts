@@ -4,6 +4,7 @@ export interface SubComponentSizeDetail {
 }
 
 export interface SubComponentCutDetail {
+  stitchingRate?: number;
   component: string; // e.g. Kurta, Pant, Dupatta
   fabricName?: string; // per-component fabric (optional, falls back to entry-level fabricName)
   sizes: SubComponentSizeDetail[];

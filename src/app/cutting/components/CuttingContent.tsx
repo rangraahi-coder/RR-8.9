@@ -41,6 +41,7 @@ interface RollRow {
 }
 
 interface SubComponentRow {
+  stitchingRate: string;
   id: string;
   component: string;
   customComponent: string;
@@ -77,7 +78,7 @@ function makeDefaultSubComponent(): SubComponentRow {
     unit: 'Metres',
     rolls: [makeDefaultRoll()],
     sizes: SIZE_OPTIONS.map((s) => ({ size: s, qty: '' })),
-    rejections: '',
+    rejections: '', stitchingRate: '',
   };
 }
 
@@ -463,7 +464,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: entry.unit || 'Metres',
         rolls: scRolls,
         sizes: sc.sizes.map((sz) => ({ size: sz.size, qty: String(sz.qty) })),
-        rejections: String(sc.rejections || ''),
+        rejections: String(sc.rejections || ''), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
       };
     });
     setSubComponents(scs.length > 0 ? scs : [makeDefaultSubComponent()]);
@@ -542,6 +543,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     setSaveError(null);
 
     // Required field validation (matches QC/Finishing pattern)
+    if (subComponents.some(sc=>!sc.stitchingRate.trim()||!Number.isFinite(Number(sc.stitchingRate))||Number(sc.stitchingRate)<=0)){setSaveError('Enter stitching rate (₹/piece, greater than zero) for every component.');return;}
     if (!form.date) { setSaveError('Date is required.'); return; }
     if (!form.jobCardRef) { setSaveError('Job Card is required.'); return; }
     if (subComponents.some((sc) => {
@@ -586,7 +588,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         fabricName: sc.fabricName || undefined,
         sizes,
         totalPieces: total,
-        rejections: rej,
+        rejections: rej, stitchingRate: Number(sc.stitchingRate),
         netPieces: total - rej,
       };
     });
@@ -713,7 +715,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: 'Metres',
         rolls: [makeDefaultRoll()],
         sizes: sizeList.map((s) => ({ size: s, qty: jc.sizeRatios?.[s] != null ? String(jc.sizeRatios[s]) : '' })),
-        rejections: '',
+        rejections: '', stitchingRate: '',
       }];
       setSubComponents(newSubComponents);
     }
@@ -1336,6 +1338,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                             </p>
                           )}
                         </div>
+                        <label className="flex flex-col gap-1 text-xs">Stitching ₹/piece *<input aria-label="Component stitching rate" required type="number" min="0.01" step="0.01" value={sc.stitchingRate} onChange={e=>updateSubComponent(sc.id, 'stitchingRate', e.target.value)} className="input-field w-28"/></label>
                         {subComponents.length > 1 && (
                           <button type="button" onClick={() => removeSubComponent(sc.id)} className="mt-5 p-1.5 rounded-lg hover:bg-danger/10 text-danger">
                             <Trash2 size={14} />
