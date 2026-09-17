@@ -1,4 +1,6 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Package,
@@ -680,7 +682,7 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
       await persistUrl(publicUrl);
       setMode('view');
     } catch (err: unknown) {
-      setUploadError(`Upload error: ${err instanceof Error ? err.message : String(err)}`);
+      setUploadError(`Upload error: ${erpErrorMessage(err)}`);
     } finally {
       setUploading(false);
     }
@@ -959,7 +961,7 @@ function ItemDetailModal({
       });
       setEditMode(false);
     } catch (err: unknown) {
-      setSaveError(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setSaveError(`Error: ${erpErrorMessage(err)}`);
     } finally {
       setSaving(false);
     }
@@ -1998,7 +2000,7 @@ function NewItemModal({
       onCreated();
       onClose();
     } catch (err: unknown) {
-      setSaveError(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setSaveError(`Error: ${erpErrorMessage(err)}`);
     } finally {
       setSaving(false);
     }
@@ -2608,7 +2610,7 @@ function DeleteItemModal({
       onDeleted(variant.id);
       onClose();
     } catch (err: unknown) {
-      setDeleteError(err instanceof Error ? err.message : String(err));
+      setDeleteError(erpErrorMessage(err));
       setDeleting(false);
     }
   }

@@ -1,4 +1,6 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
+
 
 import React, { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase/client';
@@ -131,7 +133,7 @@ export default function ConnectionDiagnosticTab() {
       }
     } catch (e: unknown) {
       if (unmountedRef.current || runGenRef.current !== gen) return;
-      const msg = e instanceof Error ? e.message : String(e);
+      const msg = erpErrorMessage(e);
       const isSessionMissing =
         msg.includes('Auth session missing') ||msg.includes('AuthSessionMissingError') ||msg.includes('session_not_found');
       if (isSessionMissing) {

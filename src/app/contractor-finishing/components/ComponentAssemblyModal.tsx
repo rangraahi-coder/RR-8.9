@@ -1,4 +1,6 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, AlertCircle, CheckCircle2, Layers, Package } from 'lucide-react';
 import {
@@ -66,7 +68,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
       setVoucherNo(nextNo);
       setJobCardOptions(jobCards);
       const {data,error}=await createClient().from('item_styles').select('id,style_no,item_name,job_card_no').order('style_no');if(error)throw error;setStyles(data||[]);
-      } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+      } catch (e) { setError(erpErrorMessage(e)); }
       finally { setLoading(false); }
     }
     init();
@@ -106,7 +108,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
         qtyUsed: 0,
       }));
       setComponentRows(rows);
-      } catch (e) { if(!active)return;setComposition([]); setComponentRows([]); setError(e instanceof Error ? e.message : String(e)); }
+      } catch (e) { if(!active)return;setComposition([]); setComponentRows([]); setError(erpErrorMessage(e)); }
       finally { if(active)setLoadingStock(false); }
     }
     loadStock();return()=>{active=false;};
@@ -197,7 +199,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
     if (!result) { setError('Failed to save. Please try again.'); return; }
     requestRef.current = null;
     onSaved();
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    } catch (e) { setError(erpErrorMessage(e)); }
     finally { saveRef.current = false; setSaving(false); }
   }
 

@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
+import {erpErrorMessage} from '@/lib/erpError';
 import Link from 'next/link';
 import { Search, Filter, ChevronUp, ChevronDown, Eye, FileText, Building2, User, X, Package, Plus, Pencil, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { SalesOrder } from '../data/salesOrdersData';
@@ -158,8 +159,8 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
       } else {
         setDeleteError(lang === 'hi' ? 'डिलीट नहीं हो सका। पुनः प्रयास करें।' : 'Could not delete. Please try again.');
       }
-    } catch {
-      setDeleteError(lang === 'hi' ? 'अज्ञात त्रुटि' : 'Unknown error');
+    } catch (error) {
+      setDeleteError(erpErrorMessage(error));
     } finally {
       setDeleting(false);
     }

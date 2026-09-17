@@ -180,20 +180,9 @@ export const salesOrderService = {
   },
 
   async delete(id: string): Promise<boolean> {
-    const supabase = createClient();
-    try {
-      // Delete items first (foreign key)
-      await supabase.from('sales_order_items').delete().eq('sales_order_id', id);
-      const { error } = await supabase.from('sales_orders').delete().eq('id', id);
-      if (error) {
-        if (isSchemaError(error)) throw error;
-        return false;
-      }
-      return true;
-    } catch (error: any) {
-      if (isSchemaError(error)) throw error;
-      return false;
-    }
+    const {error}=await createClient().rpc('erp_delete_sales_order',{p_id:id});
+    if(error)throw error;
+    return true;
   },
 
   async seedFromLocal(orders: SalesOrder[]): Promise<void> {

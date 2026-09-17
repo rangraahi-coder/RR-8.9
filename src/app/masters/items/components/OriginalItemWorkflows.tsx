@@ -1,4 +1,6 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Package,
@@ -682,7 +684,7 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
       await persistUrl(publicUrl);
       setMode('view');
     } catch (err: unknown) {
-      setUploadError(`Upload error: ${err instanceof Error ? err.message : String(err)}`);
+      setUploadError(`Upload error: ${erpErrorMessage(err)}`);
     } finally {
       setUploading(false);
     }
@@ -954,7 +956,7 @@ export function ItemDetailModal({
       });
       setEditMode(false);
     } catch (err: unknown) {
-      setSaveError(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setSaveError(`Error: ${erpErrorMessage(err)}`);
     } finally {
       setSaving(false);
     }
@@ -1884,7 +1886,7 @@ export function NewItemModal({
       onCreated();
       onClose();
     } catch (err: unknown) {
-      setSaveError(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setSaveError(`Error: ${erpErrorMessage(err)}`);
       if (err instanceof PendingItemSaveError) {
         toast.error(err.message, { duration: Infinity, action: { label: 'Recover previous save', onClick: () => {
           if (savingRef.current) return;

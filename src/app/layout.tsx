@@ -5,6 +5,8 @@ import '../styles/tailwind.css';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { RealtimeDataProvider } from '@/contexts/RealtimeDataContext';
+import RequestProgress from '@/components/RequestProgress';
+import RequestErrorNotice from '@/components/RequestErrorNotice';
 
 
 
@@ -29,6 +31,8 @@ export default function RootLayout({
       <head><meta name="google" content="notranslate" /></head>
       <body translate="no" className="notranslate">
         <AuthProvider>
+          <RequestErrorNotice />
+          <RequestProgress />
           <RealtimeDataProvider>
             {children}
           </RealtimeDataProvider>

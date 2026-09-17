@@ -1,4 +1,6 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
+
 import {toast} from 'sonner';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Eye, Package, Search, Pencil, Link2, CheckCircle2, Layers } from 'lucide-react';
@@ -142,7 +144,7 @@ export default function ContractorFinishingContent() {
     await componentAssemblyService.delete(deleteAssemblyTarget.id);
     setDeleteAssemblyTarget(null);
     await loadAssembly();
-    } catch(e) { toast.error(e instanceof Error ? e.message : String(e)); }
+    } catch(e) { toast.error(erpErrorMessage(e)); }
   }
 
   async function handleDeleteIssue() {
