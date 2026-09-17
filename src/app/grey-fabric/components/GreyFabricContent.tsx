@@ -29,7 +29,7 @@ const EMPTY_FORM = {
   unit: 'Metres',
   ratePerUnit: '',
   discount: '',
-  discountType: 'amount' as 'amount' | 'percent',
+  discountType: 'amount\' as \'amount\' | \'percent',
   thaanCount: '1',
   thaanLengths: [''] as string[],
   lValue: '100',

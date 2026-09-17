@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/client';
 import { CuttingEntry, SubComponentCutDetail } from '@/app/cutting/data/cuttingData';
-import { fabricInventoryService } from '@/lib/services/fabricInventoryService';
+
 import { embroideryVoucherService, CuttingStockItem } from '@/lib/services/embroideryVoucherService';
 
 // Represents a single emb-received cutting stock item consumed in a cutting entry

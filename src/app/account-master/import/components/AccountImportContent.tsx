@@ -15,6 +15,8 @@ import {
 import Link from 'next/link';
 import { ACCOUNTS_DATA, validateGSTIN, validateMobile } from '../../data/accountsData';
 
+type IssueSeverity = 'error' | 'warning';
+
 export default function AccountImportContent({ lang = 'en' }: { lang?: 'en' | 'hi' }) {
   const summary = useMemo(() => {
     const total = ACCOUNTS_DATA.length;
@@ -49,7 +51,7 @@ export default function AccountImportContent({ lang = 'en' }: { lang?: 'en' | 'h
   }, []);
 
   const allValidationIssues = useMemo(() => {
-    const issues: { id: string; name: string; field: string; issue: string; severity: 'error' | 'warning' }[] = [];
+    const issues: { id: string; name: string; field: string; issue: string; severity: IssueSeverity }[] = [];
     ACCOUNTS_DATA.forEach(a => {
       if (a.gstin && !validateGSTIN(a.gstin)) {
         issues.push({ id: a.id, name: a.name, field: 'GSTIN', issue: `Invalid GSTIN: ${a.gstin}`, severity: 'error' });
@@ -217,7 +219,7 @@ export default function AccountImportContent({ lang = 'en' }: { lang?: 'en' | 'h
         <div className="bg-card border border-border rounded-xl p-5">
           <h2 className="text-sm font-700 text-foreground mb-4 flex items-center gap-2">
             <Shield size={14} className="text-primary" />
-            GST & Filing Frequency
+            GST &amp; Filing Frequency
           </h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between p-3 bg-muted/40 rounded-lg">
@@ -347,7 +349,7 @@ export default function AccountImportContent({ lang = 'en' }: { lang?: 'en' | 'h
         <div className="flex-1">
           <p className="text-sm font-700 text-green-800">Import Completed Successfully</p>
           <p className="text-xs text-green-700 mt-0.5">
-            {summary.successfullyImported} accounts from Comp0012_ListofAccounts are now available in the Account Master. 
+            {summary.successfullyImported} accounts from Comp0012_ListofAccounts are now available in the Account Master.
             All accounts are searchable, editable, and ready for use across purchases, sales, and accounting.
           </p>
         </div>

@@ -54,8 +54,7 @@ async function send(pending: PendingSave, storage: Storage, key: string): Promis
     if (error) {
       if (definitelyRejected(error.code)) {
         storage.removeItem(key);
-        throw new Error(error.code === 'PGRST202'
-          ? 'The item-save database update is not installed yet. Install the reviewed migration before using this form.'
+        throw new Error(error.code === 'PGRST202' ?'The item-save database update is not installed yet. Install the reviewed migration before using this form.'
           : error.message);
       }
       throw new PendingItemSaveError('Save confirmation was not received. Recover the previous save before starting another one.');
@@ -101,7 +100,7 @@ export async function recoverPendingItemSave(): Promise<UpsertItemStyleFullResul
   inFlight = true;
   try {
     const { key, storage } = await context();
-    const pending = readPending(storage, key);
+    let pending = readPending(storage, key);
     if (!pending) throw new Error('No pending item save was found.');
     return await send(pending, storage, key);
   } finally { inFlight = false; }

@@ -5,7 +5,7 @@ import {useAuth} from '@/contexts/AuthContext';
 
 export default function ProfilePage(){
  const {verifiedUser,accessProfile}=useAuth();
- const name=accessProfile?.display_name||verifiedUser?.email?.split('@')[0]||'';
+ const name=accessProfile?.display_name||verifiedUser?.email?.split('@')?.[0]||'';
  return <AppLayout pageTitle="My profile" pageTitleHi="मेरी प्रोफाइल" render={lang=><section className="card-surface p-5 max-w-lg space-y-4">
   <h1 className="text-xl font-semibold">{lang==='hi'?'मेरी प्रोफाइल':'My profile'}</h1>
   <div><p className="text-sm text-muted-foreground">{lang==='hi'?'नाम':'Name'}</p><p className="font-medium">{name}</p></div>
