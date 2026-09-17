@@ -1,4 +1,5 @@
 'use client';
+import {reportFieldIssue} from '@/lib/issueNavigation';
 import {erpErrorMessage} from '@/lib/erpError';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -1819,7 +1820,7 @@ export function NewItemModal({
 
   async function handleSave() {
     if (savingRef.current) return;
-    if (!colour.trim()) { setSaveError('Colour is required.'); return; }
+    if (!colour.trim()) { setSaveError('Colour is required.'); reportFieldIssue('Colour is required.',document.getElementById('new-item-colour')); return; }
     savingRef.current = true;
     setSaving(true);
     setSaveError('');
@@ -1917,7 +1918,7 @@ export function NewItemModal({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
       onClick={handleBackdropClick}
     >
-      <div className="relative bg-white rounded-xl shadow-modal w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-border">
+      <div data-erp-error-anchor tabIndex={-1} className="relative bg-white rounded-xl shadow-modal w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden border border-border">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-slate-100/20 shrink-0">
           <div className="flex items-center gap-3">
@@ -2083,6 +2084,7 @@ export function NewItemModal({
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 font-medium">Colour <span className="text-red-500">*</span></label>
                 <select
+                  id="new-item-colour"
                   value={colour}
                   onChange={(e) => setColour(e.target.value)}
                   className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
