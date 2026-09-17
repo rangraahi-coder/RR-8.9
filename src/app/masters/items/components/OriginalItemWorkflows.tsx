@@ -3,30 +3,7 @@ import {reportFieldIssue} from '@/lib/issueNavigation';
 import {erpErrorMessage} from '@/lib/erpError';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  Package,
-  Tag,
-  Layers,
-  Search,
-  Upload,
-  Scissors,
-  Wrench,
-  ShoppingBag,
-  AlertTriangle,
-  CheckCircle2,
-  ExternalLink,
-  RefreshCw,
-  ImageIcon,
-  Pencil,
-  X,
-  Check,
-  Link as LinkIcon,
-  Plus,
-  Trash2,
-  GripVertical,
-  GitMerge,
-  ShieldAlert,
-} from 'lucide-react';
+import { Package, Tag, Layers, Upload, Scissors, Wrench, ShoppingBag, AlertTriangle, CheckCircle2, ExternalLink, RefreshCw, ImageIcon, Pencil, X, Check, Link as LinkIcon, Plus, Trash2, GripVertical, GitMerge, ShieldAlert,  } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase/client';
 const createClient = () => supabase;

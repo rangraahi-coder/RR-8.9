@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/client';
-import { fabricInventoryService } from '@/lib/services/fabricInventoryService';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
