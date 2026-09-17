@@ -327,7 +327,7 @@ function RealtimeDataInner({ children }: { children: React.ReactNode }) {
         fabricRes,
         subComponentsRes,
       ] = await Promise.all([
-        supabase.from('cutting_entries').select('id, total_pieces, status'),
+        supabase.from('cutting_entries').select('id, total_pieces_cut, status'),
         supabase.from('stitch_issue_vouchers').select('id, total_pieces'),
         supabase.from('stitch_receive_vouchers').select('id, total_pieces_received'),
         supabase.from('stitch_operators').select('id').eq('is_active', true),
@@ -364,7 +364,7 @@ function RealtimeDataInner({ children }: { children: React.ReactNode }) {
         const rows = cuttingRes.data;
         setCuttingMetrics({
           totalEntries: rows.length,
-          totalPiecesCut: rows.reduce((s: number, r: any) => s + (r.total_pieces || 0), 0),
+          totalPiecesCut: rows.reduce((s: number, r: any) => s + (Number(r.total_pieces_cut) || 0), 0),
           pendingEntries: rows.filter((r: any) => r.status === 'pending' || !r.status).length,
         });
       }

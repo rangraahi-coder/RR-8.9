@@ -25,8 +25,9 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="hi">
-      <body>
+    <html lang="en" translate="no" className="notranslate">
+      <head><meta name="google" content="notranslate" /></head>
+      <body translate="no" className="notranslate">
         <AuthProvider>
           <RealtimeDataProvider>
             {children}
