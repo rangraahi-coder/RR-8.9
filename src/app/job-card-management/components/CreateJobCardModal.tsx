@@ -1,4 +1,5 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Plus, Save, Package, ChevronDown, Search, ShoppingCart } from 'lucide-react';
@@ -76,11 +77,8 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
       setSoFetchLoading(true);
       try {
         const supabase = createClient();
-        const { data, error } = await supabase
-          .from('sales_orders')
-          .select('id, vch_no, party_name, status, total_qty')
-          .in('status', ['pending', 'in_production'])
-          .order('created_at', { ascending: false });
+        const { data, error } = await supabase.rpc('erp_pending_job_orders');
+        if(error) throw error;
         if (!cancelled && !error && data) {
           setPendingSalesOrders(
             data.map((r: any) => ({
@@ -88,15 +86,15 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
               vchNo: r.vch_no,
               partyName: r.party_name,
               status: r.status,
-              totalQty: r.total_qty || 0,
+              totalQty: Number(r.remaining_qty) || 0,
             }))
           );
         } else if (!cancelled && (error || !data)) {
           // Fallback: treat null/pending status as available
           setPendingSalesOrders([]);
         }
-      } catch {
-        if (!cancelled) setPendingSalesOrders([]);
+      } catch (err) {
+        if (!cancelled) { setPendingSalesOrders([]); toast.error(`Pending orders could not load: ${erpErrorMessage(err)}`); }
       } finally {
         if (!cancelled) setSoFetchLoading(false);
       }

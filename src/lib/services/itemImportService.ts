@@ -512,7 +512,7 @@ export async function getImportedVariants(jobCardNo?: string) {
   }
 
   const { data, error } = await query;
-  if (error) return [];
+  if (error) throw error;
   return data || [];
 }
 

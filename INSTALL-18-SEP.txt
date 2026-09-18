@@ -1,0 +1,38 @@
+Rangraahi Powerhouse — 18 September update
+
+INSTALL
+1. Supabase SQL Editor: run ITEM-AND-PENDING-FIX.sql once. It is rerunnable.
+2. GitHub: replace the complete src folder with the supplied src. Commit and let Vercel deploy.
+3. Check deployment Ready; reload the production URL.
+4. Do NOT run any RESET or old combined setup script. No users, permissions or transactions are reset by this update.
+
+FIXES
+- Pending Job Card order selector uses sales quantity minus linked Job Card quantity. Fully allocated orders disappear; partially allocated orders show the remainder.
+- Database guard rejects over-allocation, including a stale order selection. Existing records are not rewritten.
+- Item create/edit supports Add New Colour. Colours are normalized and deduplicated; after saving the item they are available from saved variants on other devices. Unsaved colours are not a standalone colour master.
+- Attachment URL updates check actual database errors and zero-row updates. Upload errors no longer silently pass as successful attachment saves.
+- Measurement link updates parent item state and synchronizes when the selected item changes.
+- Excel MIME types are added to the existing item-images bucket allow-list without removing old types or changing storage policies. Unrestricted allow-lists remain unrestricted.
+- Storage upload requests participate in loading/error feedback. Item load failures show an error instead of an empty item list.
+
+LOCAL VERIFICATION
+PASS production build, TypeScript and lint (see build warning note below).
+PASS 8 orders / 4 fully allocated => 4 pending.
+PASS 100 ordered / 40 allocated => 60 remaining; 61 more rejected.
+PASS pending order RPC permission denial; migration rerun; existing attachment URL preserved; Excel MIME allow-list.
+PASS 10 team profiles / 920 permission decisions.
+PASS settled voucher owner edit/delete locks; partial stitching receipts and over-receipt rollback; cutting stock and insufficient-stock rollback.
+PASS every edit audit actor/date/before-after; order/subcomponent overview; stage progress; dashboard settings permissions; auth recovery and redirect checks.
+Build has pre-existing tooling warnings; it completes successfully.
+
+LIMITS / REQUIRED LIVE CHECKS
+This is a local code and database-fixture regression check, not a claim that every live ERP workflow is error-free.
+No live database, deployed schema or storage access was available. Existing missing Excel files have NOT been recovered or confirmed deleted.
+Run ATTACHMENT-DIAGNOSTIC.sql and export its result tables if older attachments are still missing. Do not resend credential CSVs. It also identifies Job Cards without sales_order_id; these cannot safely be assigned to orders by name automatically.
+After deployment: open an existing sheet; upload XLSX, close/reopen, refresh and sign in again; verify the same sheet remains. If linking is denied, the exact error is needed (existing edit/settlement rules remain intact).
+Check the four real Job Cards are linked to the corresponding sales orders. Remaining quantity derives from those explicit links.
+Test new colour from both create and edit, then reopen on another device.
+Live storage policy compatibility, uploaded file accessibility, orphan-file recovery, concurrency across real sessions and mobile interaction still require live verification.
+
+GITHUB SUMMARY
+Fix item attachment save feedback and state persistence; allow Excel uploads in existing bucket; add custom item colours; calculate pending Job Card orders from unallocated quantities and reject over-allocation; extend loading/error feedback to storage requests.

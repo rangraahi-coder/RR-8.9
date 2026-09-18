@@ -853,10 +853,27 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
   );
 }
 
+function ColourPicker({value,onChange,id}: {value:string;onChange:(value:string)=>void;id?:string}) {
+  const [colours,setColours]=useState<string[]>(COLOUR_OPTIONS);
+  const [adding,setAdding]=useState(false);
+  const [draft,setDraft]=useState('');
+  useEffect(()=>{let active=true; void supabase.from('item_variants').select('colour').then(({data,error})=>{
+    if(active && !error) setColours([...new Set([...COLOUR_OPTIONS,...(data||[]).map(v=>String(v.colour||'').trim().toUpperCase()).filter(Boolean)])]);
+  });return ()=>{active=false;};},[]);
+  return <><select id={id} value={value} onChange={e=>{if(e.target.value==='__add__')setAdding(true);else onChange(e.target.value);}} className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-white">
+    <option value="">— Select Colour —</option>
+    {[...new Set([...colours,...(value?[value]:[])])].map(c=><option key={c} value={c}>{c}</option>)}
+    <option value="__add__">+ Add New Colour</option>
+  </select>{adding && <div className="flex gap-2"><input aria-label="New colour" value={draft} maxLength={80} onChange={e=>setDraft(e.target.value)} placeholder="Colour name" className="min-w-0 border rounded px-2 py-1" />
+    <button type="button" onClick={()=>{const c=draft.trim().replace(/\s+/g,' ').toUpperCase();if(!c)return;setColours(prev=>[...new Set([...prev,c])]);onChange(c);setAdding(false);setDraft('');}}>Add</button>
+    <button type="button" onClick={()=>setAdding(false)}>Cancel</button></div>}</>;
+}
+
 // ─── Item Detail Modal ────────────────────────────────────────────────────────
 
-function MeasurementSheet({ variantId, initialUrl }: { variantId: string; initialUrl?: string }) {
+function MeasurementSheet({ variantId, initialUrl, onSaved }: { variantId: string; initialUrl?: string; onSaved: (url:string)=>void }) {
   const [url, setUrl] = useState(initialUrl || '');
+  useEffect(()=>setUrl(initialUrl||''),[variantId,initialUrl]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   async function upload(file: File) {
@@ -873,7 +890,7 @@ function MeasurementSheet({ variantId, initialUrl }: { variantId: string; initia
       const saved = await supabase.from('item_variants').update({ measurement_sheet_url: data.publicUrl, updated_at: new Date().toISOString() })
         .eq('id', variantId).select('id').single();
       if (saved.error) throw new Error(saved.error.message);
-      setUrl(data.publicUrl); toast.success('Measurement sheet saved');
+      setUrl(data.publicUrl); onSaved(data.publicUrl); toast.success('Measurement sheet saved');
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Sheet upload failed'); }
     finally { setBusy(false); if (inputRef.current) inputRef.current.value = ''; }
   }
@@ -1089,7 +1106,7 @@ export function ItemDetailModal({
                 styleNo={variant.style_no || ''}
                 onSaved={(url) => onImageSaved(variant.id, url)}
               />
-              <MeasurementSheet variantId={variant.id} initialUrl={variant.measurement_sheet_url} />
+              <MeasurementSheet key={variant.id} variantId={variant.id} initialUrl={variant.measurement_sheet_url} onSaved={url=>onVariantUpdated?.({id:variant.id,measurement_sheet_url:url})} />
             </div>
 
             {/* Meta info */}
@@ -1101,14 +1118,7 @@ export function ItemDetailModal({
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-slate-500 font-medium">Colour <span className="text-red-500">*</span></label>
-                      <select
-                        value={editColour}
-                        onChange={(e) => setEditColour(e.target.value)}
-                        className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      >
-                        <option value="">— Select Colour —</option>
-                        {COLOUR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      <ColourPicker value={editColour} onChange={setEditColour} />
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-slate-500 font-medium">Style No.</label>
@@ -1863,9 +1873,10 @@ export function NewItemModal({
           if (uploadErr) toast.warning(`Item saved, image upload failed: ${uploadErr.message}`);
           if (!uploadErr) {
             const { data: { publicUrl } } = supabase.storage.from('item-images').getPublicUrl(path);
-            await supabase.from('item_variants').update({ variant_image_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', variantData.id);
+            const savedAttachment = await supabase.from('item_variants').update({ variant_image_url: publicUrl, updated_at: new Date().toISOString() }).eq('id', variantData.id).select('id').single();
+            if(savedAttachment.error) throw savedAttachment.error;
           }
-        } catch { toast.warning('Item saved, but its image was not uploaded. Open the item to retry.'); }
+        } catch (err) { toast.error(`Item saved, but image could not be linked: ${erpErrorMessage(err)}. Open the item to retry.`, {duration: Infinity}); }
       }
 
       // 2c. Upload measurement sheet if selected
@@ -1879,9 +1890,10 @@ export function NewItemModal({
           if (sheetUploadErr) toast.warning(`Item saved, measurement-sheet upload failed: ${sheetUploadErr.message}`);
           if (!sheetUploadErr) {
             const { data: { publicUrl: sheetUrl } } = supabase.storage.from('item-images').getPublicUrl(safeName);
-            await supabase.from('item_variants').update({ measurement_sheet_url: sheetUrl, updated_at: new Date().toISOString() }).eq('id', variantData.id);
+            const savedAttachment = await supabase.from('item_variants').update({ measurement_sheet_url: sheetUrl, updated_at: new Date().toISOString() }).eq('id', variantData.id).select('id').single();
+            if(savedAttachment.error) throw savedAttachment.error;
           }
-        } catch { toast.warning('Item saved, but its measurement sheet was not uploaded.'); }
+        } catch (err) { toast.error(`Item saved, but measurement sheet could not be linked: ${erpErrorMessage(err)}. Open this item to retry; do not create it again.`, {duration: Infinity}); }
       }
 
       onCreated();
@@ -2083,16 +2095,7 @@ export function NewItemModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 font-medium">Colour <span className="text-red-500">*</span></label>
-                <select
-                  id="new-item-colour"
-                  value={colour}
-                  onChange={(e) => setColour(e.target.value)}
-                  className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  autoFocus
-                >
-                  <option value="">— Select Colour —</option>
-                  {COLOUR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                <ColourPicker id="new-item-colour" value={colour} onChange={setColour} />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-slate-500 font-medium">Style No.</label>
