@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Package, TrendingDown, ArrowRight, X, ShoppingCart, RefreshCw, AlertCircle, Pencil, Trash2, Ruler } from 'lucide-react';
 import { GreyFabricPurchase } from '../data/greyFabricData';
@@ -411,7 +412,7 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                   const hasVariation = Math.abs(variation) > 0.001;
                   return (
                     <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                      <td className="px-4 py-3 font-600 text-primary text-xs">{entry.purchaseNo}</td>
+                      <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="grey_fabric_purchases" recordId={entry.id} label={entry.purchaseNo}/></td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{entry.date}</td>
                       <td className="px-4 py-3 font-500 text-foreground">{entry.supplierName}</td>
                       <td className="px-4 py-3">

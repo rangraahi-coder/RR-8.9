@@ -3,6 +3,14 @@
 
 export interface FabricStockItem {
   id: string;
+  voucherNo?: string | null;
+  voucherDate?: string | null;
+  entrySource?: string | null;
+  remarks?: string | null;
+  rollNo?: string | null;
+  fabricWidth?: string | null;
+  categoryLabel?: string | null;
+  jobCardId?: string | null;
   fabricName: string;
   unit: string;
   stockQty: number;

@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Package, Layers, FileText, Droplets, Scissors, Sparkles, ChevronDown, ChevronRight, Link2 } from 'lucide-react';
@@ -362,7 +363,7 @@ export default function FabricDetailContent({ id }: FabricDetailContentProps) {
             <div className="divide-y divide-border/50">
               {stockRows.map((row) => (
                 <div key={row.id} className="grid grid-cols-1 sm:grid-cols-[1.5fr_1fr_1fr_1fr_1fr] gap-3 px-5 py-3 items-center hover:bg-muted/20 transition-colors">
-                  <span className="text-xs font-700 text-foreground">{row.finishedFabricName || row.fabricName}</span>
+                  <span className="text-xs font-700 text-foreground"><VoucherDetails table="fabric_inventory" recordId={row.id} label={row.finishedFabricName || row.fabricName}/></span>
                   <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full w-fit font-500">{row.category}</span>
                   <span className="text-sm font-700 text-primary tabular-nums">{fmt(row.stockQty)} {row.unit}</span>
                   <span className="text-xs text-muted-foreground capitalize">{row.sourceModule?.replace('_', ' ') || 'manual'}</span>

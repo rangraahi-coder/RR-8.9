@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Search, Filter, RefreshCw, ArrowUpFromLine, ArrowDownToLine, Clock, CheckCircle2, AlertCircle, ChevronDown, Package, Layers, X, Calendar } from 'lucide-react';
@@ -574,7 +575,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
                 <tbody className="divide-y divide-border/40">
                   {filteredReceipts.map((receipt) => (
                     <tr key={receipt.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-5 py-3 font-700 text-emerald-700 font-body">{receipt.receiptNo}</td>
+                      <td className="px-5 py-3 font-700 text-emerald-700 font-body"><VoucherDetails table="printer_fabric_receipts" recordId={receipt.id} label={receipt.receiptNo}/></td>
                       <td className="px-4 py-3 text-muted-foreground font-body whitespace-nowrap">{receipt.date}</td>
                       <td className="px-4 py-3 font-600 text-foreground font-body">{receipt.printerAccount}</td>
                       <td className="px-4 py-3 font-body">

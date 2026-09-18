@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import {toast} from 'sonner';
 import React, { useState,useRef, useEffect, useCallback } from 'react';
 import { Plus, X, Truck, Package } from 'lucide-react';
@@ -265,7 +266,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
               ) : (
                 entries.map((entry) => (
                   <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                    <td className="px-4 py-3 font-600 text-primary text-xs">{entry.dispatchNo}</td>
+                    <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="dispatch_vouchers" recordId={entry.id} label={entry.dispatchNo}/></td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{entry.dispatchDate}</td>
                     <td className="px-4 py-3 font-500 text-foreground">{entry.partyName}</td>
                     <td className="px-4 py-3">

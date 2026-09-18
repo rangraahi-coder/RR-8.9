@@ -1,4 +1,6 @@
 'use client';
+import {useAuth} from '@/contexts/AuthContext';
+import VoucherHistory from '@/components/VoucherHistory';
 import {reportFieldIssue} from '@/lib/issueNavigation';
 import {erpErrorMessage} from '@/lib/erpError';
 
@@ -120,6 +122,7 @@ const SET_TYPE_COMPONENTS: Record<string, { name: string; qty: number; unit: str
 // ─── Composition Manager ──────────────────────────────────────────────────────
 
 function CompositionManager({ styleId, setType }: { styleId: string; setType: string }) {
+  const {can}=useAuth();
   const [compositions, setCompositions] = useState<ItemComposition[]>([]);
   const [loading, setLoading] = useState(true);
   const [addingNew, setAddingNew] = useState(false);
@@ -242,7 +245,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
             </span>
           )}
         </div>
-        <button
+        <button hidden={!can('items','edit')}
           onClick={(e) => { e.stopPropagation(); setAddingNew(true); setSaveError(null); }}
           type="button"
           className="flex items-center gap-1 px-2 py-1 rounded-md bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium transition-colors"
@@ -269,7 +272,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
             <p className="text-xs font-semibold text-purple-700 mb-2">Quick Add for {setType}</p>
             <div className="flex flex-wrap gap-1.5">
               {SET_TYPE_COMPONENTS[setType].map((comp) => (
-                <button
+                <button hidden={!can('items','edit')}
                   key={comp.name}
                   type="button"
                   onClick={async (e) => {
@@ -303,7 +306,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                   {comp.name}
                 </button>
               ))}
-              <button
+              <button hidden={!can('items','edit')}
                 type="button"
                 onClick={async (e) => {
                   e.stopPropagation();
@@ -395,7 +398,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                     >
                       {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
                     </select>
-                    <button
+                    <button hidden={!can('items','edit')}
                       onClick={(e) => { e.stopPropagation(); saveEdit(comp.id); }}
                       type="button"
                       disabled={saving}
@@ -403,7 +406,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                     >
                       <Check size={11} />
                     </button>
-                    <button
+                    <button hidden={!can('items','edit')}
                       onClick={(e) => { e.stopPropagation(); setEditingId(null); }}
                       type="button"
                       className="p-1 rounded border border-border text-slate-500 hover:bg-slate-100 transition-colors"
@@ -417,14 +420,14 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                     <span className="text-xs text-purple-600 font-semibold tabular-nums">{comp.qty_per_set}</span>
                     <span className="text-xs text-slate-500">{comp.unit}</span>
                     <span className="text-xs text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">per set</span>
-                    <button
+                    <button hidden={!can('items','edit')}
                       onClick={(e) => { e.stopPropagation(); startEdit(comp); }}
                       type="button"
                       className="p-1 rounded text-slate-500 hover:text-slate-800 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all"
                     >
                       <Pencil size={11} />
                     </button>
-                    <button
+                    <button hidden={!can('items','edit')}
                       onClick={(e) => { e.stopPropagation(); deleteComposition(comp.id); }}
                       type="button"
                       className="p-1 rounded text-slate-500 hover:text-danger hover:bg-danger-bg opacity-0 group-hover:opacity-100 transition-all"
@@ -466,7 +469,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
             >
               {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
             </select>
-            <button
+            <button hidden={!can('items','edit')}
               onClick={(e) => { e.stopPropagation(); addComposition(); }}
               type="button"
               disabled={saving || !newName.trim()}
@@ -474,7 +477,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
             >
               {saving ? <RefreshCw size={11} className="animate-spin" /> : <Check size={11} />}
             </button>
-            <button
+            <button hidden={!can('items','edit')}
               onClick={(e) => { e.stopPropagation(); setAddingNew(false); setSaveError(null); }}
               type="button"
               className="p-1 rounded border border-border text-slate-500 hover:bg-slate-100 transition-colors"
@@ -505,6 +508,7 @@ function InlineQtyEditor({
   line: DetailLine;
   onSaved: (id: string, qty: number | null) => void;
 }) {
+  const {can}=useAuth();
   const [value, setValue] = useState<string>(line.quantity != null ? String(line.quantity) : '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -515,6 +519,7 @@ function InlineQtyEditor({
   }, [line.quantity]);
 
   async function persist(raw: string) {
+    if(!can('items','edit'))return;
     const parsed = raw.trim() === '' ? null : Number(raw);
     if (parsed === line.quantity) return; // no change
     setSaving(true);
@@ -537,7 +542,7 @@ function InlineQtyEditor({
 
   return (
     <div className="flex items-center gap-1 min-w-0">
-      <input
+      <input readOnly={!can('items','edit')}
         type="number"
         value={value}
         onChange={(e) => { setValue(e.target.value); setError(false); setSaved(false); }}
@@ -616,6 +621,7 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
   styleNo: string;
   onSaved?: (newUrl: string) => void;
 }) {
+  const {can}=useAuth();
   const [mode, setMode] = useState<'view' | 'url' | 'upload'>('view');
   const [inputUrl, setInputUrl] = useState(imageUrl);
   const [currentUrl, setCurrentUrl] = useState(imageUrl);
@@ -633,6 +639,7 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
   }, [imageUrl]);
 
   async function persistUrl(url: string) {
+    if(!can('items','edit'))throw new Error('Item Edit permission required');
     const supabase = createClient();
     await supabase
       .from('item_variants')
@@ -723,23 +730,23 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
               onError={() => setImgError(true)}
             />
             <button
-              onClick={() => setMode('upload')}
+              disabled={!can('items','edit')} onClick={() => setMode('upload')}
               className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Change image"
+              hidden={!can('items','edit')} title="Change image"
             >
               <Pencil size={11} />
             </button>
           </>
         ) : (
           <button
-            onClick={() => setMode('upload')}
+            disabled={!can('items','edit')} onClick={() => setMode('upload')}
             className="flex flex-col items-center gap-1.5 text-slate-500 hover:text-slate-800 transition-colors p-4 w-full h-full"
           >
             <ImageIcon size={28} className="opacity-40" />
             <span className="text-xs text-center leading-tight">
               {imgError ? 'Image failed' : 'No image'}
               <br />
-              <span className="text-primary text-xs">Click to upload</span>
+              <span className="text-primary text-xs">{can('items','edit')?'Click to upload':'No image available'}</span>
             </span>
           </button>
         )}
@@ -833,7 +840,7 @@ function ItemImage({ variantId, imageUrl, colour, styleNo, onSaved }: {
               Save
             </button>
             <button
-              onClick={() => setMode('upload')}
+              disabled={!can('items','edit')} onClick={() => setMode('upload')}
               className="flex items-center gap-1 px-2.5 py-1 border border-border rounded-md text-xs text-slate-500 hover:bg-slate-100 transition-colors"
             >
               <Upload size={10} />
@@ -872,12 +879,14 @@ function ColourPicker({value,onChange,id}: {value:string;onChange:(value:string)
 // ─── Item Detail Modal ────────────────────────────────────────────────────────
 
 function MeasurementSheet({ variantId, initialUrl, onSaved }: { variantId: string; initialUrl?: string; onSaved: (url:string)=>void }) {
+  const {can}=useAuth();
+  const [downloading,setDownloading]=useState(false);
   const [url, setUrl] = useState(initialUrl || '');
   useEffect(()=>setUrl(initialUrl||''),[variantId,initialUrl]);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   async function upload(file: File) {
-    if (busy) return;
+    if (busy||!can('items','edit')) return;
     const allowed = ['pdf','xls','xlsx','csv','jpg','jpeg','png','webp'];
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     if (!allowed.includes(ext) || file.size > 10 * 1024 * 1024) { toast.error('Choose a PDF, spreadsheet or image under 10 MB.'); return; }
@@ -894,9 +903,11 @@ function MeasurementSheet({ variantId, initialUrl, onSaved }: { variantId: strin
     } catch (err) { toast.error(err instanceof Error ? err.message : 'Sheet upload failed'); }
     finally { setBusy(false); if (inputRef.current) inputRef.current.value = ''; }
   }
+  async function download(){if(downloading)return;setDownloading(true);try{const res=await fetch(url);if(!res.ok)throw new Error('Measurement sheet download failed. Please try again.');const blob=await res.blob();const link=document.createElement('a');const local=URL.createObjectURL(blob);link.href=local;link.download=decodeURIComponent(new URL(url).pathname.split('/').pop()||'measurement-sheet');document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(local),1000);}catch(error){toast.error(error instanceof Error?error.message:'Download failed');}finally{setDownloading(false);}}
   return <div className="mt-3 flex flex-col gap-2">
     {/^https?:\/\//.test(url) && <a href={url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary underline">View measurement sheet</a>}
-    <button type="button" className="btn-secondary text-xs" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? 'Uploading…' : url ? 'Replace measurement sheet' : 'Add measurement sheet'}</button>
+    {/^https?:\/\//.test(url)&&<button type="button" className="text-xs text-primary underline text-left" disabled={downloading} onClick={()=>void download()}>{downloading?'Downloading…':'Download measurement sheet'}</button>}
+    <button hidden={!can('items','edit')} type="button" className="btn-secondary text-xs" disabled={busy} onClick={() => inputRef.current?.click()}>{busy ? 'Uploading…' : url ? 'Replace measurement sheet' : 'Add measurement sheet'}</button>
     <input ref={inputRef} className="hidden" type="file" accept=".pdf,.xls,.xlsx,.csv,.jpg,.jpeg,.png,.webp" onChange={e => { const file=e.target.files?.[0]; if(file) void upload(file); }} />
   </div>;
 }
@@ -912,6 +923,7 @@ export function ItemDetailModal({
   onImageSaved: (variantId: string, newUrl: string) => void;
   onVariantUpdated?: (updated: Partial<Variant> & { id: string }) => void;
 }) {
+  const {can}=useAuth();
   const [editMode, setEditMode] = useState(false);
   const [editColour, setEditColour] = useState(variant.colour);
   const [editStyleNo, setEditStyleNo] = useState(variant.style_no || '');
@@ -924,6 +936,7 @@ export function ItemDetailModal({
   const reviewCount = variant.item_detail_lines.filter((l) => l.review_status !== 'ok').length;
 
   function startEdit() {
+    if(!can('items','edit'))return;
     setEditColour(variant.colour);
     setEditStyleNo(variant.style_no || '');
     setEditSetType(variant.set_type || '');
@@ -1048,7 +1061,7 @@ export function ItemDetailModal({
           <div className="flex items-center gap-2">
             {!editMode ? (
               <button
-                onClick={startEdit}
+                hidden={!can('items','edit')} onClick={startEdit}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-colors"
               >
                 <Pencil size={13} />
@@ -1106,6 +1119,7 @@ export function ItemDetailModal({
                 styleNo={variant.style_no || ''}
                 onSaved={(url) => onImageSaved(variant.id, url)}
               />
+              <VoucherHistory table="item_variants" recordId={variant.id}/>
               <MeasurementSheet key={variant.id} variantId={variant.id} initialUrl={variant.measurement_sheet_url} onSaved={url=>onVariantUpdated?.({id:variant.id,measurement_sheet_url:url})} />
             </div>
 

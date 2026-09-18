@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, X, ChevronDown, ChevronRight, Trash2, Pencil, CheckCircle, Scissors, Package, Sparkles, MoreHorizontal, Layers, ArrowUpFromLine, ArrowDownToLine, Eye, Search } from 'lucide-react';
 import {
@@ -702,13 +703,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                                   <ArrowDownToLine size={11} /> Receive
                                 </button>
                               )}
-                              <button
-                                onClick={() => setViewIssueVoucher(v)}
-                                title="View details"
-                                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                <Eye size={13} />
-                              </button>
+                              <VoucherDetails table="emb_issue_vouchers" recordId={v.id}/>
                               <button
                                 onClick={() => setEditIssueVoucher(v)}
                                 title="Edit voucher"
@@ -894,13 +889,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                           <td className="px-4 py-3 text-muted-foreground font-body">{v.styleName || '—'}</td>
                           <td className="px-4 py-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                onClick={() => setViewReceiveVoucher(v)}
-                                title="View details"
-                                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
-                              >
-                                <Eye size={13} />
-                              </button>
+                              <VoucherDetails table="emb_receive_vouchers" recordId={v.id}/>
                               <button
                                 onClick={() => setEditReceiveVoucher(v)}
                                 title="Edit voucher"

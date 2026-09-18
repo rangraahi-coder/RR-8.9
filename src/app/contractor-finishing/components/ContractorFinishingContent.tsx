@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import {erpErrorMessage} from '@/lib/erpError';
 
 import {toast} from 'sonner';
@@ -318,12 +319,7 @@ export default function ContractorFinishingContent() {
                         </td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1 justify-end">
-                            <button
-                              onClick={() => setViewAssemblyVoucher(v)}
-                              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Eye size={14} />
-                            </button>
+                            <VoucherDetails table="component_assembly_vouchers" recordId={v.id}/>
                             <button
                               disabled={!can('assembly','delete')&&!can('conversion','delete')} onClick={() => setDeleteAssemblyTarget(v)}
                               className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-colors"
@@ -405,9 +401,7 @@ export default function ContractorFinishingContent() {
                           </td>
                           <td className="py-2.5 px-3">
                             <div className="flex items-center gap-1 justify-end">
-                              <button onClick={() => setViewIssueVoucher(v)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                                <Eye size={14} />
-                              </button>
+                              <VoucherDetails table="contractor_issue_vouchers" recordId={v.id}/>
                               <button onClick={() => setEditIssueVoucher(v)} className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors">
                                 <Pencil size={14} />
                               </button>
@@ -473,9 +467,7 @@ export default function ContractorFinishingContent() {
                         <td className="py-2.5 px-3 text-muted-foreground font-body">{v.remarks || '—'}</td>
                         <td className="py-2.5 px-3">
                           <div className="flex items-center gap-1 justify-end">
-                            <button onClick={() => setViewReceiveVoucher(v)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <Eye size={14} />
-                            </button>
+                            <VoucherDetails table="contractor_receive_vouchers" recordId={v.id}/>
                             <button onClick={() => setEditReceiveVoucher(v)} className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-colors">
                               <Pencil size={14} />
                             </button>

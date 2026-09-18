@@ -1,4 +1,5 @@
 'use client';
+import {useAuth} from '@/contexts/AuthContext';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -13,6 +14,7 @@ import {
 } from './OriginalItemWorkflows';
 
 export default function ItemMasterClient() {
+  const {can}=useAuth();
   const [variants, setVariants] = useState<Variant[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,9 +57,9 @@ export default function ItemMasterClient() {
   return <>
     <PageHeader title="Item Master" breadcrumbs={[{ label: 'Rangraahi Powerhouse' }, { label: 'Masters' }, { label: 'Item Master' }]}
       actions={<div className="flex flex-wrap items-center gap-2">
-        <Link href="/masters/items/import" className="btn-secondary"><Upload size={15} />Import</Link>
-        <button className="btn-secondary" onClick={() => setMerging(true)}><GitMerge size={15} />Merge duplicates</button>
-        <button className="btn-primary" onClick={() => setCreating(true)}><Plus size={16} />Add Item</button>
+        <Link hidden={!can('items','create')} href="/masters/items/import" className="btn-secondary"><Upload size={15} />Import</Link>
+        <button hidden={!can('items','edit')} className="btn-secondary" onClick={() => setMerging(true)}><GitMerge size={15} />Merge duplicates</button>
+        <button hidden={!can('items','create')} className="btn-primary" onClick={() => setCreating(true)}><Plus size={16} />Add Item</button>
       </div>} />
     <div className="card mb-4 p-4">
       <div className="flex items-center gap-2 bg-slate-50 border border-border rounded-lg px-3 py-2 flex-1 min-w-48 max-w-sm">
@@ -86,7 +88,7 @@ export default function ItemMasterClient() {
                 <td className="table-td text-slate-500">{v.colour}</td>
                 <td className="table-td"><div className="flex items-center gap-1">
                   <button title="View / edit item" onClick={() => setSelected(v)} className="p-1.5 rounded text-slate-400 hover:text-primary hover:bg-primary/10"><Pencil size={14} /></button>
-                  <button title="Delete this colour variant" onClick={() => setDeleting(v)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 size={14} /></button>
+                  <button hidden={!can('items','delete')} title="Delete this colour variant" onClick={() => setDeleting(v)} className="p-1.5 rounded text-slate-400 hover:text-red-500 hover:bg-red-50"><Trash2 size={14} /></button>
                   <button title="Show material quantities" onClick={() => setExpanded(id => id === v.id ? null : v.id)} className="p-1.5 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100">{expanded === v.id ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
                 </div></td>
               </tr>

@@ -1,8 +1,12 @@
 'use client';
+import {useAuth} from '@/contexts/AuthContext';
+import {supabase} from '@/lib/supabase/client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { Plus, X, Scissors, ChevronDown, ChevronRight, Trash2, CheckCircle, Pencil, Package, AlertCircle, Search } from 'lucide-react';
 import { CuttingEntry, SubComponentCutDetail, SubComponentSizeDetail, RollDetail } from '../data/cuttingData';
 import Link from 'next/link';
+import { erpErrorMessage } from '@/lib/erpError';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { fabricInventoryService } from '@/lib/services/fabricInventoryService';
 import { useJobCards } from '@/lib/hooks/useJobCards';
@@ -83,6 +87,7 @@ function makeDefaultSubComponent(): SubComponentRow {
 }
 
 export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
+  const {can}=useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { jobCards, refresh: refreshJobCards } = useJobCards();
@@ -90,6 +95,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const [loadingEntries, setLoadingEntries] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -411,6 +417,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   };
 
   const resetForm = () => {
+    if (!saveInFlight.current) setSaving(false);
     setForm({ date: new Date().toISOString().split('T')[0], jobCardRef: '', styleName: '', styleNo: '', cuttingMaster: '', rejectionReason: '', remarks: '', cuttingPrice: '' });
     setSubComponents([makeDefaultSubComponent()]);
     setSaveError(null);
@@ -422,6 +429,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   // Populate form for editing
   const handleEditEntry = (entry: CuttingEntry) => {
+    if(!can('cutting','edit'))return;
     setEditingEntry(entry);
     setForm({
       date: entry.date,
@@ -540,6 +548,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saveInFlight.current) return;
     setSaveError(null);
 
     // Required field validation (matches QC/Finishing pattern)
@@ -561,8 +570,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       return;
     }
 
+    saveInFlight.current = true;
     setSaving(true);
     setSaveError(null);
+    try {
+    const access=await supabase.rpc('erp_voucher_access_reason',{p_module:'cutting',p_action:editingEntry?'edit':'create'});
+    if(access.error)throw access.error;
+    if(access.data)throw new Error(access.data);
 
     // Aggregate fabric totals across all sub-components
     const issued = subComponents.reduce((sum, sc) =>
@@ -692,6 +706,15 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       setSuccessMsg(`Cutting entry ${saved.entryNo} saved successfully!`);
       setTimeout(() => setSuccessMsg(null), 4000);
     }
+    } catch (error) {
+      const reason = erpErrorMessage(error);
+      setSaveError(/Voucher permission required/i.test(reason)
+        ? `Your account cannot ${editingEntry ? 'edit' : 'create'} Cutting entries. Ask the Owner to check Cutting ${editingEntry ? 'Edit' : 'Create'} permission and whether your account is active.`
+        : reason);
+    } finally {
+      saveInFlight.current = false;
+      setSaving(false);
+    }
   };
 
   const handleJobCardChange = (val: string) => {
@@ -724,6 +747,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   };
 
   const handleOpenModal = () => {
+    if(!can('cutting','create'))return;
     refreshJobCards();
     setSaveError(null);
     setShowModal(true);
@@ -745,7 +769,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
           <h1 className="text-xl font-700 text-foreground">Cutting</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Sub-component &amp; size-wise cutting — pieces cut per component tracked for downstream workflow</p>
         </div>
-        <button onClick={handleOpenModal} className="btn-primary flex items-center gap-2">
+        <button disabled={!can('cutting','create')} title={!can('cutting','create')?'Cutting Create permission is required':undefined} onClick={handleOpenModal} className="btn-primary flex items-center gap-2">
           <Plus size={14} />
           New Cutting Entry
         </button>
@@ -857,7 +881,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                         )}
                       </td>
                       <td className="px-4 py-3 font-600 text-primary text-xs">
-                        {entry.entryNo}
+                        <VoucherDetails table="cutting_entries" recordId={entry.id} label={entry.entryNo}/>
                         {entry.embReceiveItems && entry.embReceiveItems.length > 0 && (
                           <span className="ml-1.5 inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-600">
                             <Package size={9} />
@@ -890,7 +914,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
-                            onClick={() => handleEditEntry(entry)}
+                            disabled={!can('cutting','edit')} onClick={() => handleEditEntry(entry)}
                             className="p-1.5 rounded-lg hover:bg-primary/10 text-primary transition-colors"
                             title="Edit entry"
                           >
@@ -1017,7 +1041,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
               <h2 className="text-base font-700 text-foreground">
                 {editingEntry ? `Edit Entry — ${editingEntry.entryNo}` : 'New Cutting Entry'}
               </h2>
-              <button onClick={() => { setShowModal(false); resetForm(); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
+              <button disabled={saving} aria-label="Close cutting entry" onClick={() => { if (saveInFlight.current) return; setShowModal(false); resetForm(); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
 

@@ -1,6 +1,5 @@
 'use client';
 import MobileNavigation from '@/components/MobileNavigation';
-import VoucherHistory from '@/components/VoucherHistory';
 import React,{useEffect,useState} from 'react';
 import {useRouter,usePathname} from 'next/navigation';
 import Sidebar from '@/components/erp/Sidebar';
@@ -22,6 +21,6 @@ function Content({render,pageTitle,pageTitleHi}:Props){
  if(verifiedUser?.user_metadata?.must_change_password)return <div>Opening password change…</div>;
  if(loading||accessLoading||sessionStatus!=='signed-in')return <div className="min-h-screen flex items-center justify-center bg-background">Loading…</div>;
  if(!canAccessRoute(pathname))return <div className="p-6">Redirecting…</div>;
- return <div className="flex h-[100dvh] overflow-hidden bg-background"><div className="hidden md:block"><Sidebar collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)}/></div><div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${collapsed?'md:ml-16':'md:ml-64'}`}><TopBar onSearch={setSearch}/><main className="erp-workspace flex-1 overflow-y-auto scrollbar-thin pb-24 md:pb-0"><div className="px-3 py-4 md:px-6 md:py-6 xl:px-8 2xl:px-10 max-w-screen-2xl mx-auto"><div className="mb-5 text-sm text-muted-foreground">Rangraahi Powerhouse <span className="mx-2">›</span> {lang==='hi'?pageTitleHi:pageTitle}</div><VoucherHistory/>{render(lang,search)}</div></main><MobileNavigation/></div></div>;
+ return <div className="flex h-[100dvh] overflow-hidden bg-background"><div className="hidden md:block"><Sidebar collapsed={collapsed} onToggle={()=>setCollapsed(v=>!v)}/></div><div className={`flex-1 flex flex-col min-w-0 transition-all duration-300 ${collapsed?'md:ml-16':'md:ml-64'}`}><TopBar onSearch={setSearch}/><main className="erp-workspace flex-1 overflow-y-auto scrollbar-thin pb-24 md:pb-0"><div className="px-3 py-4 md:px-6 md:py-6 xl:px-8 2xl:px-10 max-w-screen-2xl mx-auto"><div className="mb-5 text-sm text-muted-foreground">Rangraahi Powerhouse <span className="mx-2">›</span> {lang==='hi'?pageTitleHi:pageTitle}</div>{render(lang,search)}</div></main><MobileNavigation/></div></div>;
 }
 export default function AppLayout(props:Props){return <LanguageProvider><Content {...props}/></LanguageProvider>;}

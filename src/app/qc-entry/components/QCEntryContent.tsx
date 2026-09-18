@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import {validateQCQuantities} from '@/lib/quantityValidation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, X, CheckCircle2, ChevronDown, ChevronRight, Trash2, ShieldCheck, Pencil, Search } from 'lucide-react';
@@ -544,7 +545,7 @@ export default function QCEntryContent() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-600 text-primary text-xs">{entry.entryNo}</td>
+                      <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="qc_entries" recordId={entry.id} label={entry.entryNo}/></td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{entry.date}</td>
                       <td className="px-4 py-3">
                         <Link href={`/item-master?search=${encodeURIComponent(entry.styleName)}`} className="text-primary hover:underline font-500 text-sm">{entry.styleName}</Link>

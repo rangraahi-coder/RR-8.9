@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Eye, Pencil, Trash2, ClipboardList, PackageCheck, User, ChevronDown, ChevronRight, X, Search, BarChart2, Filter } from 'lucide-react';
 import {
@@ -420,9 +421,7 @@ export default function StitchingContent() {
                           <td className="px-4 py-3 text-center"><StatusBadge status={v.status} /></td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-center gap-1.5">
-                              <button onClick={() => setViewIssueVoucher(v)} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="View">
-                                <Eye size={13} />
-                              </button>
+                              <VoucherDetails table="stitch_issue_vouchers" recordId={v.id}/>
                               <button onClick={() => { setEditIssueVoucher(v); setShowIssueModal(true); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Edit">
                                 <Pencil size={13} />
                               </button>
@@ -525,9 +524,7 @@ export default function StitchingContent() {
                         <td className="px-4 py-3 text-right tabular-nums font-700 text-success">{v.totalPiecesReceived}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center justify-center gap-1.5">
-                            <button onClick={() => setViewReceiveVoucher(v)} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="View">
-                              <Eye size={13} />
-                            </button>
+                            <VoucherDetails table="stitch_receive_vouchers" recordId={v.id}/>
                             <button onClick={() => { setEditReceiveVoucher(v); setShowReceiveModal(true); }} className="p-1.5 rounded-lg hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors" title="Edit">
                               <Pencil size={13} />
                             </button>

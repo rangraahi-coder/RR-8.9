@@ -1,4 +1,5 @@
 'use client';
+import VoucherHistory from '@/components/VoucherHistory';
 import React, { useState, useEffect } from 'react';
 import { X, AlertTriangle, CheckCircle2, Clock, User, Package, ChevronRight, Edit3, Flag, ExternalLink, Layers } from 'lucide-react';
 import Link from 'next/link';
@@ -310,7 +311,8 @@ export default function JobCardDetailDrawer({
                 </div>
               </div>
 
-              {/* Stage progression quick nav */}
+              <VoucherHistory table="job_cards" recordId={jobCard.id}/>
+{/* Stage progression quick nav */}
               <div className="p-4 bg-muted rounded-xl">
                 <p className="section-label mb-3">{lang === 'hi' ? 'अगली स्टेज पर भेजें' : 'Move to Next Stage'}</p>
                 <div className="flex gap-2 flex-wrap">

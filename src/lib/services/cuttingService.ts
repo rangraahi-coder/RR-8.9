@@ -272,6 +272,7 @@ export const cuttingService = {
 
     const {data:savedEntry,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'cutting',p_id:null,p_header:row,p_lines:entry.subComponentDetails.map(sc=>({component:sc.component,stitching_rate:sc.stitchingRate,total_pieces:sc.totalPieces,rejections:sc.rejections,net_pieces:sc.netPieces,size_breakdown:sc.sizes}))});
     if(error)throw new Error(error.message);
+    if(typeof window!=='undefined')window.dispatchEvent(new Event('erp-data-changed'));
     return rowToCuttingEntry(savedEntry, entry.subComponentDetails.map((sc) => ({
       component: sc.component, stitching_rate: sc.stitchingRate,
       total_pieces: sc.totalPieces,
@@ -329,6 +330,7 @@ export const cuttingService = {
 
     const {data:savedEntry,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'cutting',p_id:id,p_header:row,p_lines:entry.subComponentDetails.map(sc=>({component:sc.component,stitching_rate:sc.stitchingRate,total_pieces:sc.totalPieces,rejections:sc.rejections,net_pieces:sc.netPieces,size_breakdown:sc.sizes}))});
     if(error)throw new Error(error.message);
+    if(typeof window!=='undefined')window.dispatchEvent(new Event('erp-data-changed'));
     return rowToCuttingEntry(savedEntry, entry.subComponentDetails.map((sc) => ({
       component: sc.component, stitching_rate: sc.stitchingRate,
       total_pieces: sc.totalPieces,

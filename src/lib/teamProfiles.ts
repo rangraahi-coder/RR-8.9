@@ -514,6 +514,9 @@ export const TEAM_PROFILES = [
       "contractor": [
         "view",
         "create"
+      ],
+      "items": [
+        "view"
       ]
     }
   },
@@ -580,6 +583,9 @@ export const TEAM_PROFILES = [
       "dispatch": [
         "view",
         "create"
+      ],
+      "items": [
+        "view"
       ]
     }
   },

@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Plus, X, Scissors, ChevronDown, ChevronRight, Trash2,
@@ -588,7 +589,7 @@ export default function EmbroidaryCuttingContent({ lang = 'en' }: EmbCuttingCont
                       </td>
                       <td className="px-4 py-3 font-600 text-primary text-xs">
                         <span className="flex items-center gap-1.5">
-                          {entry.entryNo}
+                          <VoucherDetails table="emb_cutting_entries" recordId={entry.id} label={entry.entryNo}/>
                           <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-600">
                             <Sparkles size={8} />
                             EMB

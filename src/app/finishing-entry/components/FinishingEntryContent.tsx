@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, X, CheckCircle2, ChevronDown, ChevronRight, Trash2, PackageCheck, BadgeCheck } from 'lucide-react';
 import {
@@ -302,7 +303,7 @@ export default function FinishingEntryContent() {
                           </button>
                         )}
                       </td>
-                      <td className="px-4 py-3 font-600 text-primary text-xs">{entry.entryNo}</td>
+                      <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="finishing_entries" recordId={entry.id} label={entry.entryNo}/></td>
                       <td className="px-4 py-3 text-xs text-muted-foreground">{entry.date}</td>
                       <td className="px-4 py-3">
                         <span className="font-500 text-sm text-foreground">{entry.styleName}</span>

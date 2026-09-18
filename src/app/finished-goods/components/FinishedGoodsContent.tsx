@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Package, RefreshCw, Info } from 'lucide-react';
 
@@ -137,7 +138,7 @@ export default function FinishedGoodsContent({ lang = 'en' }: FinishedGoodsConte
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.colour || '—'}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{item.size || '—'}</td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{item.jobCardRef || '—'}</td>
-                    <td className="px-4 py-3 text-xs text-primary font-500">{item.sourceVoucherNo || '—'}</td>
+                    <td className="px-4 py-3 text-xs text-primary font-500"><VoucherDetails table="finished_goods" recordId={item.id} label={item.sourceVoucherNo || "View stock entry"}/></td>
                     <td className="px-4 py-3 text-right tabular-nums font-700 text-foreground">{item.totalPieces.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-700 text-success">{item.availableForDispatch.toLocaleString('en-IN')}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{item.dispatchedPieces.toLocaleString('en-IN')}</td>

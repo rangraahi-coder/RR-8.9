@@ -1,6 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import {ViewModal,EditModal} from './FabricVoucherModals';
+import {erpErrorMessage} from '@/lib/erpError';
+import type {FabricVoucherEdit} from '@/lib/services/fabricInventoryService';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import {useAuth} from '@/contexts/AuthContext';
 import { Plus, Trash2, Package, CheckCircle, List, PlusCircle, AlertCircle, Loader2, Eye, Pencil, X, Save, ArrowDownToLine, RefreshCw } from 'lucide-react';
@@ -58,185 +61,6 @@ function newLine(): FabricVoucherLine {
 
 function generateVoucherNo(count: number) {
   return `FV-${String(count + 1).padStart(3, '0')}`;
-}
-
-// ── View Modal ──────────────────────────────────────────────────────────────
-interface ViewModalProps {
-  fabricName: string;
-  entries: FabricStockItem[];
-  loading: boolean;
-  onClose: () => void;
-}
-
-function ViewModal({ fabricName, entries, loading, onClose }: ViewModalProps) {
-  const totalQty = entries.reduce((s, e) => s + e.stockQty, 0);
-  return (
-    <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Eye size={15} className="text-primary" />
-            </div>
-            <div>
-              <h3 className="text-sm font-700 text-foreground">{fabricName}</h3>
-              <p className="text-xs text-muted-foreground">Voucher Entries</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 size={24} className="animate-spin text-primary" />
-            </div>
-          ) : entries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Package size={24} className="text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No entries found</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {/* Column headers */}
-              <div className="grid grid-cols-[0.5fr_1.5fr_1fr_1fr] gap-2 px-3 py-1.5 bg-muted/40 rounded-lg">
-                <span className="text-xs font-600 text-muted-foreground">#</span>
-                <span className="text-xs font-600 text-muted-foreground">Category</span>
-                <span className="text-xs font-600 text-muted-foreground">Qty</span>
-                <span className="text-xs font-600 text-muted-foreground">Unit</span>
-              </div>
-              {entries.map((entry, idx) => (
-                <div key={entry.id} className="grid grid-cols-[0.5fr_1.5fr_1fr_1fr] gap-2 px-3 py-2.5 bg-background border border-border rounded-lg items-center">
-                  <span className="text-xs font-600 text-muted-foreground">{idx + 1}</span>
-                  <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full w-fit font-500">{entry.category}</span>
-                  <span className="text-sm font-700 text-foreground tabular-nums">{entry.stockQty.toFixed(2)}</span>
-                  <span className="text-xs text-muted-foreground">{entry.unit}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        {!loading && entries.length > 0 && (
-          <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-muted/20 rounded-b-2xl">
-            <span className="text-xs text-muted-foreground">{entries.length} entr{entries.length !== 1 ? 'ies' : 'y'}</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Total:</span>
-              <span className="text-sm font-700 text-primary tabular-nums">{totalQty.toFixed(2)} {entries[0]?.unit}</span>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Edit Modal ──────────────────────────────────────────────────────────────
-interface EditModalProps {
-  fabricName: string;
-  entries: FabricStockItem[];
-  loading: boolean;
-  saving: boolean;
-  onSave: (id: string, newQty: number) => Promise<void>;
-  onClose: () => void;
-}
-
-function EditModal({ fabricName, entries, loading, saving, onSave, onClose }: EditModalProps) {
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
-
-  useEffect(() => {
-    const initial: Record<string, string> = {};
-    entries.forEach((e) => { initial[e.id] = String(e.stockQty); });
-    setEditValues(initial);
-  }, [entries]);
-
-  const handleSave = async (id: string) => {
-    const val = parseFloat(editValues[id] || '0');
-    if (isNaN(val) || val < 0) return;
-    await onSave(id, val);
-  };
-
-  return (
-    <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
-              <Pencil size={15} className="text-amber-600" />
-            </div>
-            <div>
-              <h3 className="text-sm font-700 text-foreground">{fabricName}</h3>
-              <p className="text-xs text-muted-foreground">Edit Stock Quantities</p>
-            </div>
-          </div>
-          <button onClick={onClose} disabled={saving} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors text-muted-foreground disabled:opacity-50">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 size={24} className="animate-spin text-primary" />
-            </div>
-          ) : entries.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-2">
-              <Package size={24} className="text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No entries found</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <p className="text-xs text-muted-foreground mb-1">Update the quantity for each entry and click Save.</p>
-              {entries.map((entry, idx) => (
-                <div key={entry.id} className="flex items-center gap-3 px-3 py-2.5 bg-background border border-border rounded-lg">
-                  <span className="text-xs font-600 text-muted-foreground w-5 text-center">{idx + 1}</span>
-                  <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full font-500 flex-1">{entry.category}</span>
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editValues[entry.id] ?? String(entry.stockQty)}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev, [entry.id]: e.target.value }))}
-                      className="w-24 px-2.5 py-1.5 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 tabular-nums"
-                      disabled={saving}
-                    />
-                    <span className="text-xs text-muted-foreground">{entry.unit}</span>
-                  </div>
-                  <button
-                    onClick={() => handleSave(entry.id)}
-                    disabled={saving}
-                    className="flex items-center gap-1 px-2.5 py-1.5 bg-primary text-white text-xs font-600 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 size={11} className="animate-spin" /> : <Save size={11} />}
-                    Save
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end px-5 py-3 border-t border-border bg-muted/20 rounded-b-2xl">
-          <button
-            onClick={onClose}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-600 text-muted-foreground border border-border rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 // ── Delete Modal ────────────────────────────────────────────────────────────
@@ -535,6 +359,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [modalFabricName, setModalFabricName] = useState<string>('');
   const [modalEntries, setModalEntries] = useState<FabricStockItem[]>([]);
+  const [modalError,setModalError]=useState('');
   const [modalLoading, setModalLoading] = useState(false);
   const [modalSaving, setModalSaving] = useState(false);
   const [modalDeleting, setModalDeleting] = useState(false);
@@ -573,10 +398,12 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   // Load entries for a specific fabric name (for modals)
   const loadModalEntries = useCallback(async (fabricName: string) => {
     setModalLoading(true);
+    setModalError('');
     try {
       const entries = await fabricInventoryService.getEntriesByFabricName(fabricName);
       setModalEntries(entries);
-    } catch {
+    } catch (error) {
+      setModalError(erpErrorMessage(error));
       setModalEntries([]);
     } finally {
       setModalLoading(false);
@@ -596,14 +423,11 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     setModalEntries([]);
   };
 
-  const handleEditSave = async (id: string, newQty: number) => {
+  const handleEditSave = async (id: string, values: FabricVoucherEdit) => {
+    if(modalSaving)return;
     setModalSaving(true);
-    const ok = await fabricInventoryService.update(id, newQty);
-    if (ok) {
-      await loadModalEntries(modalFabricName);
-      await loadInventory();
-    }
-    setModalSaving(false);
+    try { await fabricInventoryService.updateVoucher(id,values); await loadInventory(); closeModal(); }
+    finally {setModalSaving(false);}
   };
 
   const handleDelete = async (id: string) => {
@@ -697,6 +521,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
         voucherDate,
         source: source.trim() || 'Direct Entry',
         remarks: roll.remarks,
+        rollNo: roll.rollNo, width: line.width,
       }))
     );
 
@@ -822,7 +647,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     <div className="flex flex-col gap-6 p-6 max-w-5xl mx-auto">
       {/* Modals */}
       {activeModal === 'view' && (
-        <ViewModal
+        <ViewModal error={modalError}
           fabricName={modalFabricName}
           entries={modalEntries}
           loading={modalLoading}
@@ -830,7 +655,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
         />
       )}
       {activeModal === 'edit' && (
-        <EditModal
+        <EditModal error={modalError}
           fabricName={modalFabricName}
           entries={modalEntries}
           loading={modalLoading}

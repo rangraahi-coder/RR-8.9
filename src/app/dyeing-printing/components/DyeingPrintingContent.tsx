@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Plus, X, Droplets, Pencil, Trash2, CheckCircle, Clock, FlaskConical, Printer, Package, AlertCircle, Search, Ruler, TrendingDown, ArrowUpFromLine, Eye } from 'lucide-react';
 import { DyeingProcessingEntry, DyeingProcessType, DYEING_PROCESS_TYPE_LABELS } from '../data/dyeingData';
@@ -1228,7 +1229,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                     ) : (
                       filteredDyeingEntries.map((entry) => (
                         <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                          <td className="px-4 py-3 font-600 text-primary text-xs">{entry.entryNo}</td>
+                          <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="dyeing_processing_entries" recordId={entry.id} label={entry.entryNo}/></td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{entry.date}</td>
                           <td className="px-4 py-3">
                             <span className="text-xs font-600 text-foreground">{entry.grayFabricRef}</span>
@@ -1343,13 +1344,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => setViewIssue(issue)}
-                              title="View Details"
-                              className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-primary transition-colors"
-                            >
-                              <Eye size={13} />
-                            </button>
+                            <VoucherDetails table="printer_fabric_issues" recordId={issue.id}/>
                             <button
                               onClick={() => openEditIssueModal(issue)}
                               title="Edit Issue"

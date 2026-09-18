@@ -8,9 +8,14 @@ export interface FabricVoucherInsert {
   stockQty: number;
   voucherNo: string;
   voucherDate: string;
+  rollNo?: string;
+  width?: string;
+  jobCardId?: string | null;
   source?: string;
   remarks?: string;
 }
+
+export interface FabricVoucherEdit extends FabricVoucherInsert { categoryLabel?: string; updatedAt: string | null; }
 
 /** Payload for posting a processed-fabric receipt to finished inventory */
 export interface FinishedFabricReceiptPost {
@@ -61,6 +66,7 @@ function isSchemaError(error: any): boolean {
 function rowToFabric(row: any): FabricStockItem {
   return {
     id: row.id,
+    voucherNo: row.voucher_no, voucherDate: row.voucher_date, entrySource: row.entry_source, remarks: row.remarks, rollNo: row.roll_no, fabricWidth: row.fabric_width, categoryLabel: row.category_label, jobCardId: row.job_card_id,
     fabricName: row.finished_fabric_name || row.fabric_name,
     unit: row.unit || 'Metre',
     stockQty: Number(row.stock_qty) || 0,
@@ -178,6 +184,7 @@ export const fabricInventoryService = {
         return { success: false, error: error.message };
       }
 
+      if(typeof window!=='undefined')window.dispatchEvent(new Event('erp-data-changed'));
       return { success: true };
     } catch (err: any) {
       console.error('[fabricInventoryService.postFinishedFabricReceipt] exception:', err);
@@ -201,6 +208,7 @@ export const fabricInventoryService = {
         status: 'ready_to_cut',
         inventory_stage: 'finished',
         source_module: 'manual',
+        voucher_no: entry.voucherNo.trim(), voucher_date: entry.voucherDate, entry_source: entry.source||null, remarks: entry.remarks||null, roll_no: entry.rollNo||null, fabric_width: entry.width||null, category_label: entry.category, job_card_id: entry.jobCardId||null,
       }));
 
       const { error } = await supabase.from('fabric_inventory').insert(rows);
@@ -208,11 +216,18 @@ export const fabricInventoryService = {
         console.error('Fabric inventory insert error:', error);
         return { success: false, error: error.message };
       }
+      if(typeof window!=='undefined')window.dispatchEvent(new Event('erp-data-changed'));
       return { success: true };
     } catch (err: any) {
       console.error('Fabric inventory insert exception:', err);
       return { success: false, error: err?.message || 'Unknown error' };
     }
+  },
+
+  async updateVoucher(id: string, v: FabricVoucherEdit): Promise<void> {
+    const {error}=await createClient().rpc('erp_edit_manual_fabric',{p_id:id,p_updated_at:v.updatedAt,p_values:{fabric_name:v.fabricName,category:normalizeCategory(v.category),category_label:v.categoryLabel||v.category,unit:v.unit,stock_qty:v.stockQty,voucher_no:v.voucherNo,voucher_date:v.voucherDate,entry_source:v.source||null,remarks:v.remarks||null,roll_no:v.rollNo||null,fabric_width:v.width||null,job_card_id:v.jobCardId||null}});
+    if(error)throw error;
+    if(typeof window!=='undefined')window.dispatchEvent(new Event('erp-data-changed'));
   },
 
   async update(id: string, stockQty: number): Promise<boolean> {
@@ -322,23 +337,12 @@ export const fabricInventoryService = {
    * Used by detail view and modals.
    */
   async getEntriesByFabricName(fabricName: string): Promise<FabricStockItem[]> {
-    const supabase = createClient();
-    try {
-      const { data, error } = await supabase
-        .from('fabric_inventory')
-        .select('*')
-        .eq('inventory_stage', 'finished')
-        .or(`finished_fabric_name.ilike.${fabricName},fabric_name.ilike.${fabricName}`)
-        .order('created_at', { ascending: false });
-      if (error) {
-        if (isSchemaError(error)) throw error;
-        return [];
-      }
-      return (data || []).map(rowToFabric);
-    } catch (error: any) {
-      if (isSchemaError(error)) throw error;
-      return [];
+    const rows:any[]=[];
+    for(let offset=0;;offset+=500){
+      const {data,error}=await createClient().from('fabric_inventory').select('*').eq('inventory_stage','finished').order('id').range(offset,offset+499);
+      if(error)throw error; rows.push(...(data||[])); if(!data||data.length<500)break;
     }
+    return rows.filter(row=>(row.finished_fabric_name||row.fabric_name)===fabricName).map(rowToFabric);
   },
 
   /**

@@ -1,4 +1,5 @@
 'use client';
+import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useMemo, useEffect } from 'react';
 import {erpErrorMessage} from '@/lib/erpError';
 import Link from 'next/link';
@@ -377,12 +378,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                         {order.date}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => setSelectedOrder(order)}
-                          className="text-xs font-600 text-primary font-mono hover:underline"
-                        >
-                          {order.vchNo}
-                        </button>
+                        <VoucherDetails table="sales_orders" recordId={order.id} label={order.vchNo}/>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
@@ -440,13 +436,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
-                            title={lang === 'hi' ? 'विवरण देखें' : 'View Details'}
-                          >
-                            <Eye size={13} />
-                          </button>
+                          <VoucherDetails table="sales_orders" recordId={order.id}/>
                           <button
                             onClick={() => setEditOrder(order)}
                             className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-all"
