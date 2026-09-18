@@ -538,7 +538,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
 
       {/* Delete Confirmation Modal */}
       {deleteOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => !deleting && setDeleteOrder(null)} />
           <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6">
             <div className="flex items-start gap-3 mb-4">
@@ -593,7 +593,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
 
       {/* Order Detail Drawer */}
       {selectedOrder && (
-        <div className="fixed inset-0 z-50 flex">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex">
           <div className="flex-1 bg-black/40" onClick={() => setSelectedOrder(null)} />
           <div className="w-full max-w-lg bg-card border-l border-border h-full overflow-y-auto flex flex-col">
             {/* Drawer Header */}

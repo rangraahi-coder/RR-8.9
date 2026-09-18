@@ -1378,7 +1378,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
 
       {/* Add / Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-2xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-base font-700 text-foreground">
@@ -1997,7 +1997,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
 
       {/* Delete Confirm */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-700 text-foreground">Delete Entry?</h3>
             <p className="text-sm text-muted-foreground">
@@ -2108,7 +2108,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
 
       {/* Delete Printer Issue Confirm */}
       {deleteIssueTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-700 text-foreground">Delete Issue?</h3>
             <p className="text-sm text-muted-foreground">

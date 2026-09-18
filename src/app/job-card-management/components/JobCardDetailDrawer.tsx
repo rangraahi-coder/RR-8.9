@@ -149,7 +149,7 @@ export default function JobCardDetailDrawer({
       : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="erp-modal-enter fixed inset-0 z-50 flex justify-end">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-foreground/30 backdrop-blur-sm"

@@ -1104,7 +1104,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* Add/Edit Entry Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-white z-10">
               <h2 className="text-base font-700 text-foreground font-display">
@@ -1492,7 +1492,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* Delete Confirm */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="text-base font-700 text-foreground font-display mb-2">Delete Entry</h3>
             <p className="text-sm text-muted-foreground font-body mb-5">
@@ -1553,7 +1553,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* View Issue Voucher Modal */}
       {viewIssueVoucher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-white z-10">
               <div>
@@ -1688,7 +1688,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* Delete Issue Voucher Confirm */}
       {deleteIssueTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="text-base font-700 text-foreground font-display mb-2">Delete Issue Voucher?</h3>
             <p className="text-sm text-muted-foreground font-body mb-5">
@@ -1706,7 +1706,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* View Receive Voucher Modal */}
       {viewReceiveVoucher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-white z-10">
               <div>
@@ -1843,7 +1843,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
       {/* Delete Receive Voucher Confirm */}
       {deleteReceiveTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
             <h3 className="text-base font-700 text-foreground font-display mb-2">Delete Receive Voucher?</h3>
             <p className="text-sm text-muted-foreground font-body mb-5">

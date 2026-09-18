@@ -253,7 +253,7 @@ export default function OperatorMasterContent() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-base font-700 text-foreground">{editingOp ? 'Edit Operator' : 'Add Operator'}</h2>
@@ -312,7 +312,7 @@ export default function OperatorMasterContent() {
 
       {/* View Modal */}
       {viewTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
               <h2 className="text-base font-700 text-foreground">Operator Details</h2>
@@ -370,7 +370,7 @@ export default function OperatorMasterContent() {
 
       {/* Delete Confirm */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-700 text-foreground">Delete Operator?</h3>
             <p className="text-sm text-muted-foreground">

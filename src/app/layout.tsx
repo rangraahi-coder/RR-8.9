@@ -39,6 +39,7 @@ export default function RootLayout({
         </AuthProvider>
         <Toaster
           position="bottom-right"
+          icons={{success:<svg className="erp-success-tick" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="m7 12 3 3 7-7"/></svg>}}
           toastOptions={{
             style: {
               background: 'var(--card)',

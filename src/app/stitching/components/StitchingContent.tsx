@@ -805,7 +805,7 @@ export default function StitchingContent() {
 
       {/* View Issue Voucher Detail */}
       {viewIssueVoucher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card">
               <h2 className="text-base font-700 text-foreground">Issue Voucher — {viewIssueVoucher.voucherNo}</h2>
@@ -847,7 +847,7 @@ export default function StitchingContent() {
 
       {/* View Receive Voucher Detail */}
       {viewReceiveVoucher && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card">
               <h2 className="text-base font-700 text-foreground">Receive Voucher — {viewReceiveVoucher.voucherNo}</h2>
@@ -889,7 +889,7 @@ export default function StitchingContent() {
 
       {/* Delete Issue Confirm */}
       {deleteIssueTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-700 text-foreground">Delete Issue Voucher?</h3>
             <p className="text-sm text-muted-foreground">Delete <span className="font-600 text-foreground">{deleteIssueTarget.voucherNo}</span>? This cannot be undone.</p>
@@ -905,7 +905,7 @@ export default function StitchingContent() {
 
       {/* Delete Receive Confirm */}
       {deleteReceiveTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-sm p-6 flex flex-col gap-4">
             <h3 className="text-base font-700 text-foreground">Delete Receive Voucher?</h3>
             <p className="text-sm text-muted-foreground">Delete <span className="font-600 text-foreground">{deleteReceiveTarget.voucherNo}</span>? This will revert pending quantities on the Issue Voucher.</p>

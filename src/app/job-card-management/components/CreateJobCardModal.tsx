@@ -456,7 +456,7 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
   const watchedData = watch();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-card border border-border rounded-2xl shadow-modal w-full max-w-xl fade-in overflow-hidden">
         {/* Header */}

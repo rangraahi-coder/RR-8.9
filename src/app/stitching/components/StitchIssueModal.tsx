@@ -280,14 +280,14 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40">
         <div className="bg-card rounded-2xl p-8 text-sm text-muted-foreground">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+    <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="bg-card rounded-2xl shadow-modal w-full max-w-2xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border sticky top-0 bg-card z-10">
           <div>
