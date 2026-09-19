@@ -100,7 +100,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
       setLoading(false);
     }
     init();
-  }, [editVoucher]);
+  }, [editVoucher?.id]);
 
   // When stitch receive ref changes, load full details with size breakdown
   useEffect(() => {
@@ -211,7 +211,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     }
     loadRef();
     return () => { cancelled = true; };
-  }, [selectedStitchRefId, editVoucher]);
+  }, [selectedStitchRefId, editVoucher?.id]);
 
   function updateIssuedQty(tempId: string, value: number) {
     setIssueRows((prev) =>

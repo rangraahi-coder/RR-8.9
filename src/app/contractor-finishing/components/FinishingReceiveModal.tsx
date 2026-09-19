@@ -73,7 +73,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
       setLoading(false);
     }
     init();
-  }, [editVoucher]);
+  }, [editVoucher?.id]);
 
   // When stitch receive ref changes, load full details with size breakdown
   useEffect(() => {
@@ -167,7 +167,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
     }
     loadRef();
     return () => { cancelled = true; };
-  }, [selectedStitchRefId, editVoucher]);
+  }, [selectedStitchRefId, editVoucher?.id]);
 
   function updateReceivedQty(tempId: string, value: number) {
     setComponentRows((prev) =>

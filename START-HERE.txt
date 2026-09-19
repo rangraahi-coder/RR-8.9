@@ -1,0 +1,39 @@
+Rangraahi Form / Background Refresh Fix
+
+Apply AFTER the previously supplied dashboard/size and receipt-balance updates.
+No SQL or database migration is required for this patch.
+
+1. Extract this ZIP.
+2. Copy the included src files into the SAME paths in your RR-8.9 checkout.
+   Merge the folders and replace only matching files; do not delete your existing src folder.
+3. Commit and push with GitHub Desktop. Wait for Vercel deployment to finish.
+4. After saving current work, reload the app once to load this release.
+
+What changed:
+- Same-user auth refresh keeps the current page/form mounted while verifying.
+- Unchanged permission responses preserve callback identity instead of restarting forms.
+- Receipt/edit forms initialize by voucher identity, not refreshed list/object identity.
+- Account refresh and failed saves retain the open form.
+- Read-only report RPCs no longer trigger blocking write overlays.
+- Background read indication is delayed, compact and nonblocking; saves retain waiting feedback.
+- Dashboard totals and report content stay visible during successful background updates.
+
+Verification: automated same-user refresh/draft retention, stable permission callback,
+revoked permissions, logout, read/write request classification; TypeScript and production build.
+Live multi-user verification on your deployment is still required.
+Try a partially filled Item, Account and Cutting/Stitching form: switch tabs, return,
+and wait through the 30-second refresh. Check the draft, selected source and cursor.
+
+Limit: this patch preserves forms during normal successful background/session refresh.
+It does not implement durable offline drafts or recovery after browser reload, tab discard,
+logout, or failed authentication/access verification.
+No users, permissions, transaction records or database values are changed by this patch.
+
+GitHub Summary:
+Preserve ERP forms during session refresh and quiet background updates
+
+GitHub Description:
+Prevent same-user session verification and unchanged permission refreshes from remounting
+working forms. Keep voucher initialization tied to record identity and preserve Account
+Master drafts after failed saves. Classify reporting RPCs as reads, reduce background
+loading disruption, and retain dashboard content while refresh requests complete.
