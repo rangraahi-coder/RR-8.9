@@ -1419,9 +1419,9 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                         </div>
 
                         {sc.rolls.map((roll, rollIdx) => {
-                          const selectedInOtherRows = sc.rolls
-                            .filter((r) => r.id !== roll.id && r.fabricRollId)
-                            .map((r) => r.fabricRollId);
+                          const selectedInOtherRows = subComponents.flatMap((component) => component.rolls
+                            .filter((r) => !(component.id === sc.id && r.id === roll.id) && r.fabricRollId)
+                            .map((r) => r.fabricRollId));
                           const availableRolls = rollsForFabric.filter((r) => !selectedInOtherRows.includes(r.id));
                           const selectedRollItem = rollsForFabric.find((r) => r.id === roll.fabricRollId);
                           const issuedNum = parseFloat(roll.fabricIssuedQty) || 0;
@@ -1460,7 +1460,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                     <option value="">-- Select Roll / Lot --</option>
                                     {availableRolls.map((r, idx) => (
                                       <option key={r.id} value={r.id}>
-                                        Roll {idx + 1} — {r.stockQty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {r.unit} available
+                                        {r.rollNo || (r.sourceModule === 'printer_receipt' ? 'Combined receipt balance (roll split not recorded)' : 'Stock lot')} · {r.sourceReceiptId || r.voucherNo || r.id.slice(0,8)} — {r.stockQty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {r.unit} available
                                       </option>
                                     ))}
                                   </select>
