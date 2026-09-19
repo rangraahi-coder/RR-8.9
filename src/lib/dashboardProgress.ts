@@ -13,7 +13,7 @@ export const componentKey=(s:unknown)=>String(s||'').trim().toLowerCase();
 type Voucher=Record<string,any>;
 // Match receipts to their own issue voucher, process and unit. Never offset one issue's deficit with another's surplus.
 export function processProgress(issues:Voucher[],receipts:Voucher[],job:{id:string;job_card_no:string},process:string){
- const issued=issues.filter(v=>(v.job_card_ref===job.job_card_no||v.job_card_id===job.id)&&(v.process_type||'embroidery')===process&&v.status!=='cancelled');
+ const issued=issues.filter(v=>(v.job_card_id?v.job_card_id===job.id:v.job_card_ref===job.job_card_no)&&(v.process_type||'embroidery')===process&&v.status!=='cancelled');
  const byId=new Map(issued.map(v=>[v.id,v]));
  const receivedVouchers=receipts.filter(v=>byId.has(v.issue_voucher_id)&&v.status!=='cancelled');
  const required:Record<string,number>={},received:Record<string,number>={},rows:Voucher[]=[];
@@ -40,4 +40,19 @@ export function processProgress(issues:Voucher[],receipts:Voucher[],job:{id:stri
  const activity=[...issued,...receivedVouchers];
  const last=activity.map(r=>r.updated_at||r.created_at||r.voucher_date||'').filter(Boolean).sort().at(-1)||'';
  return {required,received,rows,issues:issued,last,started:activity.length>0,problem};
+}
+
+// Production targets come from usable cut pieces, never the order plan.
+export function cuttingTargets(headers:Voucher[],lines:Voucher[],job:{id:string;job_card_no:string}){
+ const ids=new Set(headers.filter(h=>h.status!=='cancelled'&&(h.job_card_id?h.job_card_id===job.id:h.job_card_ref===job.job_card_no)).map(h=>h.id));
+ const targets:Record<string,number>={};const seen=new Set<string>();
+ for(const line of lines){
+  if(!ids.has(line.cutting_entry_id)||(line.id&&seen.has(line.id)))continue;
+  if(line.id)seen.add(line.id);
+  const key=componentKey(line.component);if(!key)continue;
+  const qty=Number(line.net_pieces??Math.max(0,Number(line.total_pieces||0)-Number(line.rejections||0)));
+  if(!Number.isFinite(qty)||qty<0)throw new Error('Invalid cutting quantity. Review the source cutting voucher.');
+  targets[key]=(targets[key]||0)+qty;
+ }
+ return targets;
 }

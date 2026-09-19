@@ -23,3 +23,13 @@ const mismatch=processProgress(issues,[{...receipts[0],cutting_items:[{component
 assert.equal(progressState({x:10},{x:5},true,'2026-09-11T12:00:00Z',now,4),'active');
 assert.equal(progressState({x:10},{x:5},true,'2026-09-10T12:00:00Z',now,4),'stalled');
 console.log('PASS: independent processes, issue linkage, mixed units, unit mismatch and configurable threshold');
+const {cuttingTargets}=m.exports;
+const cuts=[{id:'c1',job_card_ref:'JC1'},{id:'c2',job_card_ref:'JC1'},{id:'cancel',job_card_ref:'JC1',status:'cancelled'},{id:'other',job_card_id:'other',job_card_ref:'JC1'}];
+const lines=[{id:'a',cutting_entry_id:'c1',component:' Pant ',net_pieces:300},{id:'b',cutting_entry_id:'c2',component:'pant',total_pieces:200,rejections:8},{id:'c',cutting_entry_id:'c1',component:'kurta',net_pieces:500},{id:'d',cutting_entry_id:'cancel',component:'pant',net_pieces:900},{id:'e',cutting_entry_id:'other',component:'pant',net_pieces:900}];
+const target=cuttingTargets(cuts,[...lines,lines[0]],job);
+assert.equal(target.pant,492);assert.equal(target.kurta,500);
+assert.equal(Math.max(0,target.kurta-200),300);
+assert.equal(progressState(target,{pant:492,kurta:200},true,'2026-09-14',now),'active');
+assert.equal(Object.keys(cuttingTargets([],lines,job)).length,0);
+assert.equal(cuttingTargets(cuts,[{id:'zero',cutting_entry_id:'c1',component:'pant',net_pieces:0,total_pieces:500}],job).pant,0);
+console.log('PASS cutting targets: multiple vouchers, rejection fallback, duplicate/cancelled/unrelated exclusion, zero/no-cutting and component pending.');
