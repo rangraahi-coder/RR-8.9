@@ -17,6 +17,8 @@ export interface PrinterFabricIssue {
 }
 
 export interface PrinterFabricReceipt {
+  jobCardId?: string;
+  jobCardRef?: string;
   id: string;
   receiptNo: string;
   date: string;
@@ -69,6 +71,8 @@ function rowToReceipt(row: any): PrinterFabricReceipt {
   return {
     id: row.id,
     receiptNo: row.receipt_no,
+    jobCardId: row.job_card_id || undefined,
+    jobCardRef: row.job_card_ref || undefined,
     date: row.date,
     printerAccount: row.printer_account,
     issueId: row.issue_id || undefined,

@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
+import {ReceiptJobSelect} from '@/components/ReceiptJobLink';
 import {ViewModal,EditModal} from './FabricVoucherModals';
 import {erpErrorMessage} from '@/lib/erpError';
 import type {FabricVoucherEdit} from '@/lib/services/fabricInventoryService';
@@ -223,6 +224,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   const [selectedIssueId, setSelectedIssueId] = useState('');
   const [selectedIssue, setSelectedIssue] = useState<PrinterFabricIssue | null>(null);
   const [receiveRolls, setReceiveRolls] = useState<ReceiveRoll[]>([newReceiveRoll(0)]);
+  const [receiveJobCard,setReceiveJobCard]=useState<string[]>([]);
   const [receiveRemarks, setReceiveRemarks] = useState('');
   const [receiveFinishedFabricName, setReceiveFinishedFabricName] = useState('');
   const [receiveSubmitting, setReceiveSubmitting] = useState(false);
@@ -312,7 +314,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     if(!recover&&(!validateReceive()||!selectedIssue))return;
     receiveBusy.current=true;setReceiveSubmitting(true);setReceiveSubmitError(null);
     try {
-      const payload={receipt_no:receiveReceiptNo.trim(),date:receiveDate,printer_account:receivePrinter,issue_id:selectedIssue?.id,
+      const payload={job_card_ids:receiveJobCard.filter(Boolean),receipt_no:receiveReceiptNo.trim(),date:receiveDate,printer_account:receivePrinter,issue_id:selectedIssue?.id,
         processed_fabric_name:receiveFinishedFabricName.trim(),qty_received:Math.round(totalReceiveQty*1000)/1000,
         shrinkage_percent:Number(shrinkagePercent),processing_type:processingType,remarks:receiveRemarks.trim(),
         rolls:receiveRolls.map((roll,i)=>({roll_no:roll.rollNo||`R${i+1}`,qty:Number(roll.qty),remarks:roll.remarks}))};
@@ -338,7 +340,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     setSelectedIssueId('');
     setSelectedIssue(null);
     setPendingIssues([]);
-    setReceiveRemarks('');
+    setReceiveRemarks('');setReceiveJobCard([]);
     setReceiveFinishedFabricName('');
     setReceiveErrors({});
     setReceiveSubmitError(null);
@@ -1167,6 +1169,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                 {receiveErrors.receivePrinter && <span className="text-xs text-red-500">{receiveErrors.receivePrinter}</span>}
               </div>
 
+              <div className="sm:col-span-3"><ReceiptJobSelect value={receiveJobCard} onChange={setReceiveJobCard} disabled={receiveSubmitting}/></div>
               {/* Finished Fabric Name */}
               <div className="flex flex-col gap-1.5 sm:col-span-3">
                 <label className="text-xs font-600 text-muted-foreground">Finished Fabric Name *</label>
