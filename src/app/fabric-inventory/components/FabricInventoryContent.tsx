@@ -1367,17 +1367,17 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                 </div>
 
                 {/* Total received vs pending */}
-                <div className="flex items-center justify-between px-3 py-2.5 bg-muted/20 rounded-lg border border-border mt-1">
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1.5">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between min-w-0 px-3 py-2.5 bg-muted/20 rounded-lg border border-border mt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 min-w-0">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 min-w-0">
                       <span className="text-xs text-muted-foreground">Total Receiving:</span>
-                      <span className={`text-sm font-700 tabular-nums ${greyConsumption > (selectedIssue?.qtyPending ?? 0) + 0.00001 ? 'text-red-600' : 'text-primary'}`}>
+                      <span className={`text-sm font-700 tabular-nums break-all ${greyConsumption > (selectedIssue?.qtyPending ?? 0) + 0.00001 ? 'text-red-600' : 'text-primary'}`}>
                         {totalReceiveQty.toFixed(3)} Mt.
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-1 min-w-0">
                       <span className="text-xs text-muted-foreground">Remaining after receipt:</span>
-                      <span className="text-sm font-700 tabular-nums text-amber-600">
+                      <span className="text-sm font-700 tabular-nums break-all text-amber-600">
                         {Math.max(0, (selectedIssue?.qtyPending ?? 0) - greyConsumption).toFixed(3)} Mt.
                       </span>
                     </div>
