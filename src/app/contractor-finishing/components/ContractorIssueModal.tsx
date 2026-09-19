@@ -110,17 +110,25 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
       setAlreadyIssuedMap({});
       return;
     }
+    let cancelled = false;
     async function loadRef() {
       setLoadingRef(true);
+      setIssueRows([]);
+      setSelectedStitchRef(null);
+      setError(null);
+      try {
       const ref = await contractorFinishingService.getStitchReceiveRefWithSizes(selectedStitchRefId);
+      if (cancelled) return;
+      if (!ref) throw new Error("Could not load the selected stitching receiving voucher. Please select it again.");
       setSelectedStitchRef(ref);
 
       if (ref) {
-        // Fetch already-issued qty for this job card (excluding current voucher if editing)
-        const issuedMap = await contractorFinishingService.getIssuedQtyByJobCard(
-          ref.jobCardRef,
+        // Only issues linked to this receiving voucher consume its balance.
+        const issuedMap = await contractorFinishingService.getIssuedQtyByStitchReceipt(
+          ref.id,
           editVoucher?.id
         );
+        if (cancelled) return;
         setAlreadyIssuedMap(issuedMap);
 
         // Build issue rows from stitch receive components
@@ -193,9 +201,16 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           setIssueRows(rows);
         }
       }
-      setLoadingRef(false);
+      } catch (err) {
+        if (!cancelled) {
+          setIssueRows([]);
+          setSelectedStitchRef(null);
+          setError(err instanceof Error ? err.message : "Could not load receiving balance.");
+        }
+      } finally { if (!cancelled) setLoadingRef(false); }
     }
     loadRef();
+    return () => { cancelled = true; };
   }, [selectedStitchRefId, editVoucher]);
 
   function updateIssuedQty(tempId: string, value: number) {
@@ -583,7 +598,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || hasRowErrors || allRowsFullyIssued}
+              disabled={saving || loadingRef || !selectedStitchRef || issueRows.length === 0 || hasRowErrors || allRowsFullyIssued}
               className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-600 font-body hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving...' : editVoucher ? 'Update Issue' : 'Save Issue'}

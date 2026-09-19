@@ -1,0 +1,10 @@
+const fs=require('fs'),ts=require('typescript'),assert=require('assert/strict');const m={exports:{}};new Function('module','exports',ts.transpileModule(fs.readFileSync('src/lib/automaticOrderOverview.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText)(m,m.exports);const calc=m.exports.automaticOrderOverview;
+const base={order:{id:'o',vch_no:'SO1'},lines:[{id:'l1',item_name:'SET',qty:50,param_size:'L'},{id:'l2',item_name:'SET',qty:50,param_size:'M'}],styles:[{id:'s',style_no:'SET'}],compositions:['kurta','pant','dupatta'].map(component_name=>({style_id:'s',component_name,qty_per_set:1})),jobs:[{id:'j',item_style_id:'s',total_pieces:100,job_card_no:'JC1'}],cuts:['kurta','pant','dupatta'].map(component=>({job_id:'j',component,qty:40,vouchers:['CUT1']})),fabric_jobs:[]};
+let r=calc([base])[0];assert.equal(r.quantity,100);assert.equal(r.ready,40);assert.equal(r.pending,60);assert.equal(r.pendingComponents,180);assert.equal(calc([base]).length,1);assert.deepEqual(r.vouchers,['CUT1']);
+r=calc([{...base,cuts:[{job_id:'j',component:'kurta',qty:100,vouchers:['CUT1']}]}])[0];assert.equal(r.ready,0);assert.equal(r.pending,100);
+r=calc([{...base,cuts:[],fabric_jobs:['j']}])[0];assert.equal(r.pending,null);assert.match(r.problem,/metres/);
+r=calc([{...base,jobs:[]}])[0];assert.equal(r.pending,100);
+r=calc([{...base,compositions:[]}])[0];assert.equal(r.pending,null);
+r=calc([{...base,jobs:[{id:'j',style_en:'wrong',job_card_no:'JC1'}]}])[0];assert.equal(r.pending,null);assert.match(r.problem,/ambiguous/);
+r=calc([{...base,cuts:base.cuts.map(c=>({...c,qty:200}))}])[0];assert.equal(r.ready,100);assert.equal(r.pending,0);
+console.log('PASS: automatic quantity, grouped size lines, component deficits, surplus cap, missing composition, ambiguous Job Card, unquantified fabric, voucher references.');

@@ -1,4 +1,5 @@
 'use client';
+import { cuttingSourceBalance } from '@/lib/voucherSourceBalance';
 import {createClient} from '@/lib/supabase/client';
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, Trash2, Scissors, Info } from 'lucide-react';
@@ -58,62 +59,30 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   const [operators, setOperators] = useState<StitchOperator[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sourcesReady,setSourcesReady]=useState(false);
+  const [balancesReady,setBalancesReady]=useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // True Quantity: component+size-wise cutting quantities (source of truth)
   const [cuttingQtyMap, setCuttingQtyMap] = useState<{ component: string; size: string; netPieces: number }[]>([]);
   // Already-issued quantities for the selected job card (excluding current edit voucher)
-  const [issuedQtyMap, setIssuedQtyMap] = useState<{ component: string; size: string; issuedQty: number }[]>([]);
+  const [issuedQtyMap, setIssuedQtyMap] = useState<{ component: string; size: string; issuedQty: number; cuttingComponentId?: string }[]>([]);
 
-  // Helper: get the True Quantity for a given component + size combination
-  function getTrueQty(component: string, size: string): number {
-    if (!component) return Infinity;
-    if (cuttingQtyMap.length === 0) return Infinity;
-    // If size is specified, look for exact component+size match
-    if (size) {
-      const match = cuttingQtyMap.find((q) => q.component === component && q.size === size);
-      if (match) return match.netPieces;
-      // Fallback: sum all sizes for this component
-    }
-    // No size or no exact match: sum all entries for this component
-    const total = cuttingQtyMap
-      .filter((q) => q.component === component)
-      .reduce((s, q) => s + q.netPieces, 0);
-    return total > 0 ? total : Infinity;
+  function getAlreadyIssuedQty(component: string, size: string, sourceId?: string): number {
+    return cuttingSourceBalance(rateSources.find(s=>s.id===sourceId),issuedQtyMap,size).issued;
   }
-
-  // Helper: get already-issued qty for a given component + size
-  function getAlreadyIssuedQty(component: string, size: string): number {
-    if (!component) return 0;
-    if (size) {
-      // Exact match first
-      const exact = issuedQtyMap.find((q) => q.component === component && q.size === size);
-      if (exact) return exact.issuedQty;
-      // Also check entries with no size (issued without size breakdown)
-      const noSize = issuedQtyMap.find((q) => q.component === component && !q.size);
-      return noSize ? noSize.issuedQty : 0;
-    }
-    // No size: sum all entries for this component
-    return issuedQtyMap
-      .filter((q) => q.component === component)
-      .reduce((s, q) => s + q.issuedQty, 0);
-  }
-
-  // Helper: get remaining issuable qty = cutting qty - already issued qty
-  function getRemainingQty(component: string, size: string): number {
-    const trueQty = getTrueQty(component, size);
-    if (trueQty === Infinity) return Infinity;
-    const alreadyIssued = getAlreadyIssuedQty(component, size);
-    return Math.max(0, trueQty - alreadyIssued);
+  function getRemainingQty(component: string, size: string, sourceId?: string): number {
+    return cuttingSourceBalance(rateSources.find(s=>s.id===sourceId),issuedQtyMap,size).remaining;
   }
 
   // Fetch cutting quantities whenever job card changes
   async function fetchCuttingQty(jobCardNo: string) {
     const request = ++sourceRequest.current;
+    setSourcesReady(false); setRateSources([]);
     if (!jobCardNo) { setCuttingQtyMap([]); return; }
     const {data:sources,error:sourceError}=await createClient().rpc('erp_stitch_rate_sources',{p_job:jobCardNo});
     if (request !== sourceRequest.current) return;
-    if(sourceError){setError(sourceError.message);setRateSources([]);}else setRateSources(sources||[]);
+    if(sourceError){setError(sourceError.message);setRateSources([]);}else {setRateSources(sources||[]);setSourcesReady(true);}
     const data = await cuttingService.getCuttingQtyByComponentSize(jobCardNo);
     if (request !== sourceRequest.current) return;
     setCuttingQtyMap(data);
@@ -122,10 +91,15 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   // Fetch already-issued quantities for the selected job card
   async function fetchIssuedQty(jobCardNo: string) {
     const request = ++issuedRequest.current;
+    setBalancesReady(false);
     if (!jobCardNo) { setIssuedQtyMap([]); return; }
+    setIssuedQtyMap([]);
+    try {
     const data = await stitchingVoucherService.getIssuedQtyByJobCard(jobCardNo, editVoucher?.id);
     if (request !== issuedRequest.current) return;
     setIssuedQtyMap(data);
+    setBalancesReady(true);
+    } catch (err) { if(request===issuedRequest.current) { setRateSources([]); setError(err instanceof Error ? err.message : "Could not load source balance"); } }
   }
 
   useEffect(() => {
@@ -204,6 +178,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
+    if(!sourcesReady||!balancesReady){setError("Cutting source balances are not loaded. Re-select the Job Card and wait for loading to finish.");return;}
     if(components.some(c=>!c.cuttingComponentId||!c.stitchingRate||c.stitchingRate<=0)){setError('Select a Cutting Issue with a stitching rate for every component.');return;}
 
     if (!selectedJobCardNo) newErrors.jobCard = 'Job Card is required.';
@@ -213,14 +188,24 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
       if (c.issuedQty <= 0) newErrors[`qty_${c.tempId}`] = 'Qty must be > 0.';
       // Check against remaining issuable qty
       if (c.component && c.issuedQty > 0) {
-        const remaining = getRemainingQty(c.component, c.size);
+        const remaining = getRemainingQty(c.component, c.size, c.cuttingComponentId);
         if (remaining !== Infinity && c.issuedQty > remaining) {
           const sizeLabel = c.size ? ` (${c.size})` : '';
-          newErrors[`qty_${c.tempId}`] = `Only ${remaining} pcs remaining for ${c.component}${sizeLabel}. Already issued: ${getAlreadyIssuedQty(c.component, c.size)}.`;
+          newErrors[`qty_${c.tempId}`] = `Only ${remaining} pcs remaining for ${c.component}${sizeLabel}. Already issued: ${getAlreadyIssuedQty(c.component, c.size, c.cuttingComponentId)}.`;
         }
       }
     });
 
+    for (const sourceId of new Set(components.map(c=>c.cuttingComponentId))) {
+      const group=components.filter(c=>c.cuttingComponentId===sourceId);
+      if(group.reduce((n,c)=>n+c.issuedQty,0)>getRemainingQty('', '', sourceId)) {
+        for(const c of group) newErrors[`qty_${c.tempId}`]='Combined quantity exceeds the selected Cutting Issue balance.';
+      }
+      for(const size of new Set(group.map(c=>c.size))) {
+        if(group.filter(c=>c.size===size).reduce((n,c)=>n+c.issuedQty,0)>getRemainingQty('',size,sourceId))
+          for(const c of group.filter(c=>c.size===size)) newErrors[`qty_${c.tempId}`]='Combined size quantity exceeds this Cutting Issue balance.';
+      }
+    }
     if (Object.values(newErrors).some(Boolean)) {
       setFieldErrors(newErrors);
       setError('Issue qty exceeds available balance. Please correct the highlighted fields.');
@@ -371,7 +356,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
             </div>
 
             {components.map((row) => {
-              const remaining = getRemainingQty(row.component, row.size);
+              const remaining = getRemainingQty(row.component, row.size, row.cuttingComponentId);
               const isExceeded = row.issuedQty > remaining;
               return (
                 <div key={row.tempId} className={`border rounded-xl p-4 flex flex-col gap-3 bg-muted/20 ${(fieldErrors[`component_${row.tempId}`] || fieldErrors[`qty_${row.tempId}`]) ? 'border-danger' : 'border-border'}`}>
@@ -416,11 +401,11 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                     <div className="flex flex-col gap-1 w-28">
                       <label className="text-xs font-600 text-muted-foreground">
                         Issue Qty *
-                        {row.component && getRemainingQty(row.component, row.size) !== Infinity && (() => {
-                          const totalRemaining = getRemainingQty(row.component, row.size);
+                        {row.component && getRemainingQty(row.component, row.size, row.cuttingComponentId) !== Infinity && (() => {
+                          const totalRemaining = getRemainingQty(row.component, row.size, row.cuttingComponentId);
                           // Subtract qty already entered in ALL rows (including this one) for same component+size
                           const otherRowsQty = components
-                            .filter((r) => r.tempId !== row.tempId && r.component === row.component && r.size === row.size)
+                            .filter((r) => r.tempId !== row.tempId && r.cuttingComponentId === row.cuttingComponentId && r.size === row.size)
                             .reduce((s, r) => s + (r.issuedQty || 0), 0);
                           const displayLeft = Math.max(0, totalRemaining - (row.issuedQty || 0) - otherRowsQty);
                           return (
@@ -434,17 +419,17 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                         type="number"
                         required
                         min="1"
-                        max={getRemainingQty(row.component, row.size) !== Infinity ? getRemainingQty(row.component, row.size) : undefined}
+                        max={getRemainingQty(row.component, row.size, row.cuttingComponentId) !== Infinity ? getRemainingQty(row.component, row.size, row.cuttingComponentId) : undefined}
                         value={row.issuedQty || ''}
                         onChange={(e) => {
                           const raw = parseInt(e.target.value) || 0;
                           updateRow(row.tempId, 'issuedQty', raw);
                           if (raw > 0) setFieldErrors((prev) => ({ ...prev, [`qty_${row.tempId}`]: '' }));
                         }}
-                        className={`input-field text-sm tabular-nums ${fieldErrors[`qty_${row.tempId}`] ? 'border-danger' : (row.component && getRemainingQty(row.component, row.size) !== Infinity && row.issuedQty > getRemainingQty(row.component, row.size) ? 'border-danger' : '')}`}
+                        className={`input-field text-sm tabular-nums ${fieldErrors[`qty_${row.tempId}`] ? 'border-danger' : (row.component && getRemainingQty(row.component, row.size, row.cuttingComponentId) !== Infinity && row.issuedQty > getRemainingQty(row.component, row.size, row.cuttingComponentId) ? 'border-danger' : '')}`}
                         placeholder="0"
                       />
-                      {row.component && getRemainingQty(row.component, row.size) === 0 && !fieldErrors[`qty_${row.tempId}`] && (
+                      {row.component && getRemainingQty(row.component, row.size, row.cuttingComponentId) === 0 && !fieldErrors[`qty_${row.tempId}`] && (
                         <p className="text-[10px] text-danger mt-0.5 font-500">Fully issued — no qty remaining.</p>
                       )}
                       {fieldErrors[`qty_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`qty_${row.tempId}`]}</p>}

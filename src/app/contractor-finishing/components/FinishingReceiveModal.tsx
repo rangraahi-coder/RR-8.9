@@ -83,9 +83,16 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
       setAlreadyFinishedMap({});
       return;
     }
+    let cancelled = false;
     async function loadRef() {
       setLoadingRef(true);
+      setComponentRows([]);
+      setSelectedStitchRef(null);
+      setError(null);
+      try {
       const ref = await contractorFinishingService.getStitchReceiveRefWithSizes(selectedStitchRefId);
+      if (cancelled) return;
+      if (!ref) throw new Error("Could not load the selected receiving voucher.");
       setSelectedStitchRef(ref);
       if (ref) {
         // Build component rows: expand size breakdown if available
@@ -129,6 +136,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
           ref.voucherNo,
           editVoucher?.id
         );
+        if (cancelled) return;
         setAlreadyFinishedMap(alreadyMap);
 
         // Apply already-finished to rows
@@ -153,9 +161,12 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
           setComponentRows(updatedRows);
         }
       }
-      setLoadingRef(false);
+      } catch (err) {
+        if (!cancelled) { setComponentRows([]); setSelectedStitchRef(null); setError(err instanceof Error ? err.message : "Could not load receipt balance."); }
+      } finally { if (!cancelled) setLoadingRef(false); }
     }
     loadRef();
+    return () => { cancelled = true; };
   }, [selectedStitchRefId, editVoucher]);
 
   function updateReceivedQty(tempId: string, value: number) {
@@ -535,7 +546,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || hasRowErrors}
+              disabled={saving || loadingRef || !selectedStitchRef || componentRows.length === 0 || hasRowErrors}
               className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-600 font-body hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving...' : editVoucher ? 'Update' : 'Save Finishing Receive'}

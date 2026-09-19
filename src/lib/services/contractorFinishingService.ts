@@ -1,3 +1,4 @@
+import { receiptSizeBreakdown } from '@/lib/voucherSourceBalance';
 import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -537,7 +538,7 @@ export const contractorFinishingService = {
         component: rc.component || '',
         receivedQty: rc.received_qty || 0,
         unit: rc.unit || 'Pcs',
-        sizeBreakdown,
+        sizeBreakdown: receiptSizeBreakdown(Number(rc.received_qty || 0), sizeBreakdown),
       });
     }
 
@@ -897,7 +898,7 @@ export const contractorFinishingService = {
       .eq('stitch_receive_ref', stitchReceiveRef);
 
     const { data, error } = await query;
-    if (error) { console.error('[getAlreadyFinishedQty]', error); return {}; }
+    if (error) throw new Error(`Could not load finishing balance: ${error.message}`);
 
     const map: Record<string, number> = {};
     for (const v of data || []) {
@@ -1053,6 +1054,24 @@ export const contractorFinishingService = {
       for (const it of (v.contractor_issue_items || [])) {
         const key = `${(it.item || '').toLowerCase()}|${(it.colour || '').toLowerCase()}|${(it.size || '').toLowerCase()}`;
         map[key] = (map[key] || 0) + (it.issued_qty || 0);
+      }
+    }
+    return map;
+  },
+
+  // Scope balances to the selected source receipt, never the entire job card.
+  async getIssuedQtyByStitchReceipt(receiptId: string, excludeVoucherId?: string): Promise<Record<string, number>> {
+    const { data, error } = await createClient()
+      .from('contractor_issue_vouchers')
+      .select('id, contractor_issue_items(item, colour, size, issued_qty)')
+      .eq('stitch_receive_voucher_id', receiptId);
+    if (error) throw new Error(`Could not load issued quantities for this receiving voucher: ${error.message}`);
+    const map: Record<string, number> = {};
+    for (const voucher of data || []) {
+      if (voucher.id === excludeVoucherId) continue;
+      for (const line of voucher.contractor_issue_items || []) {
+        const key = `${(line.item || '').toLowerCase()}|${(line.colour || '').toLowerCase()}|${(line.size || '').toLowerCase()}`;
+        map[key] = (map[key] || 0) + Number(line.issued_qty || 0);
       }
     }
     return map;

@@ -482,7 +482,7 @@ export const stitchingVoucherService = {
   async getIssuedQtyByJobCard(
     jobCardRef: string,
     excludeVoucherId?: string
-  ): Promise<{ component: string; size: string; issuedQty: number }[]> {
+  ): Promise<{ component: string; size: string; issuedQty: number; cuttingComponentId?: string }[]> {
     const supabase = createClient();
 
     // Fetch all issue vouchers for this job card
@@ -492,7 +492,8 @@ export const stitchingVoucherService = {
       .eq('job_card_ref', jobCardRef);
 
     const { data: vouchers, error: vErr } = await voucherQuery;
-    if (vErr || !vouchers || vouchers.length === 0) return [];
+    if(vErr) throw new Error(vErr.message);
+    if(!vouchers?.length) return [];
 
     let voucherIds = vouchers.map((v: any) => v.id);
     // Exclude the current edit voucher so we don't double-count it
@@ -502,9 +503,10 @@ export const stitchingVoucherService = {
     if (voucherIds.length === 0) return [];
 
     const { data: comps, error: cErr } = await supabase
-      .from('stitch_issue_components').select('component, issued_qty, size_breakdown').in('issue_voucher_id', voucherIds);
+      .from('stitch_issue_components').select('component, issued_qty, size_breakdown, cutting_component_id').in('issue_voucher_id', voucherIds);
 
-    if (cErr || !comps) return [];
+    if(cErr) throw new Error(cErr.message);
+    if(!comps) return [];
 
     // Aggregate by component + size
     const map: Record<string, number> = {};
@@ -518,19 +520,19 @@ export const stitchingVoucherService = {
 
       if (sizeBreakdown && sizeBreakdown.length > 0) {
         for (const sb of sizeBreakdown) {
-          const key = `${c.component}||${sb.size || ''}`;
+          const key = `${c.component}||${sb.size || ''}||${c.cutting_component_id || ''}`;
           map[key] = (map[key] || 0) + (sb.qty || 0);
         }
       } else {
         // No size breakdown — store under empty size key
-        const key = `${c.component}||`;
+        const key = `${c.component}||||${c.cutting_component_id || ''}`;
         map[key] = (map[key] || 0) + (c.issued_qty || 0);
       }
     }
 
     return Object.entries(map).map(([key, qty]) => {
-      const [component, size] = key.split('||');
-      return { component, size, issuedQty: qty };
+      const [component, size, cuttingComponentId] = key.split('||');
+      return { component, size, issuedQty: qty, cuttingComponentId };
     });
   },
 
