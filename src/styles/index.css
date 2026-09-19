@@ -1,0 +1,14 @@
+@import './tailwind.css';
+/* Brief opacity-only entrance: does not shift layout or delay interaction. */
+@keyframes erp-modal-appear { from { opacity: 0; } to { opacity: 1; } }
+.erp-modal-enter { animation: erp-modal-appear 160ms ease-out; }
+@keyframes erp-tick-draw { from { stroke-dashoffset: 18; } to { stroke-dashoffset: 0; } }
+.erp-success-tick { color: #16a34a; }
+.erp-success-tick path { stroke-dasharray: 18; animation: erp-tick-draw 420ms ease-out; }
+@keyframes erp-work { 0%,100% { transform: translateX(-1px); } 50% { transform: translateX(2px); } }
+@keyframes erp-needle { 0%,100% { transform: translateY(0); } 50% { transform: translateY(3px); } }
+.erp-work-motion { animation: erp-work 900ms ease-in-out infinite; }
+.erp-needle-motion { animation: erp-needle 700ms ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+ .erp-modal-enter, .erp-success-tick path, .erp-work-motion, .erp-needle-motion { animation: none; }
+}
