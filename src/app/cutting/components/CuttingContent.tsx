@@ -121,7 +121,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const [deleting, setDeleting] = useState(false);
 
   // Fabric names from fabric inventory (Supabase)
-  const [fabricItems, setFabricItems] = useState<FabricStockItem[]>([]);
+  const [fabricStock, setFabricItems] = useState<FabricStockItem[]>([]);
+  // Editing can reuse only this voucher's existing consumption, not another voucher's.
+  const editCredits = new Map<string,number>();
+  if (showModal && editingEntry) for (const roll of editingEntry.rollDetails || []) {
+    if (roll.fabricRollId) editCredits.set(roll.fabricRollId,(editCredits.get(roll.fabricRollId)||0)+Number(roll.fabricConsumedQty||0));
+  }
+  const fabricItems = fabricStock.map(item=>({...item,stockQty:item.stockQty+(editCredits.get(item.id)||0)})).filter(item=>item.stockQty>0);
 
   // Embroidery-received pending materials for selected job card
   const [embPendingItems, setEmbPendingItems] = useState<CuttingStockItem[]>([]);
@@ -170,7 +176,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   useEffect(() => {
     fabricInventoryService.getAll().then((items) => {
-      const available = items.filter((item) => item.stockQty > 0);
+      const available = items;
       setFabricItems(available);
     }).catch(() => {
       setFabricItems([]);
@@ -179,7 +185,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   useRealtimeTable('fabric_inventory', () => {
     fabricInventoryService.getAll().then((items) => {
-      setFabricItems(items.filter((item) => item.stockQty > 0));
+      setFabricItems(items);
     }).catch(() => {});
   });
 
@@ -538,6 +544,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     if (ok) {
       setEntries((prev) => prev.filter((e) => e.id !== deleteTarget.id));
       setSuccessMsg(`Entry ${deleteTarget.entryNo} deleted successfully.`);
+      setFabricItems(await fabricInventoryService.getAll());
+      window.dispatchEvent(new Event('erp-data-changed'));
       setTimeout(() => setSuccessMsg(null), 4000);
     } else {
       setSuccessMsg('Failed to delete entry. Please try again.');
@@ -663,6 +671,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       }
       setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? saved : e));
       setShowModal(false);
+      void fabricInventoryService.getAll().then(setFabricItems);
+      window.dispatchEvent(new Event('erp-data-changed'));
       resetForm();
       setSaving(false);
       setSuccessMsg(`Entry ${saved.entryNo} updated successfully!`);
@@ -701,6 +711,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       }
       setEntries((prev) => [saved, ...prev]);
       setShowModal(false);
+      void fabricInventoryService.getAll().then(setFabricItems);
+      window.dispatchEvent(new Event('erp-data-changed'));
       resetForm();
       setSaving(false);
       setSuccessMsg(`Cutting entry ${saved.entryNo} saved successfully!`);
