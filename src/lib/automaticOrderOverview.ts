@@ -48,3 +48,18 @@ export function automaticOrderOverview(snapshots:Row[]):Row[]{
  }
  return output;
 }
+
+// Uses the same known rows and complete-set basis as the summary card.
+export function orderComponentBreakdown(rows:Row[],mode:'active'|'pending'){
+ const totals=new Map<string,number>();
+ const field=mode==='active'?'components':'pendingComponents';
+ for(const row of rows){
+  if(!Number.isFinite(row[field]))continue;
+  const sets=mode==='active'?row.quantity:row.pending;
+  for(const [name,ratio] of Object.entries(row.ratios||{})){
+   const key=norm(name).replace(/\s+/g,' ');
+   if(key)totals.set(key,(totals.get(key)||0)+sets*Number(ratio));
+  }
+ }
+ return Array.from(totals,([name,quantity])=>({name,quantity})).sort((a,b)=>a.name.localeCompare(b.name));
+}
