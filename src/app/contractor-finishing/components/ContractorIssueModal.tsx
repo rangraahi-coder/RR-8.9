@@ -372,7 +372,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                     })
                     .map((ref) => (
                     <option key={ref.id} value={ref.id}>
-                      {ref.voucherNo} | {ref.jobCardRef} | {ref.voucherDate} | {ref.totalPiecesReceived} pcs
+                      {ref.voucherNo} | {ref.jobCardRef} | {ref.voucherDate} | Size: {ref.sizeLabel || 'Not recorded / unavailable'} | {ref.totalPiecesReceived} pcs
                     </option>
                   ))}
                 </select>

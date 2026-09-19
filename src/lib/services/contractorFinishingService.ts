@@ -113,6 +113,7 @@ export interface StitchReceiveRef {
   partyName?: string;
   operatorName: string;
   totalPiecesReceived: number;
+  sizeLabel?: string;
   components: StitchReceiveComponentSummary[];
 }
 
@@ -483,12 +484,29 @@ export const contractorFinishingService = {
       .from('stitch_receive_vouchers').select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, total_pieces_received, stitch_receive_components(*)').order('created_at', { ascending: false });
     if (error) { console.error('[getStitchReceiveRefs]', error); return []; }
 
+    // Load size references in batches, not one request per dropdown option.
+    const componentIds = [...new Set((data || []).flatMap((row: any) =>
+      (row.stitch_receive_components || []).map((c: any) => c.issue_component_id).filter(Boolean)))];
+    const sizeMap = new Map<string, string[]>();
+    for (let offset = 0; offset < componentIds.length; offset += 100) {
+      const { data: sourceRows, error: sizeError } = await supabase.from('stitch_issue_components')
+        .select('id, size_breakdown').in('id', componentIds.slice(offset, offset + 100));
+      if (sizeError) { console.error('[receipt sizes]', sizeError); break; }
+      for (const source of sourceRows || []) {
+        let rows = source.size_breakdown;
+        if (typeof rows === 'string') { try { rows = JSON.parse(rows); } catch { rows = []; } }
+        sizeMap.set(source.id, Array.isArray(rows) ? [...new Set(rows.filter((r: any) => Number(r.qty) > 0)
+          .map((r: any) => String(r.size || '').trim()).filter(Boolean))] as string[] : []);
+      }
+    }
+
     return (data || []).map((row: any): StitchReceiveRef => ({
       id: row.id,
       voucherNo: row.voucher_no,
       voucherDate: row.voucher_date,
       jobCardRef: row.job_card_ref || '',jobCardId: undefined,styleName: row.style_name || undefined,partyName: row.party_name || undefined,operatorName: row.operator_name || '',
       totalPiecesReceived: row.total_pieces_received || 0,
+      sizeLabel: [...new Set((row.stitch_receive_components || []).flatMap((c: any) => sizeMap.get(c.issue_component_id) || []))].join(', ') || 'Not recorded / unavailable',
       components: (row.stitch_receive_components || []).map((c: any): StitchReceiveComponentSummary => {
         let sizeBreakdown: { size: string; qty: number }[] | undefined;
         // Try to get size breakdown from the linked issue component
