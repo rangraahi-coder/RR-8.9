@@ -14,6 +14,9 @@ export interface SubComponentCutDetail {
 }
 
 export interface RollDetail {
+  component?: string;
+  componentFabricName?: string;
+  componentUnit?: string;
   rollNo: string;
   fabricRollId: string;
   fabricIssuedQty: number;

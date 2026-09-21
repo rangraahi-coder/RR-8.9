@@ -32,6 +32,7 @@ function rowToCuttingEntry(row: any, subComponents: any[]): CuttingEntry {
     rejectionReason: row.rejection_reason || undefined,
     netPiecesForStitching: row.net_pieces_for_stitching || 0,
     subComponentDetails: subComponents.map((sc: any): SubComponentCutDetail => ({
+      fabricName: (Array.isArray(row.roll_details)?row.roll_details:[]).find((r:any)=>r.component===sc.component)?.componentFabricName,
       component: sc.component, stitchingRate: sc.stitching_rate == null ? undefined : Number(sc.stitching_rate),
       sizes: Array.isArray(sc.size_breakdown) ? sc.size_breakdown : [],
       totalPieces: sc.total_pieces || 0,

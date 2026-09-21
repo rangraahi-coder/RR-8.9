@@ -1,4 +1,5 @@
 'use client';
+import {componentRolls,needsRollAssignment} from '@/lib/cuttingRollComponents';
 import {useAuth} from '@/contexts/AuthContext';
 import {supabase} from '@/lib/supabase/client';
 import VoucherDetails from '@/components/VoucherDetails';
@@ -96,6 +97,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
   const saveInFlight = useRef(false);
+  const [rollAssignment,setRollAssignment]=useState<CuttingEntry|null>(null);
+  const [rollOwners,setRollOwners]=useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -436,6 +439,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   // Populate form for editing
   const handleEditEntry = (entry: CuttingEntry) => {
     if(!can('cutting','edit'))return;
+    if(!entry.rollDetails?.length&&entry.fabricConsumedQty>0){setSaveError('This older voucher has no saved roll details. Its source rolls must be recovered before editing quantities.');return;}
+    if(needsRollAssignment(entry)){setRollAssignment(entry);setRollOwners(entry.rollDetails.map(r=>r.component||''));return;}
     setEditingEntry(entry);
     setForm({
       date: entry.date,
@@ -450,32 +455,18 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
     // Populate sub-components — each gets its own fabric/unit/rolls from saved data
     const scs: SubComponentRow[] = entry.subComponentDetails.map((sc) => {
-      // Try to reconstruct rolls from rollDetails (legacy: all rolls at entry level)
-      // For new entries, rolls are stored per sub-component via fabricName match
-      const scRolls: RollRow[] = (entry.rollDetails && entry.rollDetails.length > 0)
-        ? entry.rollDetails.map((rd, idx) => ({
-            id: `roll-edit-${idx}-${Date.now()}-${Math.random()}`,
-            fabricRollId: rd.fabricRollId || '',
-            rollNo: rd.rollNo || '',
-            fabricIssuedQty: String(rd.fabricIssuedQty),
-            fabricConsumedQty: String(rd.fabricConsumedQty),
-            wastageQty: String(rd.wastageQty || ''),
-          }))
-        : [{
-            id: `roll-edit-${Date.now()}-${Math.random()}`,
-            fabricRollId: '',
-            rollNo: '',
-            fabricIssuedQty: String(entry.fabricIssuedQty),
-            fabricConsumedQty: String(entry.fabricConsumedQty),
-            wastageQty: String(entry.wastageQty || ''),
-          }];
+      const savedRolls=componentRolls(entry,sc.component);
+      const scRolls: RollRow[] = savedRolls.map((rd,idx)=>({
+        id:`roll-edit-${idx}-${Date.now()}-${Math.random()}`,fabricRollId:rd.fabricRollId||'',rollNo:rd.rollNo||'',
+        fabricIssuedQty:String(rd.fabricIssuedQty),fabricConsumedQty:String(rd.fabricConsumedQty),wastageQty:String(rd.wastageQty||'')
+      }));
 
       return {
         id: `sc-edit-${sc.component}-${Date.now()}-${Math.random()}`,
         component: SUB_COMPONENT_OPTIONS.includes(sc.component) ? sc.component : 'Other',
         customComponent: SUB_COMPONENT_OPTIONS.includes(sc.component) ? '' : sc.component,
-        fabricName: sc.fabricName || entry.fabricName || '',
-        unit: entry.unit || 'Metres',
+        fabricName: savedRolls[0]?.componentFabricName || sc.fabricName || entry.fabricName || '',
+        unit: savedRolls[0]?.componentUnit || entry.unit || 'Metres',
         rolls: scRolls,
         sizes: sc.sizes.map((sz) => ({ size: sz.size, qty: String(sz.qty) })),
         rejections: String(sc.rejections || ''), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
@@ -561,6 +552,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
     // Required field validation (matches QC/Finishing pattern)
     if (subComponents.some(sc=>!sc.stitchingRate.trim()||!Number.isFinite(Number(sc.stitchingRate))||Number(sc.stitchingRate)<=0)){setSaveError('Enter stitching rate (₹/piece, greater than zero) for every component.');return;}
+    if(new Set(subComponents.map(sc=>(sc.component==='Other'?sc.customComponent:sc.component).trim().toLowerCase())).size!==subComponents.length){setSaveError('Each component must appear once. Add its rolls within the same component.');return;}
     if (!form.date) { setSaveError('Date is required.'); return; }
     if (!form.jobCardRef) { setSaveError('Job Card is required.'); return; }
     if (subComponents.some((sc) => {
@@ -618,6 +610,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     // Flatten all rolls across sub-components for rollDetails storage
     const builtRollDetails: RollDetail[] = subComponents.flatMap((sc) =>
       sc.rolls.map((r, idx) => ({
+        component: sc.component==='Other'?(sc.customComponent||'Other'):sc.component,
+        componentFabricName: sc.fabricName, componentUnit:sc.unit,
         rollNo: r.rollNo || `Roll ${idx + 1}`,
         fabricRollId: r.fabricRollId || '',
         fabricIssuedQty: parseFloat(r.fabricIssuedQty) || 0,
@@ -956,6 +950,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                       <span className="text-sm font-700 text-foreground">{sc.component}</span>
                                       <span className="text-xs text-success font-600">Net: {sc.netPieces} pcs</span>
                                     </div>
+                                    <p className="text-xs text-muted-foreground mb-2">{needsRollAssignment(entry)?'Roll assignment not recorded — assign components when editing.':`${componentRolls(entry,sc.component).length} rolls · ${componentRolls(entry,sc.component).map(r=>r.rollNo).join(', ')}`}</p>
                                     {sc.fabricName && (
                                       <p className="text-xs text-muted-foreground mb-2">Fabric: <span className="font-600 text-foreground">{sc.fabricName}</span></p>
                                     )}
@@ -1046,6 +1041,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       )}
 
       {/* Add / Edit Modal */}
+      {rollAssignment&&<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3"><section role="dialog" aria-modal="true" aria-label="Assign saved rolls to components" className="bg-card rounded-xl p-4 w-full max-w-2xl max-h-[85vh] overflow-auto"><h2 className="font-semibold">Assign saved rolls · {rollAssignment.entryNo}</h2><p className="text-sm text-muted-foreground my-3">This older voucher saved rolls without their component. Select Kurta/Pant or the appropriate component for each roll once. Quantities stay unchanged; assignment is saved when you save the edited voucher.</p>{rollAssignment.rollDetails.map((roll,index)=><div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t py-3"><span className="text-sm">{roll.rollNo||`Roll ${index+1}`} · Consumed {roll.fabricConsumedQty} {rollAssignment.unit}</span><select aria-label={`Component for roll ${index+1}`} className="input-field min-w-0" value={rollOwners[index]||''} onChange={e=>setRollOwners(v=>v.map((x,i)=>i===index?e.target.value:x))}><option value="">Select component</option>{rollAssignment.subComponentDetails.map(sc=><option key={sc.component} value={sc.component}>{sc.component}</option>)}</select></div>)}<p className="text-sm my-3">{rollAssignment.subComponentDetails.map(sc=>`${sc.component}: ${rollOwners.filter(x=>x===sc.component).length} rolls`).join(' · ')}</p><div className="flex gap-3 justify-end"><button className="btn-secondary" onClick={()=>setRollAssignment(null)}>Cancel</button><button className="btn-primary" disabled={rollOwners.some(x=>!x)} onClick={()=>{const fixed={...rollAssignment,rollDetails:rollAssignment.rollDetails.map((roll,i)=>({...roll,component:rollOwners[i]}))};setRollAssignment(null);handleEditEntry(fixed);}}>Continue to edit</button></div></section></div>}
       {showModal && (
         <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-2xl max-h-[92vh] overflow-y-auto">
@@ -1630,7 +1626,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 <p className="text-[11px] text-muted-foreground">Payment amount for this cutting master's work on this entry</p>
               </div>
 
-              <section className="border border-border rounded-xl p-4 bg-muted/20"><h3 className="font-semibold text-sm">Cutting table average</h3><p className="text-xs text-muted-foreground mb-3">Consumed fabric ÷ pieces cut. Net average excludes rejected pieces. Each component keeps its own fabric unit.</p><div className="overflow-auto">{editingEntry&&editingEntry.subComponentDetails.length>1?<p className="text-amber-700">Component averages unavailable for this saved voucher: fabric rolls are not linked to individual components.</p>:<table className="w-full text-xs"><thead><tr className="text-left"><th>Component / Fabric</th><th>Consumed</th><th>Cut pieces</th><th>Net pieces</th><th>Table average</th><th>Net average</th></tr></thead><tbody>{subComponents.map(sc=>{const used=sc.rolls.reduce((n,r)=>n+(Number(r.fabricConsumedQty)||0),0);const cut=sc.sizes.reduce((n,r)=>n+(Number(r.qty)||0),0);const net=cut-(Number(sc.rejections)||0);return <tr key={sc.id} className="border-t"><td className="py-2">{sc.customComponent||sc.component||'Component'} · {sc.fabricName}</td><td>{used.toFixed(2)} {sc.unit}</td><td>{cut}</td><td>{net}</td><td>{cut>0?(used/cut).toFixed(3):'—'} {sc.unit}/piece</td><td>{net>0?(used/net).toFixed(3):'—'} {sc.unit}/net piece</td></tr>;})}</tbody></table>}</div></section>
+              <section className="border border-border rounded-xl p-4 bg-muted/20"><h3 className="font-semibold text-sm">Cutting table average</h3><p className="text-xs text-muted-foreground mb-3">Consumed fabric ÷ pieces cut. Net average excludes rejected pieces. Each component keeps its own fabric unit.</p><div className="overflow-auto">{editingEntry&&needsRollAssignment(editingEntry)?<p className="text-amber-700">Component averages unavailable for this saved voucher: fabric rolls are not linked to individual components.</p>:<table className="w-full text-xs"><thead><tr className="text-left"><th>Component / Fabric</th><th>Consumed</th><th>Cut pieces</th><th>Net pieces</th><th>Table average</th><th>Net average</th></tr></thead><tbody>{subComponents.map(sc=>{const used=sc.rolls.reduce((n,r)=>n+(Number(r.fabricConsumedQty)||0),0);const cut=sc.sizes.reduce((n,r)=>n+(Number(r.qty)||0),0);const net=cut-(Number(sc.rejections)||0);return <tr key={sc.id} className="border-t"><td className="py-2">{sc.customComponent||sc.component||'Component'} · {sc.fabricName}</td><td>{used.toFixed(2)} {sc.unit}</td><td>{cut}</td><td>{net}</td><td>{cut>0?(used/cut).toFixed(3):'—'} {sc.unit}/piece</td><td>{net>0?(used/net).toFixed(3):'—'} {sc.unit}/net piece</td></tr>;})}</tbody></table>}</div></section>
               {/* Validation Error Summary Banner */}
               {hasValidationErrors && (
                 <div className="bg-danger/10 border border-danger/30 rounded-lg px-4 py-3 flex flex-col gap-1.5">

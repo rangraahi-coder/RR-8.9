@@ -1,39 +1,17 @@
-Rangraahi Form / Background Refresh Fix
+CUTTING COMPONENT ROLL LINK FIX
 
-Apply AFTER the previously supplied dashboard/size and receipt-balance updates.
-No SQL or database migration is required for this patch.
+Copy this complete src folder into RR-8.9 and choose Replace. Commit and Push, then wait for successful Vercel deployment. This change needs no NEW SQL; prior database updates remain required.
 
-1. Extract this ZIP.
-2. Copy the included src files into the SAME paths in your RR-8.9 checkout.
-   Merge the folders and replace only matching files; do not delete your existing src folder.
-3. Commit and push with GitHub Desktop. Wait for Vercel deployment to finish.
-4. After saving current work, reload the app once to load this release.
+New cutting vouchers retain component, fabric and unit on every roll. Edit restores each roll only to its own component. View shows component roll counts/names. Component averages now use these separate rolls.
 
-What changed:
-- Same-user auth refresh keeps the current page/form mounted while verifying.
-- Unchanged permission responses preserve callback identity instead of restarting forms.
-- Receipt/edit forms initialize by voucher identity, not refreshed list/object identity.
-- Account refresh and failed saves retain the open form.
-- Read-only report RPCs no longer trigger blocking write overlays.
-- Background read indication is delayed, compact and nonblocking; saves retain waiting feedback.
-- Dashboard totals and report content stay visible during successful background updates.
+Old multi-component vouchers did not save ownership. On Edit, select the component for each saved roll, check the counts (e.g. Kurta 6 / Pant 4), and Continue to edit. Review fabric/unit and quantities, then Save to persist the mapping. Cancel leaves the stored voucher unchanged. Do not guess ownership from list order.
 
-Verification: automated same-user refresh/draft retention, stable permission callback,
-revoked permissions, logout, read/write request classification; TypeScript and production build.
-Live multi-user verification on your deployment is still required.
-Try a partially filled Item, Account and Cutting/Stitching form: switch tabs, return,
-and wait through the 30-second refresh. Check the draft, selected source and cursor.
+No live stock or historical voucher has been changed by this ZIP. If an old voucher was already saved with duplicated rolls, its quantities need reconciliation against the original entry; this update does not silently alter them.
 
-Limit: this patch preserves forms during normal successful background/session refresh.
-It does not implement durable offline drafts or recovery after browser reload, tab discard,
-logout, or failed authentication/access verification.
-No users, permissions, transaction records or database values are changed by this patch.
+Verified locally: 6+4 roll JSON roundtrip, reversed component order, distinct fabrics, total consumption unchanged, legacy assignment requirement, TypeScript check. Live deployment not tested.
 
 GitHub Summary:
-Preserve ERP forms during session refresh and quiet background updates
+Fix cutting voucher component-wise roll restoration
 
-GitHub Description:
-Prevent same-user session verification and unchanged permission refreshes from remounting
-working forms. Keep voucher initialization tied to record identity and preserve Account
-Master drafts after failed saves. Classify reporting RPCs as reads, reduce background
-loading disruption, and retain dashboard content while refresh requests complete.
+Description:
+Persist roll component/fabric/unit metadata, avoid copying all rolls into every component on edit, show component roll counts in view, and add explicit one-time assignment for legacy vouchers.
