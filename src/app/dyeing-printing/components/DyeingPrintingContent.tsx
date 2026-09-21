@@ -429,20 +429,8 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
 
   // ─── Derived: quality-grouped outstanding for the issue dropdown ──────────
   const qualityGroupedOutstanding = React.useMemo<QualityGroupedOutstanding[]>(() => {
-    // Build the set of fabric refs already pending/partial with the selected printer
-    const selectedPrinter = printerIssueForm.printerAccount;
-    const alreadyIssuedToSelectedPrinter = new Set<string>(
-      selectedPrinter
-        ? allIssues
-            .filter((i) => i.printerAccount === selectedPrinter && (i.status === 'pending' || i.status === 'partial'))
-            .map((i) => i.grayFabricRef)
-        : []
-    );
-
     const map = new Map<string, QualityGroupedOutstanding>();
     for (const f of consolidatedOutstanding) {
-      // Skip fabrics already pending/partial with the currently selected printer
-      if (alreadyIssuedToSelectedPrinter.has(f.purchaseNo)) continue;
 
       const key = `${f.fabricName}|${f.fabricType || ''}`;
       if (map.has(key)) {
@@ -466,7 +454,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
       }
     }
     return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
-  }, [consolidatedOutstanding, allIssues, printerIssueForm.printerAccount]);
+  }, [consolidatedOutstanding]);
 
   const [viewIssue, setViewIssue] = useState<PrinterFabricIssue | null>(null);
   const [deleteIssueTarget, setDeleteIssueTarget] = useState<PrinterFabricIssue | null>(null);
@@ -485,13 +473,13 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
   }, []);
 
   const loadEligibleFabrics = useCallback(async (allGreyFabrics: GreyFabricPurchase[]) => {
-    if (allGreyFabrics.length === 0) return;
-    const { eligible, lockedRefs } = await printerFabricService.getEligibleFabricsForPrinter(allGreyFabrics);
-    setEligibleFabrics(eligible);
-    setLockedFabricRefs(lockedRefs);
-    // Also compute consolidated outstanding for the issue dropdown
-    const outstanding = await printerFabricService.getConsolidatedOutstandingFabrics(allGreyFabrics);
-    setConsolidatedOutstanding(outstanding);
+    try {
+      const outstanding = await printerFabricService.getConsolidatedOutstandingFabrics(allGreyFabrics);
+      setConsolidatedOutstanding(outstanding);
+    } catch (error) {
+      setConsolidatedOutstanding([]);
+      setSaveError(error instanceof Error ? error.message : 'Could not load available fabric. Please retry.');
+    }
   }, []);
 
   useEffect(() => { loadEntries(); loadAllIssues(); }, [loadEntries, loadAllIssues]);

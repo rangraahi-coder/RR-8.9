@@ -1,3 +1,4 @@
+import type { GreyIssue } from '@/lib/greyStockGroups';
 import { createClient } from '@/lib/supabase/client';
 import { GreyFabricPurchase } from '@/app/grey-fabric/data/greyFabricData';
 
@@ -37,6 +38,17 @@ function rowToPurchase(row: any): GreyFabricPurchase {
 }
 
 export const greyFabricService = {
+  async getIssueQuantities(): Promise<GreyIssue[]> {
+    const rows: GreyIssue[] = [];
+    const supabase = createClient();
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from('printer_fabric_issues')
+        .select('id,gray_fabric_ref,qty_issued,qty_pending,qty_actual_received,issue_no,printer_account,date').order('id').range(from, from + 999);
+      if (error) throw new Error(error.message || 'Could not load grey issue quantities');
+      rows.push(...(data || []));
+      if (!data || data.length < 1000) return rows;
+    }
+  },
   async getAll(): Promise<GreyFabricPurchase[]> {
     const supabase = createClient();
     const { data, error } = await supabase

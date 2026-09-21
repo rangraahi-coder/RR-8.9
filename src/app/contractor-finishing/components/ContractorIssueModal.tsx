@@ -57,6 +57,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
 
   // Stitching receive reference selection
   const [stitchRefs, setStitchRefs] = useState<StitchReceiveRef[]>([]);
+  const [selectedJobCard, setSelectedJobCard] = useState('');
   const [selectedStitchRefId, setSelectedStitchRefId] = useState('');
   const [selectedStitchRef, setSelectedStitchRef] = useState<StitchReceiveRef | null>(null);
   const [loadingRef, setLoadingRef] = useState(false);
@@ -93,6 +94,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
         setContractorName(editVoucher.contractorName);
         setProcess(editVoucher.process);
         setRemarks(editVoucher.remarks || '');
+        setSelectedJobCard(refs.find(ref => ref.id === editVoucher.stitchReceiveVoucherId)?.jobCardRef || editVoucher.jobCardRef || '');
         setSelectedStitchRefId(editVoucher.stitchReceiveVoucherId || '');
       } else {
         setVoucherNo(nextNo);
@@ -108,6 +110,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
       setSelectedStitchRef(null);
       setIssueRows([]);
       setAlreadyIssuedMap({});
+      setLoadingRef(false);
       return;
     }
     let cancelled = false;
@@ -238,6 +241,8 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
   async function handleSave() {
     setError(null);
     const newErrors: Record<string, string> = {};
+    if (!selectedJobCard) newErrors.jobCard = 'Please select a Job Card.';
+    if (selectedStitchRef && selectedStitchRef.jobCardRef !== selectedJobCard) newErrors.jobCard = 'The receiving voucher does not belong to this Job Card. Select it again.';
     if (!selectedStitchRefId || !selectedStitchRef) newErrors.stitchRef = 'Please select a Stitching Receive Reference.';
     if (!contractorName.trim()) newErrors.contractor = 'Contractor name is required.';
     if (totalIssuedQty === 0) newErrors.qty = 'Enter issued quantity for at least one component.';
@@ -340,6 +345,27 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
             </div>
           </div>
 
+          <div className="space-y-1.5">
+            <label className="block text-sm font-600" htmlFor="contractor-job-card">Job Card <span className="text-danger">*</span></label>
+            <select id="contractor-job-card" value={selectedJobCard} disabled={saving}
+              onChange={(e) => {
+                setSelectedJobCard(e.target.value);
+                setSelectedStitchRefId('');
+                setSelectedStitchRef(null);
+                setIssueRows([]);
+                setAlreadyIssuedMap({});
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-white">
+              <option value="">— Select Job Card —</option>
+              {Array.from(new Set([...jobCards.map(job => job.jobCardNo), ...stitchRefs.map(ref => ref.jobCardRef), selectedJobCard].filter(Boolean))).sort().map(ref => {
+                const job = jobCards.find(job => job.jobCardNo === ref);
+                return <option key={ref} value={ref}>{ref}{job?.styleEn ? ` | ${job.styleEn}` : ''}{job?.partyName ? ` | ${job.partyName}` : ''}</option>;
+              })}
+            </select>
+            {fieldErrors.jobCard && <p className="text-xs text-danger">{fieldErrors.jobCard}</p>}
+          </div>
           {/* Stitching Receive Reference — PRIMARY SELECTION */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
@@ -352,6 +378,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
               </label>
               <div className="relative">
                 <select
+                  disabled={!selectedJobCard || saving}
                   value={selectedStitchRefId}
                   onChange={(e) => {
                     setSelectedStitchRefId(e.target.value);
@@ -362,7 +389,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                   }`}
                 >
                   <option value="">— Select Stitching Receive Voucher —</option>
-                  {stitchRefs
+                  {stitchRefs.filter(ref => ref.jobCardRef === selectedJobCard)
                     .filter((ref) => {
                       // Always show the currently selected ref (e.g. when editing)
                       if (editVoucher && ref.id === editVoucher.stitchReceiveVoucherId) return true;
@@ -379,8 +406,8 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               {fieldErrors.stitchRef && <p className="text-xs text-danger mt-0.5">{fieldErrors.stitchRef}</p>}
-              {stitchRefs.length === 0 && (
-                <p className="text-xs text-warning mt-1 font-body">No stitching receive vouchers found. Please complete stitching receive first.</p>
+              {selectedJobCard && !stitchRefs.some(ref => ref.jobCardRef === selectedJobCard && ((editVoucher && ref.id === editVoucher.stitchReceiveVoucherId) || (issuedTotalsMap[ref.id] || 0) < ref.totalPiecesReceived)) && (
+                <p className="text-xs text-warning mt-1 font-body">No pending stitching receive vouchers for this Job Card.</p>
               )}
             </div>
 

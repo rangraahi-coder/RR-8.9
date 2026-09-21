@@ -172,7 +172,7 @@ export const printerFabricService = {
       .in('status', ['pending', 'partial']);
 
     if (error) {
-      console.error('[printerFabricService.getConsolidatedOutstandingFabrics]', error);
+      throw new Error(error.message || 'Could not load pending printer issues.');
     }
 
     // Build a map: fabricRef → total qty_pending across all active issues
@@ -246,7 +246,7 @@ export const printerFabricService = {
 
     if (error) {
       console.error('[printerFabricService.getFabricOutstandingQty]', error);
-      return balanceInStock;
+      throw new Error(error.message || 'Could not verify pending printer issues.');
     }
 
     const totalPending = (data || []).reduce(
@@ -263,50 +263,20 @@ export const printerFabricService = {
   ): Promise<{ data: PrinterFabricIssue | null; error?: string }> {
     const supabase = createClient();
 
-    // ── Backend-style outstanding qty validation ──────────────────────────
-    // Re-fetch outstanding qty at save time to prevent race conditions / multi-tab issues
-    const { data: activeIssues, error: fetchErr } = await supabase
-      .from('printer_fabric_issues')
-      .select('qty_pending')
-      .eq('gray_fabric_ref', issue.grayFabricRef)
-      .in('status', ['pending', 'partial']);
-
-    if (fetchErr) {
-      console.error('[printerFabricService.createIssue] fetch active issues', fetchErr);
+    // Re-read the remaining grey balance and committed printer reservations.
+    // balance_in_stock includes grey still pending with processors.
+    const { data: grey, error: greyError } = await supabase
+      .from('grey_fabric_purchases').select('balance_in_stock')
+      .eq('purchase_no', issue.grayFabricRef).single();
+    if (greyError || !grey) return { data: null, error: greyError?.message || 'Linked grey purchase could not be loaded. Refresh and try again.' };
+    let available: number;
+    try {
+      available = await this.getFabricOutstandingQty(issue.grayFabricRef, Number(grey.balance_in_stock) || 0);
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : 'Could not verify available fabric. Please retry.' };
     }
-
-    const totalActivePending = (activeIssues || []).reduce(
-      (sum: number, row: any) => sum + (parseFloat(row.qty_pending) || 0),
-      0
-    );
-
-    // We need the balanceInStock — use outstandingQty + totalActivePending if provided,
-    // otherwise fall back to outstandingQty check only
-    if (outstandingQty !== undefined) {
-      const serverOutstanding = Math.round((outstandingQty + totalActivePending - totalActivePending) * 10000) / 10000;
-      // Re-derive: server outstanding = outstandingQty (already computed as balanceInStock - totalActivePending at call time)
-      // At save time, re-check with fresh totalActivePending
-      const freshOutstanding = Math.round(((outstandingQty + totalActivePending) - totalActivePending) * 10000) / 10000;
-      void serverOutstanding; void freshOutstanding; // suppress unused warning
-    }
-
-    // Core check: issued qty must not exceed current outstanding
-    // outstanding = (balanceInStock passed as outstandingQty + totalActivePending) - totalActivePending
-    // Simplified: if outstandingQty was computed as balanceInStock - oldPending, 
-    // fresh outstanding = balanceInStock - freshTotalActivePending
-    // We use outstandingQty as the reference since it was computed just before this call
-    if (outstandingQty !== undefined) {
-      const freshOutstanding = Math.round((outstandingQty + totalActivePending) * 10000) / 10000 - Math.round(totalActivePending * 10000) / 10000;
-      // Actually: freshOutstanding = balanceInStock - freshTotalActivePending
-      // balanceInStock = outstandingQty + totalActivePendingAtCallTime
-      // We don't have balanceInStock here directly, so use the passed outstandingQty as the cap
-      if (issue.qtyIssued > outstandingQty + 0.0001) {
-        return {
-          data: null,
-          error: `Cannot issue ${issue.qtyIssued.toFixed(3)} Mt. — only ${outstandingQty.toFixed(3)} Mt. is outstanding for fabric "${issue.grayFabricRef}". Reduce the quantity or wait for existing issues to be settled.`,
-        };
-      }
-      void freshOutstanding;
+    if (!Number.isFinite(issue.qtyIssued) || issue.qtyIssued <= 0 || issue.qtyIssued > available + 0.0001) {
+      return { data: null, error: `Cannot issue ${issue.qtyIssued} Mt. — ${Math.max(0, available).toFixed(3)} Mt. is available for ${issue.grayFabricRef}. Refresh the fabric selection and check the quantity.` };
     }
 
     const { data, error } = await supabase

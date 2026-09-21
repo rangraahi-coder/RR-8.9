@@ -1,4 +1,7 @@
 'use client';
+import GreyStockOverview from './GreyStockOverview';
+import { GreyIssue, greyStockKey } from '@/lib/greyStockGroups';
+import { greyIssueSummary } from '@/lib/greyIssueSummary';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Package, TrendingDown, ArrowRight, X, ShoppingCart, RefreshCw, AlertCircle, Pencil, Trash2, Ruler } from 'lucide-react';
@@ -43,6 +46,8 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
   const router = useRouter();
 
   const [entries, setEntries] = useState<GreyFabricPurchase[]>([]);
+  const [issueQuantities, setIssueQuantities] = useState<GreyIssue[] | null>(null);
+  const [selectedStockGroup, setSelectedStockGroup] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -65,9 +70,11 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
   const loadEntries = useCallback(async () => {
     try {
       setError(null);
-      const data = await greyFabricService.getAll();
+      const [data, issues] = await Promise.all([greyFabricService.getAll(), greyFabricService.getIssueQuantities()]);
       setEntries(data);
+      setIssueQuantities(issues);
     } catch (err: any) {
+      setIssueQuantities(null);
       setError(err?.message || 'Failed to load entries');
     } finally {
       setLoading(false);
@@ -85,11 +92,13 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
 
   // ── Realtime: re-fetch whenever any user inserts/updates/deletes ────────────
   useRealtimeTable('grey_fabric_purchases', loadEntries);
+  useRealtimeTable('printer_fabric_issues', loadEntries);
 
   // ── Summary stats ───────────────────────────────────────────────────────────
   const totalReceived = entries.reduce((s, e) => s + e.receivedQty, 0);
-  const totalSent = entries.reduce((s, e) => s + e.sentForDyeing + e.sentForPrinting, 0);
-  const totalBalance = entries.reduce((s, e) => s + e.balanceInStock, 0);
+  const issueSummary = (entry: GreyFabricPurchase) => greyIssueSummary(entry.actualFabricQty, entry.purchaseNo, issueQuantities || []);
+  const totalSent = entries.reduce((s, e) => s + issueSummary(e).sent, 0);
+  const totalBalance = entries.reduce((s, e) => s + issueSummary(e).available, 0);
 
   // ── Metering variation calculations ─────────────────────────────────────────
   const computedActualQty = () => {
@@ -342,13 +351,13 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Sent for Processing</p>
-          <p className="text-2xl font-700 text-warning mt-1">{totalSent.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
+          <p className="text-2xl font-700 text-warning mt-1">{issueQuantities === null ? '—' : totalSent.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</p>
           <p className="text-xs text-muted-foreground">Metres</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
-          <p className="text-xs text-muted-foreground font-500">Balance in Stock</p>
-          <p className="text-2xl font-700 text-success mt-1">{totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</p>
-          <p className="text-xs text-muted-foreground">Metres (Actual)</p>
+          <p className="text-xs text-muted-foreground font-500">Available to Issue</p>
+          <p className="text-2xl font-700 text-success mt-1">{issueQuantities === null ? '—' : totalBalance.toLocaleString('en-IN', { maximumFractionDigits: 3 })}</p>
+          <p className="text-xs text-muted-foreground">Metres · excludes fabric already issued</p>
         </div>
       </div>
 
@@ -363,12 +372,14 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
         </div>
       )}
 
-      {/* Table */}
+      <GreyStockOverview purchases={entries} issues={issueQuantities} selected={selectedStockGroup} onSelect={setSelectedStockGroup} loading={loading}/>
+      {/* Purchase details for selected consolidated fabric */}
+      {selectedStockGroup && (
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center gap-2">
           <ShoppingCart size={15} className="text-primary" />
           <span className="text-sm font-600 text-foreground">Purchase Entries</span>
-          <span className="ml-auto text-xs text-muted-foreground">{entries.length} records</span>
+          <span className="ml-auto text-xs text-muted-foreground">{entries.filter(entry => greyStockKey(entry) === selectedStockGroup).length} records</span>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[1200px]">
@@ -407,7 +418,7 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                   </td>
                 </tr>
               ) : (
-                entries.map((entry) => {
+                entries.filter(entry => greyStockKey(entry) === selectedStockGroup).map((entry) => {
                   const variation = entry.actualFabricQty - entry.receivedQty;
                   const hasVariation = Math.abs(variation) > 0.001;
                   return (
@@ -448,8 +459,8 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                             : `₹${entry.discount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`)
                           : '—'}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-warning">{(entry.sentForDyeing + entry.sentForPrinting).toLocaleString('en-IN', { maximumFractionDigits: 2 })} {entry.unit}</td>
-                      <td className="px-4 py-3 text-right tabular-nums font-600 text-success">{entry.balanceInStock.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {entry.unit}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-warning">{issueQuantities === null ? '—' : issueSummary(entry).sent.toLocaleString('en-IN', { maximumFractionDigits: 3 })} {entry.unit}</td>
+                      <td className="px-4 py-3 text-right tabular-nums font-600 text-success">{issueQuantities === null ? '—' : issueSummary(entry).available.toLocaleString('en-IN', { maximumFractionDigits: 3 })} {entry.unit}</td>
                       <td className="px-4 py-3">
                         <span className={`px-2 py-0.5 rounded-full text-xs font-600 ${statusColor[entry.status] || statusColor.pending}`}>
                           {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
@@ -489,6 +500,7 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
         </div>
       </div>
 
+      )}
       {/* Add / Edit Modal */}
       {showModal && (
         <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
