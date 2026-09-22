@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect } from 'react';
 import { X, Plus, Layers, Package, AlertTriangle, CheckCircle, Scissors, Info } from 'lucide-react';
 import {
@@ -481,7 +483,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Process / Purpose *</label>
-                <select
+                <SearchableSelect
                   disabled={processScope==='handwork'}
                   value={processType}
                   onChange={(e) => setProcessType(e.target.value)}
@@ -490,11 +492,11 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                   {PROCESS_TYPES.filter(p=>processScope==='handwork'?p.value==='handwork':p.value!=='handwork').map((pt) => (
                     <option key={pt.value} value={pt.value}>{pt.label}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
               <div>
                 <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Issued To Type *</label>
-                <select
+                <SearchableSelect
                   value={issuedToType}
                   onChange={(e) => setIssuedToType(e.target.value)}
                   className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -502,14 +504,14 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                   {ISSUED_TO_TYPES.map((t) => (
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
             </div>
 
             {/* Job Card */}
             <div>
               <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Job Card *</label>
-              <select
+              <SearchableSelect
                 value={selectedJobCardNo}
                 onChange={(e) => handleJobCardChange(e.target.value)}
                 className={`w-full border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20 ${fieldErrors.jobCard ? 'border-danger ring-1 ring-danger/30' : 'border-border'}`}
@@ -518,7 +520,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                 {jobCards.map((jc) => (
                   <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                 ))}
-              </select>
+              </SearchableSelect>
               {fieldErrors.jobCard && <p className="text-xs text-danger mt-0.5">{fieldErrors.jobCard}</p>}
             </div>
 
@@ -550,7 +552,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                 {issuedToType === 'cutting_master' ? 'Cutting Master' : issuedToType === 'employee' ? 'Employee' : issuedToType === 'department' ? 'Department' : 'Operator / Vendor'} *
               </label>
               {issuedToType === 'cutting_master' ? (
-                <select
+                <SearchableSelect
                   value={operatorName}
                   onChange={(e) => { setOperatorId(''); setOperatorName(e.target.value); if (e.target.value) setFieldErrors((prev) => ({ ...prev, operator: '' })); }}
                   required
@@ -560,9 +562,9 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                   {cuttingMasters.map((m) => (
                     <option key={m} value={m}>{m}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               ) : (
-                <select
+                <SearchableSelect
                   value={operatorId || operatorName}
                   onChange={(e) => handleOperatorChange(e.target.value)}
                   required
@@ -572,7 +574,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>{acc.name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               )}
               {fieldErrors.operator && <p className="text-xs text-danger mt-0.5">{fieldErrors.operator}</p>}
               {issuedToType === 'cutting_master' && cuttingMasters.length === 0 && (
@@ -596,7 +598,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">
                     Select Cutting Stock (optional — or add manually below)
                   </label>
-                  <select
+                  <SearchableSelect
                     value={selectedCuttingStockId}
                     onChange={(e) => handleCuttingStockSelect(e.target.value)}
                     className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -608,7 +610,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                         {s.receiveVoucherNo ? ` | Rcv: ${s.receiveVoucherNo}` : ''}
                       </option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   {cuttingStock.length === 0 && (
                     <p className="text-xs text-warning font-body mt-1">
                       No cutting stock available. Receive cutting first via a Receive Voucher, then re-issue from here.
@@ -661,13 +663,13 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                           {cuttingItems.map((ci, i) => (
                             <tr key={i} className="border-t border-border">
                               <td className="px-2 py-1.5">
-                                <select
+                                <SearchableSelect
                                   value={ci.component}
                                   onChange={(e) => updateCuttingItem(i, 'component', e.target.value)}
                                   className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20"
                                 >
                                   {SUB_COMPONENTS.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
-                                </select>
+                                </SearchableSelect>
                               </td>
                               <td className="px-2 py-1.5">
                                 <input
@@ -689,13 +691,13 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                                 />
                               </td>
                               <td className="px-2 py-1.5">
-                                <select
+                                <SearchableSelect
                                   value={ci.unit}
                                   onChange={(e) => updateCuttingItem(i, 'unit', e.target.value)}
                                   className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20"
                                 >
                                   {ACCESSORY_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                                </select>
+                                </SearchableSelect>
                               </td>
                               <td className="px-2 py-1.5 text-center">
                                 <button type="button" onClick={() => removeCuttingItem(i)} className="text-danger hover:text-danger/70">
@@ -773,14 +775,14 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                         <div className="grid grid-cols-2 gap-3 mb-3">
                           <div>
                             <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Fabric *</label>
-                            <select
+                            <SearchableSelect
                               value={fi.fabricName}
                               onChange={(e) => updateFabricItem(i, 'fabricName', e.target.value)}
                               className="w-full border border-border rounded-lg px-2 py-1.5 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20"
                             >
                               <option value="">— Select Fabric —</option>
                               {fabricNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                            </select>
+                            </SearchableSelect>
                           </div>
                           <div>
                             <label className="block text-xs font-600 text-muted-foreground font-body mb-1">
@@ -791,7 +793,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                                 </span>
                               )}
                             </label>
-                            <select
+                            <SearchableSelect
                               value={fi.rollId}
                               onChange={(e) => updateFabricItem(i, 'rollId', e.target.value)}
                               disabled={!fi.fabricName}
@@ -803,7 +805,7 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                                   Roll #{roll.id.slice(-6)} — {roll.stockQty} {roll.unit} available
                                 </option>
                               ))}
-                            </select>
+                            </SearchableSelect>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
@@ -877,10 +879,10 @@ export default function IssueVoucherModal({ jobCards, onClose, onSaved, editVouc
                                 className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body text-right focus:outline-none focus:ring-1 focus:ring-primary/20" placeholder="0" />
                             </td>
                             <td className="px-2 py-1.5">
-                              <select value={a.unit} onChange={(e) => updateAccessoryItem(i, 'unit', e.target.value)}
+                              <SearchableSelect value={a.unit} onChange={(e) => updateAccessoryItem(i, 'unit', e.target.value)}
                                 className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20">
                                 {ACCESSORY_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                              </select>
+                              </SearchableSelect>
                             </td>
                             <td className="px-2 py-1.5 text-center">
                               <button type="button" onClick={() => removeAccessoryItem(i)} className="text-danger hover:text-danger/70">

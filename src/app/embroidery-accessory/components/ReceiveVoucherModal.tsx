@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect } from 'react';
 import { X, Layers, Package, AlertCircle, CheckCircle, Info, Scissors, AlertTriangle } from 'lucide-react';
 import { embroideryVoucherService, EmbIssueVoucher, EmbReceiveVoucher, ReceiveFabricItem, ReceiveAccessoryItem, ReceiveCuttingItem } from '@/lib/services/embroideryVoucherService';
@@ -401,7 +403,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
           {/* Issue Voucher Selection */}
           <div>
             <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Issue Challan / Voucher No *</label>
-            <select
+            <SearchableSelect
               value={selectedIssueId}
               onChange={(e) => handleIssueVoucherSelect(e.target.value)}
               required
@@ -414,7 +416,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                   {v.issueSource === 'processed_cutting' ? ' [Re-Issue]' : ''}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
             {fieldErrors.issueVoucher && <p className="text-xs text-danger mt-0.5">{fieldErrors.issueVoucher}</p>}
             {eligibleVouchers.length === 0 && (
               <p className="text-xs text-warning font-body mt-1">No open Issue Challans found. Create an Issue Voucher first.</p>
@@ -516,13 +518,13 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                             />
                           </td>
                           <td className="px-3 py-2">
-                            <select
+                            <SearchableSelect
                               value={receiveUnit}
                               onChange={(e) => updateFabricReceiveUnit(i, e.target.value)}
                               className={`w-full border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20 ${unitChanged ? 'border-primary bg-primary/5 text-primary font-700' : 'border-border'}`}
                             >
                               {RECEIVE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            </SearchableSelect>
                           </td>
                           <td className="px-3 py-2">
                             <input
@@ -536,14 +538,14 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                           </td>
                           <td className="px-3 py-2">
                             {rejected > 0 ? (
-                              <select
+                              <SearchableSelect
                                 value={(f as any).rejectionReason || ''}
                                 onChange={(e) => updateFabricRejectionReason(i, e.target.value)}
                                 className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                               >
                                 <option value="">— Reason —</option>
                                 {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
-                              </select>
+                              </SearchableSelect>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                         </tr>
@@ -605,13 +607,13 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                             />
                           </td>
                           <td className="px-3 py-2">
-                            <select
+                            <SearchableSelect
                               value={receiveUnit}
                               onChange={(e) => updateAccessoryReceiveUnit(i, e.target.value)}
                               className={`w-full border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20 ${unitChanged ? 'border-primary bg-primary/5 text-primary font-700' : 'border-border'}`}
                             >
                               {RECEIVE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            </SearchableSelect>
                           </td>
                           <td className="px-3 py-2">
                             <input
@@ -625,14 +627,14 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                           </td>
                           <td className="px-3 py-2">
                             {rejected > 0 ? (
-                              <select
+                              <SearchableSelect
                                 value={(a as any).rejectionReason || ''}
                                 onChange={(e) => updateAccessoryRejectionReason(i, e.target.value)}
                                 className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                               >
                                 <option value="">— Reason —</option>
                                 {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
-                              </select>
+                              </SearchableSelect>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                         </tr>
@@ -694,13 +696,13 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                           <tr key={i} className={`border-t border-border ${isCuttingIssue && c.balancePieces === 0 && !unitChanged ? 'opacity-50' : ''}`}>
                             <td className="px-3 py-2 font-body font-600">
                               {isCuttingIssue ? c.component : (
-                                <select
+                                <SearchableSelect
                                   value={c.component}
                                   onChange={(e) => updateManualCuttingItem(i, 'component', e.target.value)}
                                   className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20"
                                 >
                                   {SUB_COMPONENTS.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
-                                </select>
+                                </SearchableSelect>
                               )}
                             </td>
                             {isCuttingIssue && <td className="px-3 py-2 text-right font-body">{c.issuedPieces}</td>}
@@ -724,7 +726,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                               />
                             </td>
                             <td className="px-3 py-2">
-                              <select
+                              <SearchableSelect
                                 value={receiveUnit}
                                 onChange={(e) => isCuttingIssue
                                   ? updateCuttingReceiveUnit(i, e.target.value)
@@ -733,7 +735,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                                 className={`w-full border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20 ${unitChanged ? 'border-primary bg-primary/5 text-primary font-700' : 'border-border'}`}
                               >
                                 {RECEIVE_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                              </select>
+                              </SearchableSelect>
                             </td>
                             <td className="px-3 py-2">
                               <input
@@ -750,14 +752,14 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                             </td>
                             <td className="px-3 py-2">
                               {rejected > 0 ? (
-                                <select
+                                <SearchableSelect
                                   value={(c as any).rejectionReason || ''}
                                   onChange={(e) => updateCuttingRejectionReason(i, e.target.value)}
                                   className="w-full border border-danger/30 rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-danger/20 bg-red-50"
                                 >
                                   <option value="">— Reason —</option>
                                   {REJECTION_REASONS.map(reason=>handwork&&reason==='Embroidery defect'?'Handwork defect':reason).map((r) => <option key={r} value={r}>{r}</option>)}
-                                </select>
+                                </SearchableSelect>
                               ) : <span className="text-muted-foreground text-xs">—</span>}
                             </td>
                             <td className="px-3 py-2">

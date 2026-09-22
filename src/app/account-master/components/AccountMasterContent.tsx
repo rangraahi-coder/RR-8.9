@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Search, Filter, Edit2, Eye, CheckCircle, XCircle, ChevronDown, X, Upload, Phone, MapPin, FileText, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -66,7 +68,7 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Account Type</label>
-              <select
+              <SearchableSelect
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 value={form.parentGroup}
                 onChange={e => handleChange('parentGroup', e.target.value as AccountType)}
@@ -74,7 +76,7 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
                 {ALL_ACCOUNT_TYPES.map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
           <div>
@@ -120,7 +122,7 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Type of Dealer</label>
-              <select
+              <SearchableSelect
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 value={form.typeOfDealer}
                 onChange={e => handleChange('typeOfDealer', e.target.value as DealerType)}
@@ -129,11 +131,11 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
                 <option value="Registered">Registered</option>
                 <option value="Un-Registered">Un-Registered</option>
                 <option value="Composition">Composition</option>
-              </select>
+              </SearchableSelect>
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Filing Frequency</label>
-              <select
+              <SearchableSelect
                 className="w-full border border-border rounded-lg px-3 py-2 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
                 value={form.filingFrequency}
                 onChange={e => handleChange('filingFrequency', e.target.value as Account['filingFrequency'])}
@@ -142,7 +144,7 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
                 <option value="Monthly">Monthly</option>
                 <option value="Quarterly">Quarterly</option>
                 <option value="Not Known">Not Known</option>
-              </select>
+              </SearchableSelect>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -167,14 +169,14 @@ function EditModal({ account, onClose, onSave }: EditModalProps) {
           </div>
           <div className="flex items-center gap-3">
             <label className="text-xs font-600 text-muted-foreground">Bill by Bill:</label>
-            <select
+            <SearchableSelect
               className="border border-border rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none"
               value={form.billByBill}
               onChange={e => handleChange('billByBill', e.target.value as 'Y' | 'N')}
             >
               <option value="Y">Yes</option>
               <option value="N">No</option>
-            </select>
+            </SearchableSelect>
           </div>
         </div>
         <div className="flex justify-end gap-3 px-6 py-4 border-t border-border">
@@ -351,7 +353,7 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Account Type <span className="text-red-500">*</span></label>
-              <select
+              <SearchableSelect
                 value={form.parentGroup}
                 onChange={e => handleChange('parentGroup', e.target.value as AccountType)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -359,7 +361,7 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
                 {ALL_ACCOUNT_TYPES.map(t => (
                   <option key={t} value={t}>{t}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Alias</label>
@@ -373,7 +375,7 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Type of Dealer</label>
-              <select
+              <SearchableSelect
                 value={form.typeOfDealer}
                 onChange={e => handleChange('typeOfDealer', e.target.value as DealerType)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -382,7 +384,7 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
                 <option value="Registered">Registered</option>
                 <option value="Un-Registered">Un-Registered</option>
                 <option value="Composition">Composition</option>
-              </select>
+              </SearchableSelect>
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Mobile</label>
@@ -407,7 +409,7 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Filing Frequency</label>
-              <select
+              <SearchableSelect
                 value={form.filingFrequency}
                 onChange={e => handleChange('filingFrequency', e.target.value)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -416,18 +418,18 @@ function AddMasterModal({ onClose, onSave }: AddMasterModalProps) {
                 <option value="Monthly">Monthly</option>
                 <option value="Quarterly">Quarterly</option>
                 <option value="Not Known">Not Known</option>
-              </select>
+              </SearchableSelect>
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1">Bill by Bill</label>
-              <select
+              <SearchableSelect
                 value={form.billByBill}
                 onChange={e => handleChange('billByBill', e.target.value as 'Y' | 'N')}
                 className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
               >
                 <option value="Y">Yes</option>
                 <option value="N">No</option>
-              </select>
+              </SearchableSelect>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-600 text-muted-foreground mb-1">Address Line 1</label>

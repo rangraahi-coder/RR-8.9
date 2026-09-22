@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect } from 'react';
 import { X, Plus, User, Pencil, Trash2, CheckCircle, XCircle, Search, Eye } from 'lucide-react';
 import { stitchingVoucherService, StitchOperator } from '@/lib/services/stitchingVoucherService';
@@ -274,16 +276,16 @@ export default function OperatorMasterContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Department</label>
-                  <select value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} className="input-field text-sm">
                     {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Process</label>
-                  <select value={form.process} onChange={(e) => setForm({ ...form, process: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect value={form.process} onChange={(e) => setForm({ ...form, process: e.target.value })} className="input-field text-sm">
                     <option value="">-- Select Process --</option>
                     {PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
               <div className="flex items-center gap-3">

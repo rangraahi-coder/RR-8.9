@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import {ReceiptJobSelect} from '@/components/ReceiptJobLink';
@@ -767,7 +769,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Source / Supplier</label>
-                <select
+                <SearchableSelect
                   value={source}
                   onChange={(e) => setSource(e.target.value)}
                   className="px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -779,7 +781,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                       {acc.name}
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
             </div>
           </div>
@@ -891,7 +893,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                               </button>
                             </div>
                           ) : (
-                            <select
+                            <SearchableSelect
                               value={line.category}
                               onChange={(e) => {
                                 if (e.target.value === '__ADD_NEW__') {
@@ -912,7 +914,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                                 <option key={opt.value} value={opt.value}>{opt.label}</option>
                               ))}
                               <option value="__ADD_NEW__">+ Add New Category</option>
-                            </select>
+                            </SearchableSelect>
                           )}
                           {errors[`category-${lineIdx}`] && (
                             <span className="text-xs text-red-500">{errors[`category-${lineIdx}`]}</span>
@@ -938,7 +940,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                         {/* Unit */}
                         <div className="flex flex-col gap-1">
                           <label className="text-xs font-600 text-muted-foreground">Unit</label>
-                          <select
+                          <SearchableSelect
                             value={line.unit}
                             onChange={(e) => updateLine(line.id, 'unit', e.target.value)}
                             className="px-3 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -946,7 +948,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                             {UNIT_OPTIONS.map((u) => (
                               <option key={u} value={u}>{u}</option>
                             ))}
-                          </select>
+                          </SearchableSelect>
                         </div>
                       </div>
                     </div>
@@ -1153,7 +1155,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
               {/* Printer / Dyer Account */}
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Printer / Dyer Account *</label>
-                <select
+                <SearchableSelect
                   value={receivePrinter}
                   onChange={(e) => { setReceivePrinter(e.target.value); setSelectedIssueId(''); }}
                   disabled={accountsLoading}
@@ -1165,7 +1167,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.name}>{acc.name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
                 {receiveErrors.receivePrinter && <span className="text-xs text-red-500">{receiveErrors.receivePrinter}</span>}
               </div>
 
@@ -1228,7 +1230,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Pending Fabric Issues *</label>
-                  <select
+                  <SearchableSelect
                     value={selectedIssueId}
                     onChange={(e) => setSelectedIssueId(e.target.value)}
                     className={`px-3 py-2 text-sm border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30 ${
@@ -1257,7 +1259,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                         );
                       });
                     })()}
-                  </select>
+                  </SearchableSelect>
                   {receiveErrors.selectedIssue && <span className="text-xs text-red-500">{receiveErrors.selectedIssue}</span>}
                 </div>
 
@@ -1287,7 +1289,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
           </div>
 
           <div className="bg-card border border-border rounded-xl p-5 grid sm:grid-cols-2 gap-4">
-            <div><label className="block text-xs font-600 mb-2">Processing Type</label><select className="input-field" value={processingType} onChange={e=>setProcessingType(e.target.value)}><option value="printing">Printing</option><option value="dyeing">Dyeing</option></select></div>
+            <div><label className="block text-xs font-600 mb-2">Processing Type</label><SearchableSelect className="input-field" value={processingType} onChange={e=>setProcessingType(e.target.value)}><option value="printing">Printing</option><option value="dyeing">Dyeing</option></SearchableSelect></div>
             <div><label className="block text-xs font-600 mb-2">Shrinkage (%) on received fabric</label><input type="number" min="0" max="100" step="0.01" className="input-field" value={shrinkagePercent} onChange={e=>setShrinkagePercent(e.target.value)}/>{receiveErrors.shrinkage&&<p className="text-xs text-red-500">{receiveErrors.shrinkage}</p>}</div>
             <p className="text-sm sm:col-span-2">Received: {totalReceiveQty.toFixed(3)} m + Shrinkage: {shrinkageMeters.toFixed(3)} m = Grey consumed: <strong>{greyConsumption.toFixed(3)} m</strong>. Finished inventory receives {totalReceiveQty.toFixed(3)} m.</p>
             <button type="button" disabled={receiveSubmitting} onClick={()=>void saveReceive(true)} className="btn-secondary">Recover Pending Receipt</button>

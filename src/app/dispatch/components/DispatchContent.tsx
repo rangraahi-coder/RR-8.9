@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import {toast} from 'sonner';
 import React, { useState,useRef, useEffect, useCallback } from 'react';
@@ -320,7 +322,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                   <Package size={12} />
                   Select from Finished Goods
                 </label>
-                <select
+                <SearchableSelect
                   required value={form.finishedGoodsId}
                   onChange={(e) => handleFinishedGoodsChange(e.target.value)}
                   className="input-field text-sm"
@@ -331,7 +333,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                       {fg.item || fg.styleName} {fg.colour ? `| ${fg.colour}` : ''} {fg.size ? `| ${fg.size}` : ''} — {fg.availableForDispatch} pcs available
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
                 {form.finishedGoodsId && (() => {
                   const fg = finishedGoods.find((g) => g.id === form.finishedGoodsId);
                   return fg ? (
@@ -342,13 +344,13 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Job Card Ref</label>
-                <select disabled value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
+                <SearchableSelect disabled value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
                   <option value="">-- Select Job Card --</option>
                   <option value="__create_new__" className="text-primary font-600">+ Create New Job Card</option>
                   {jobCards.map((jc) => (
                     <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">

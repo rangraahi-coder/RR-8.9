@@ -1,4 +1,7 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
+import StitchVoucherGroups from './StitchVoucherGroups';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Eye, Pencil, Trash2, ClipboardList, PackageCheck, User, ChevronDown, ChevronRight, X, Search, BarChart2, Filter } from 'lucide-react';
@@ -144,6 +147,7 @@ export default function StitchingContent() {
       return !receiveSearch ||
         v.voucherNo.toLowerCase().includes(receiveSearch.toLowerCase()) ||
         v.issueVoucherNo.toLowerCase().includes(receiveSearch.toLowerCase()) ||
+        (v.styleName || '').toLowerCase().includes(receiveSearch.toLowerCase()) ||
         v.jobCardRef.toLowerCase().includes(receiveSearch.toLowerCase()) ||
         v.operatorName.toLowerCase().includes(receiveSearch.toLowerCase());
     });
@@ -371,6 +375,8 @@ export default function StitchingContent() {
               <span className="text-sm font-600 text-foreground">Stitching Issue Vouchers</span>
               <span className="ml-auto text-xs text-muted-foreground">{filteredIssueVouchers.length} of {issueVouchers.length} records</span>
             </div>
+            <StitchVoucherGroups vouchers={filteredIssueVouchers} kind="issue" issues={issueVouchers} loading={issueLoading && issueVouchers.length === 0}>
+              {(groupVouchers) => (
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
@@ -387,9 +393,9 @@ export default function StitchingContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {issueLoading ? (
+                  {(issueLoading && issueVouchers.length === 0) ? (
                     <tr><td colSpan={9} className="text-center py-12 text-muted-foreground text-sm">Loading...</td></tr>
-                  ) : filteredIssueVouchers.length === 0 ? (
+                  ) : groupVouchers.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="text-center py-16 text-muted-foreground">
                         <ClipboardList size={36} className="mx-auto mb-3 opacity-20" />
@@ -398,7 +404,7 @@ export default function StitchingContent() {
                       </td>
                     </tr>
                   ) : (
-                    filteredIssueVouchers.map((v) => (
+                    groupVouchers.map((v) => (
                       <React.Fragment key={v.id}>
                         <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                           <td className="px-3 py-3">
@@ -460,6 +466,8 @@ export default function StitchingContent() {
                 </tbody>
               </table>
             </div>
+              )}
+            </StitchVoucherGroups>
           </div>
         </div>
       )}
@@ -472,7 +480,7 @@ export default function StitchingContent() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="Search by voucher no, issue voucher, job card, operator..."
+              placeholder="Search voucher, item, job card, operator..."
               value={receiveSearch}
               onChange={(e) => setReceiveSearch(e.target.value)}
               className="input-field pl-9 text-sm w-full"
@@ -485,6 +493,8 @@ export default function StitchingContent() {
               <span className="text-sm font-600 text-foreground">Stitching Receive Vouchers</span>
               <span className="ml-auto text-xs text-muted-foreground">{filteredReceiveVouchers.length} of {receiveVouchers.length} records</span>
             </div>
+            <StitchVoucherGroups vouchers={filteredReceiveVouchers} kind="receive" issues={issueVouchers} loading={receiveLoading && receiveVouchers.length === 0}>
+              {(groupVouchers) => (
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[900px]">
                 <thead>
@@ -499,9 +509,9 @@ export default function StitchingContent() {
                   </tr>
                 </thead>
                 <tbody>
-                  {receiveLoading ? (
+                  {(receiveLoading && receiveVouchers.length === 0) ? (
                     <tr><td colSpan={7} className="text-center py-12 text-muted-foreground text-sm">Loading...</td></tr>
-                  ) : filteredReceiveVouchers.length === 0 ? (
+                  ) : groupVouchers.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="text-center py-16 text-muted-foreground">
                         <PackageCheck size={36} className="mx-auto mb-3 opacity-20" />
@@ -510,7 +520,7 @@ export default function StitchingContent() {
                       </td>
                     </tr>
                   ) : (
-                    filteredReceiveVouchers.map((v) => (
+                    groupVouchers.map((v) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                         <td className="px-4 py-3 font-600 text-success text-xs">{v.voucherNo}</td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{v.voucherDate}</td>
@@ -539,6 +549,8 @@ export default function StitchingContent() {
                 </tbody>
               </table>
             </div>
+              )}
+            </StitchVoucherGroups>
           </div>
         </div>
       )}
@@ -550,7 +562,7 @@ export default function StitchingContent() {
           <div className="flex flex-col sm:flex-row gap-3 items-end">
             <div className="flex flex-col gap-1.5 flex-1">
               <label className="text-xs font-600 text-muted-foreground flex items-center gap-1"><Filter size={11} /> Filter by Operator</label>
-              <select
+              <SearchableSelect
                 value={selectedReportOperator}
                 onChange={(e) => setSelectedReportOperator(e.target.value)}
                 className="input-field text-sm"
@@ -559,7 +571,7 @@ export default function StitchingContent() {
                 {operators.map((op) => (
                   <option key={op.id} value={op.id}>{op.operatorCode} — {op.operatorName}</option>
                 ))}
-              </select>
+              </SearchableSelect>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-600 text-muted-foreground">Date From</label>

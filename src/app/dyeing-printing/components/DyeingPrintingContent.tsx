@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import PrinterQuantityDetails from './PrinterQuantityDetails';
 import { toast } from 'sonner';
 import VoucherDetails from '@/components/VoucherDetails';
@@ -1425,7 +1427,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                 {/* Row 1: Processor / Mill — FIRST SELECTION */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Processor / Mill <span className="text-danger">*</span></label>
-                  <select
+                  <SearchableSelect
                     required
                     value={form.processorName}
                     onChange={(e) => {
@@ -1439,7 +1441,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                     {processorAccounts.map((p) => (
                       <option key={p.id} value={p.name}>{p.name}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                   {!form.processorName && (
                     <p className="text-xs text-muted-foreground mt-0.5">Select a processor first to fill in the rest of the details.</p>
                   )}
@@ -1456,11 +1458,11 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-600 text-muted-foreground">Process Type *</label>
-                        <select required value={form.processType} onChange={(e) => setForm({ ...form, processType: e.target.value as DyeingProcessType })} className="input-field text-sm">
+                        <SearchableSelect required value={form.processType} onChange={(e) => setForm({ ...form, processType: e.target.value as DyeingProcessType })} className="input-field text-sm">
                           {PROCESS_TYPES.map((pt) => (
                             <option key={pt} value={pt}>{DYEING_PROCESS_TYPE_LABELS[pt]}</option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </div>
                     </div>
 
@@ -1469,7 +1471,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                       <label className="text-xs font-600 text-muted-foreground">
                         Gray Fabric Reference <span className="text-danger">*</span>
                       </label>
-                      <select
+                      <SearchableSelect
                         required
                         value={form.grayFabricRef}
                         onChange={(e) => setForm({ ...form, grayFabricRef: e.target.value })}
@@ -1527,7 +1529,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                               </option>
                             ));
                         })()}
-                      </select>
+                      </SearchableSelect>
                       {(() => {
                         const issuedRefs = new Set(
                           allIssues
@@ -1563,7 +1565,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                     <div className="grid grid-cols-2 gap-4">
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-600 text-muted-foreground">Job Card Ref <span className="text-muted-foreground/60 font-400">(optional)</span></label>
-                        <select
+                        <SearchableSelect
                           value={form.jobCardRef}
                           onChange={(e) => {
                             const jc = jobCards.find((j) => j.jobCardNo === e.target.value);
@@ -1582,7 +1584,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                               {jc.jobCardNo} — {jc.styleEn}
                             </option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </div>
                       <div className="flex flex-col gap-1.5">
                         <label className="text-xs font-600 text-muted-foreground">Style Name</label>
@@ -1806,7 +1808,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                 {/* Printer Account — must select first */}
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Printer Account <span className="text-danger">*</span></label>
-                  <select
+                  <SearchableSelect
                     required
                     value={printerIssueForm.printerAccount}
                     onChange={(e) => {
@@ -1820,7 +1822,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                     {processorAccounts.map((p) => (
                       <option key={p.id} value={p.name}>{p.name}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
 
                 {/* Fabric — shown after printer selected, uses consolidated outstanding */}
@@ -1831,7 +1833,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                         Select Fabric to Issue <span className="text-danger">*</span>
                         <span className="ml-2 text-xs font-400 text-muted-foreground">(shows current outstanding qty only)</span>
                       </label>
-                      <select
+                      <SearchableSelect
                         required
                         value={printerIssueForm.grayFabricRef}
                         onChange={(e) => {
@@ -1855,7 +1857,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                             </option>
                           ))
                         )}
-                      </select>
+                      </SearchableSelect>
                       {qualityGroupedOutstanding.length === 0 ? (
                         <p className="text-xs text-danger mt-0.5">No fabrics with outstanding quantity. All available stock has been issued or inventory is empty.</p>
                       ) : (

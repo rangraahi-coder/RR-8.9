@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, X, ChevronDown, ChevronRight, Trash2, Pencil, CheckCircle, Scissors, Package, Sparkles, MoreHorizontal, Layers, ArrowUpFromLine, ArrowDownToLine, Eye, Search } from 'lucide-react';
@@ -1123,7 +1125,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                 </div>
                 <div>
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Process Type *</label>
-                  <select
+                  <SearchableSelect
                     value={form.processType}
                     onChange={(e) => setForm((f) => ({ ...f, processType: e.target.value as ProcessType }))}
                     className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -1131,7 +1133,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                     {PROCESS_TYPES.map((pt) => (
                       <option key={pt} value={pt}>{PROCESS_TYPE_LABELS[pt]}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 
@@ -1155,7 +1157,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Job Card Ref</label>
-                  <select
+                  <SearchableSelect
                     value={form.jobCardRef}
                     onChange={(e) => {
                       const jc = jobCards.find((j) => j.jobCardNo === e.target.value);
@@ -1172,7 +1174,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                     {jobCards.map((jc) => (
                       <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
                 <div>
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Style Name</label>
@@ -1203,7 +1205,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
 
               <div>
                 <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Operator / Worker Name</label>
-                <select
+                <SearchableSelect
                   value={form.operatorName}
                   onChange={(e) => setForm((f) => ({ ...f, operatorName: e.target.value }))}
                   className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20"
@@ -1213,7 +1215,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                     <option key={acc.id} value={acc.name}>{acc.name}</option>
                   ))}
                   <option value="__other__">Other (type below)</option>
-                </select>
+                </SearchableSelect>
                 {form.operatorName === '__other__' && (
                   <input
                     type="text"
@@ -1261,11 +1263,11 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
               {parseInt(form.piecesRejected) > 0 && (
                 <div>
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Rejection Reason</label>
-                  <select value={form.rejectionReason} onChange={(e) => setForm((f) => ({ ...f, rejectionReason: e.target.value }))}
+                  <SearchableSelect value={form.rejectionReason} onChange={(e) => setForm((f) => ({ ...f, rejectionReason: e.target.value }))}
                     className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20">
                     <option value="">— Select reason —</option>
                     {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </div>
               )}
 
@@ -1296,24 +1298,24 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                           <div className="grid grid-cols-2 gap-3 mb-3">
                             <div>
                               <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Fabric *</label>
-                              <select value={fi.fabricName} onChange={(e) => updateFabricIssue(i, 'fabricName', e.target.value)}
+                              <SearchableSelect value={fi.fabricName} onChange={(e) => updateFabricIssue(i, 'fabricName', e.target.value)}
                                 className="w-full border border-border rounded-lg px-2 py-1.5 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20">
                                 <option value="">— Select Fabric —</option>
                                 {fabricNames.map((name) => <option key={name} value={name}>{name}</option>)}
-                              </select>
+                              </SearchableSelect>
                             </div>
                             <div>
                               <label className="block text-xs font-600 text-muted-foreground font-body mb-1">
                                 Roll *
                                 {selectedRoll && <span className="ml-1 text-success font-400">(In stock: {selectedRoll.stockQty} {selectedRoll.unit})</span>}
                               </label>
-                              <select value={fi.rollId} onChange={(e) => updateFabricIssue(i, 'rollId', e.target.value)} disabled={!fi.fabricName}
+                              <SearchableSelect value={fi.rollId} onChange={(e) => updateFabricIssue(i, 'rollId', e.target.value)} disabled={!fi.fabricName}
                                 className="w-full border border-border rounded-lg px-2 py-1.5 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20 disabled:opacity-50">
                                 <option value="">— Select Roll —</option>
                                 {availableRolls.map((roll) => (
                                   <option key={roll.id} value={roll.id}>Roll #{roll.id.slice(-6)} — {roll.stockQty} {roll.unit}</option>
                                 ))}
-                              </select>
+                              </SearchableSelect>
                             </div>
                           </div>
                           <div className="grid grid-cols-3 gap-3">
@@ -1363,10 +1365,10 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                       {processDetails.map((pd, i) => (
                         <tr key={i} className="border-t border-border">
                           <td className="px-2 py-1.5">
-                            <select value={pd.subComponent} onChange={(e) => updateProcessDetail(i, 'subComponent', e.target.value)}
+                            <SearchableSelect value={pd.subComponent} onChange={(e) => updateProcessDetail(i, 'subComponent', e.target.value)}
                               className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20">
                               {SUB_COMPONENTS.map((sc) => <option key={sc} value={sc}>{sc}</option>)}
-                            </select>
+                            </SearchableSelect>
                           </td>
                           <td className="px-2 py-1.5">
                             <input type="number" min="0" value={pd.piecesIn || ''} onChange={(e) => updateProcessDetail(i, 'piecesIn', parseInt(e.target.value) || 0)}
@@ -1427,10 +1429,10 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                                 className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body text-right focus:outline-none focus:ring-1 focus:ring-primary/20" placeholder="0" />
                             </td>
                             <td className="px-2 py-1.5">
-                              <select value={acc.unit} onChange={(e) => updateAccessory(i, 'unit', e.target.value)}
+                              <SearchableSelect value={acc.unit} onChange={(e) => updateAccessory(i, 'unit', e.target.value)}
                                 className="w-full border border-border rounded-lg px-2 py-1 text-xs font-body focus:outline-none focus:ring-1 focus:ring-primary/20">
                                 {ACCESSORY_UNITS.map((u) => <option key={u} value={u}>{u}</option>)}
-                              </select>
+                              </SearchableSelect>
                             </td>
                             <td className="px-2 py-1.5 text-center">
                               <button type="button" onClick={() => removeAccessory(i)} className="text-danger hover:text-danger/70 transition-colors">
@@ -1454,11 +1456,11 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                 </div>
                 <div>
                   <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Status</label>
-                  <select value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'in_progress' | 'completed' }))}
+                  <SearchableSelect value={form.status} onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'in_progress' | 'completed' }))}
                     className="w-full border border-border rounded-xl px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20">
                     <option value="completed">Completed</option>
                     <option value="in_progress">In Progress</option>
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 

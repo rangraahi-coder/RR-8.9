@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import GreyStockOverview from './GreyStockOverview';
 import { GreyIssue, greyStockKey } from '@/lib/greyStockGroups';
 import { greyIssueSummary } from '@/lib/greyIssueSummary';
@@ -532,14 +534,14 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Fabric Type *</label>
-                  <select required value={form.fabricType} onChange={(e) => setForm({ ...form, fabricType: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect required value={form.fabricType} onChange={(e) => setForm({ ...form, fabricType: e.target.value })} className="input-field text-sm">
                     {FABRIC_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Supplier Name *</label>
-                <select
+                <SearchableSelect
                   required
                   value={form.supplierName}
                   onChange={(e) => setForm({ ...form, supplierName: e.target.value })}
@@ -549,7 +551,7 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                   {accounts.map((a) => (
                     <option key={a.id} value={a.name}>{a.name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Fabric Name *</label>
@@ -602,11 +604,11 @@ export default function GreyFabricContent({ lang = 'en' }: GreyFabricContentProp
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Unit</label>
-                  <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input-field text-sm">
                     <option>Metres</option>
                     <option>Kg</option>
                     <option>Yards</option>
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 

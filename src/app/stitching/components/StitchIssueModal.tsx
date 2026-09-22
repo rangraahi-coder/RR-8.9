@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import { cuttingSourceBalance } from '@/lib/voucherSourceBalance';
 import {createClient} from '@/lib/supabase/client';
 import React, { useState, useEffect, useRef } from 'react';
@@ -300,12 +302,12 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
           {/* Job Card */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-600 text-muted-foreground">Job Card *</label>
-            <select required value={selectedJobCardNo} onChange={(e) => handleJobCardChange(e.target.value)} className={`input-field text-sm ${fieldErrors.jobCard ? 'border-danger ring-1 ring-danger/30' : ''}`}>
+            <SearchableSelect required value={selectedJobCardNo} onChange={(e) => handleJobCardChange(e.target.value)} className={`input-field text-sm ${fieldErrors.jobCard ? 'border-danger ring-1 ring-danger/30' : ''}`}>
               <option value="">-- Select Job Card --</option>
               {jobCards.map((jc) => (
                 <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn} ({jc.partyName})</option>
               ))}
-            </select>
+            </SearchableSelect>
             {fieldErrors.jobCard && <p className="text-xs text-danger mt-0.5">{fieldErrors.jobCard}</p>}
           </div>
 
@@ -326,7 +328,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
               Issue Operator *
               <span className="text-[10px] text-primary font-500 bg-primary/10 px-1.5 py-0.5 rounded-md">Mandatory</span>
             </label>
-            <select required value={operatorId} onChange={(e) => {
+            <SearchableSelect required value={operatorId} onChange={(e) => {
               if (e.target.value === '__add_operator__') {
                 window.open('/operator-master', '_blank');
                 e.target.value = operatorId;
@@ -339,7 +341,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                 <option key={op.id} value={op.id}>{op.operatorCode} — {op.operatorName} ({op.process || op.department})</option>
               ))}
               <option value="__add_operator__">➕ Add Operator Master</option>
-            </select>
+            </SearchableSelect>
             {fieldErrors.operator && <p className="text-xs text-danger mt-0.5">{fieldErrors.operator}</p>}
             {operators.length === 0 && (
               <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No active operators found. Add operators in Operator Master first.</p>
@@ -363,15 +365,15 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col gap-1 flex-1">
                       <label className="text-xs font-600 text-muted-foreground">Component *</label>
-                      <select value={row.component} onChange={(e) => updateRow(row.tempId, 'component', e.target.value)} className={`input-field text-sm ${fieldErrors[`component_${row.tempId}`] ? 'border-danger' : ''}`}>
+                      <SearchableSelect value={row.component} onChange={(e) => updateRow(row.tempId, 'component', e.target.value)} className={`input-field text-sm ${fieldErrors[`component_${row.tempId}`] ? 'border-danger' : ''}`}>
                         <option value="">-- Select Component --</option>
                         {SUB_COMPONENTS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      </SearchableSelect>
                       {fieldErrors[`component_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`component_${row.tempId}`]}</p>}
                     </div>
                     <div className="flex flex-col gap-1 w-28">
-                      <label className="text-xs font-600 text-muted-foreground">Cutting Issue / Rate *</label><select required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'}</option>)}</select><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
-                      <select
+                      <label className="text-xs font-600 text-muted-foreground">Cutting Issue / Rate *</label><SearchableSelect required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'}</option>)}</SearchableSelect><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
+                      <SearchableSelect
                         value={row.size}
                         onChange={(e) => updateRow(row.tempId, 'size', e.target.value)}
                         className="input-field text-sm"
@@ -396,7 +398,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                             <option key={s} value={s}>{s}</option>
                           ));
                         })()}
-                      </select>
+                      </SearchableSelect>
                     </div>
                     <div className="flex flex-col gap-1 w-28">
                       <label className="text-xs font-600 text-muted-foreground">
@@ -436,9 +438,9 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                     </div>
                     <div className="flex flex-col gap-1 w-20">
                       <label className="text-xs font-600 text-muted-foreground">Unit</label>
-                      <select value={row.unit} onChange={(e) => updateRow(row.tempId, 'unit', e.target.value)} className="input-field text-sm">
+                      <SearchableSelect value={row.unit} onChange={(e) => updateRow(row.tempId, 'unit', e.target.value)} className="input-field text-sm">
                         <option>Pcs</option><option>Metres</option><option>Set</option>
-                      </select>
+                      </SearchableSelect>
                     </div>
                     {components.length > 1 && (
                       <button type="button" onClick={() => setComponents((p) => p.filter((r) => r.tempId !== row.tempId))} className="mt-5 p-1.5 rounded-lg hover:bg-danger/10 text-danger">

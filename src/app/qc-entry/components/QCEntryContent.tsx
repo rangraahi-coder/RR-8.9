@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import {validateQCQuantities} from '@/lib/quantityValidation';
 import React, { useState, useEffect, useCallback } from 'react';
@@ -677,12 +679,12 @@ export default function QCEntryContent() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Job Card Ref *</label>
-                  <select value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
+                  <SearchableSelect value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
                     <option value="">-- Select Job Card --</option>
                     {jobCards.map((jc) => (
                       <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 
@@ -703,10 +705,10 @@ export default function QCEntryContent() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Style Name *</label>
-                <select required value={form.styleName} onChange={(e) => setForm({ ...form, styleName: e.target.value })} className="input-field text-sm">
+                <SearchableSelect required value={form.styleName} onChange={(e) => setForm({ ...form, styleName: e.target.value })} className="input-field text-sm">
                   <option value="">-- Select Style --</option>
                   {STYLE_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </SearchableSelect>
               </div>
 
               {/* Stitching Receive Voucher Reference */}
@@ -718,7 +720,7 @@ export default function QCEntryContent() {
                   </span>
                   <span className="ml-1.5 text-[10px] text-success font-500 bg-success/10 px-1.5 py-0.5 rounded-md">Live</span>
                 </label>
-                <select
+                <SearchableSelect
                   value={form.stitchingEntryRef}
                   onChange={(e) => handleStitchingRefChange(e.target.value)}
                   className="input-field text-sm"
@@ -730,7 +732,7 @@ export default function QCEntryContent() {
                       {v.voucherNo} — {v.jobCardRef}{v.styleName ? ` | ${v.styleName}` : ''} ({v.totalPiecesReceived} pcs)
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
                 {form.jobCardRef && filteredReceiveVouchers.length === 0 && !loadingVouchers && (
                   <p className="text-xs text-warning font-500">No stitching received entries found for this job card.</p>
                 )}
@@ -767,7 +769,7 @@ export default function QCEntryContent() {
                             )}
                           </label>
                           {availableComponents.length > 0 ? (
-                            <select
+                            <SearchableSelect
                               value={sc.component}
                               onChange={(e) => handleSubComponentSelect(sc.id, e.target.value)}
                               className="input-field text-sm"
@@ -778,7 +780,7 @@ export default function QCEntryContent() {
                                   {c.component} ({c.receivedQty} pcs received)
                                 </option>
                               ))}
-                            </select>
+                            </SearchableSelect>
                           ) : (
                             <input
                               type="text"

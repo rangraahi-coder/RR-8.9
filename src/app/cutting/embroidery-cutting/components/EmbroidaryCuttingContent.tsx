@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
@@ -746,13 +748,13 @@ export default function EmbroidaryCuttingContent({ lang = 'en' }: EmbCuttingCont
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Job Card *</label>
-                  <select value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm" required>
+                  <SearchableSelect value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm" required>
                     <option value="">-- Select Job Card --</option>
                     <option value="__create_new__" className="text-primary font-600">+ Create New Job Card</option>
                     {jobCards.map((jc) => (
                       <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 
@@ -789,11 +791,11 @@ export default function EmbroidaryCuttingContent({ lang = 'en' }: EmbCuttingCont
                     <button type="button" onClick={() => { setForm({ ...form, cuttingMaster: '' }); setCustomCuttingMaster(''); }} className="px-2 py-1 bg-muted text-muted-foreground rounded-lg text-xs">✕</button>
                   </div>
                 ) : (
-                  <select required value={form.cuttingMaster} onChange={(e) => setForm({ ...form, cuttingMaster: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect required value={form.cuttingMaster} onChange={(e) => setForm({ ...form, cuttingMaster: e.target.value })} className="input-field text-sm">
                     <option value="">-- Select Master --</option>
                     <option value="__create_new__" className="text-primary font-600">+ Create New Cutting Master</option>
                     {cuttingMasters.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  </SearchableSelect>
                 )}
               </div>
 
@@ -968,10 +970,10 @@ export default function EmbroidaryCuttingContent({ lang = 'en' }: EmbCuttingCont
               {totalRejectionsDerived > 0 && (
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Rejection Reason</label>
-                  <select value={form.rejectionReason} onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect value={form.rejectionReason} onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })} className="input-field text-sm">
                     <option value="">-- Select Reason --</option>
                     {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                  </SearchableSelect>
                 </div>
               )}
 

@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -281,7 +283,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
 
         {/* Printer Account */}
         <div className="relative min-w-[180px]">
-          <select
+          <SearchableSelect
             value={selectedPrinter}
             onChange={(e) => setSelectedPrinter(e.target.value)}
             className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-border text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
@@ -290,14 +292,14 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
             {printerAccounts.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
-          </select>
+          </SearchableSelect>
           <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
         </div>
 
         {/* Status Filter (only for issues tab) */}
         {activeTab === 'issues' && (
           <div className="relative min-w-[140px]">
-            <select
+            <SearchableSelect
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               className="w-full appearance-none pl-3 pr-8 py-2 rounded-xl border border-border text-sm font-body focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
@@ -306,7 +308,7 @@ export default function PrinterLedgerContent({ lang = 'hi' }: PrinterLedgerConte
               <option value="pending">Pending</option>
               <option value="partial">Partial</option>
               <option value="settled">Settled</option>
-            </select>
+            </SearchableSelect>
             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
           </div>
         )}

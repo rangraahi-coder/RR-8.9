@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Plus, X, CheckCircle2, ChevronDown, ChevronRight, Trash2, PackageCheck, BadgeCheck } from 'lucide-react';
@@ -405,12 +407,12 @@ export default function FinishingEntryContent() {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Job Card Ref</label>
-                  <select value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
+                  <SearchableSelect value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
                     <option value="">-- Select Job Card --</option>
                     {jobCards.map((jc) => (
                       <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 
@@ -432,10 +434,10 @@ export default function FinishingEntryContent() {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Style Name *</label>
-                <select required value={form.styleName} onChange={(e) => setForm({ ...form, styleName: e.target.value })} className="input-field text-sm">
+                <SearchableSelect required value={form.styleName} onChange={(e) => setForm({ ...form, styleName: e.target.value })} className="input-field text-sm">
                   <option value="">-- Select Style --</option>
                   {STYLE_NAMES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                </SearchableSelect>
               </div>
 
               {/* QC Entry Reference — auto-inherit */}
@@ -444,12 +446,12 @@ export default function FinishingEntryContent() {
                   QC Entry Ref
                   <span className="ml-1.5 text-[10px] text-primary font-500 bg-primary/10 px-1.5 py-0.5 rounded-md">Auto-inherits sub-components</span>
                 </label>
-                <select value={form.qcEntryRef} onChange={(e) => handleQCRefChange(e.target.value)} className="input-field text-sm">
+                <SearchableSelect value={form.qcEntryRef} onChange={(e) => handleQCRefChange(e.target.value)} className="input-field text-sm">
                   <option value="">-- Select QC Entry (optional) --</option>
                   {qcEntries.map((qc) => (
                     <option key={qc.id} value={qc.entryNo}>{qc.entryNo} — {qc.styleName} ({qc.netPassed} pcs passed)</option>
                   ))}
-                </select>
+                </SearchableSelect>
                 {inheritedFrom && (
                   <p className="text-xs text-success font-500 flex items-center gap-1">
                     <CheckCircle2 size={11} /> Sub-components auto-inherited from {inheritedFrom}
@@ -519,7 +521,7 @@ export default function FinishingEntryContent() {
                       </div>
                       <div className="flex flex-col gap-1">
                         <label className="text-xs font-600 text-muted-foreground">Packaging Status</label>
-                        <select
+                        <SearchableSelect
                           value={sc.packagingStatus}
                           onChange={(e) => updateSubComponent(sc.id, 'packagingStatus', e.target.value)}
                           className="input-field text-sm"
@@ -527,7 +529,7 @@ export default function FinishingEntryContent() {
                           {PACKAGING_STATUS_OPTIONS.map((opt) => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                           ))}
-                        </select>
+                        </SearchableSelect>
                       </div>
                     </div>
 

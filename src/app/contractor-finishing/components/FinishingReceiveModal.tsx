@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
@@ -315,7 +317,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
                 Stitching Receive Ref <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={selectedStitchRefId}
                   onChange={(e) => {
                     setSelectedStitchRefId(e.target.value);
@@ -331,7 +333,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
                       {ref.voucherNo} | {ref.jobCardRef} | {ref.voucherDate} | Size: {ref.sizeLabel || 'Not recorded / unavailable'} | {ref.totalPiecesReceived} pcs
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               {fieldErrors.stitchRef && <p className="text-xs text-danger mt-0.5">{fieldErrors.stitchRef}</p>}
@@ -366,7 +368,7 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
                 Contractor <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={contractorName}
                   onChange={(e) => {
                     setContractorName(e.target.value);
@@ -380,20 +382,20 @@ export default function FinishingReceiveModal({ onClose, onSaved, editVoucher }:
                   {accountNames.map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               {fieldErrors.contractor && <p className="text-xs text-danger mt-0.5">{fieldErrors.contractor}</p>}
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Process</label>
-              <select
+              <SearchableSelect
                 value={process}
                 onChange={(e) => setProcess(e.target.value as ContractorProcess)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
               >
                 {PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
 

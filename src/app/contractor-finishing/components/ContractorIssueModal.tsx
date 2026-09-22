@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { X, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
@@ -347,7 +349,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
 
           <div className="space-y-1.5">
             <label className="block text-sm font-600" htmlFor="contractor-job-card">Job Card <span className="text-danger">*</span></label>
-            <select id="contractor-job-card" value={selectedJobCard} disabled={saving}
+            <SearchableSelect id="contractor-job-card" value={selectedJobCard} disabled={saving}
               onChange={(e) => {
                 setSelectedJobCard(e.target.value);
                 setSelectedStitchRefId('');
@@ -363,7 +365,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                 const job = jobCards.find(job => job.jobCardNo === ref);
                 return <option key={ref} value={ref}>{ref}{job?.styleEn ? ` | ${job.styleEn}` : ''}{job?.partyName ? ` | ${job.partyName}` : ''}</option>;
               })}
-            </select>
+            </SearchableSelect>
             {fieldErrors.jobCard && <p className="text-xs text-danger">{fieldErrors.jobCard}</p>}
           </div>
           {/* Stitching Receive Reference — PRIMARY SELECTION */}
@@ -377,7 +379,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                 Stitching Receive Ref <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <select
+                <SearchableSelect
                   disabled={!selectedJobCard || saving}
                   value={selectedStitchRefId}
                   onChange={(e) => {
@@ -402,7 +404,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                       {ref.voucherNo} | {ref.jobCardRef} | {ref.voucherDate} | Size: {ref.sizeLabel || 'Not recorded / unavailable'} | {ref.totalPiecesReceived} pcs
                     </option>
                   ))}
-                </select>
+                </SearchableSelect>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               {fieldErrors.stitchRef && <p className="text-xs text-danger mt-0.5">{fieldErrors.stitchRef}</p>}
@@ -437,7 +439,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                 Contractor <span className="text-danger">*</span>
               </label>
               <div className="relative">
-                <select
+                <SearchableSelect
                   value={contractorName}
                   onChange={(e) => {
                     setContractorName(e.target.value);
@@ -451,20 +453,20 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                   {accountNames.map((name) => (
                     <option key={name} value={name}>{name}</option>
                   ))}
-                </select>
+                </SearchableSelect>
                 <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               </div>
               {fieldErrors.contractor && <p className="text-xs text-danger mt-0.5">{fieldErrors.contractor}</p>}
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Process</label>
-              <select
+              <SearchableSelect
                 value={process}
                 onChange={(e) => setProcess(e.target.value as ContractorProcess)}
                 className="w-full px-3 py-2 text-sm border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body"
               >
                 {PROCESSES.map((p) => <option key={p} value={p}>{p}</option>)}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
 

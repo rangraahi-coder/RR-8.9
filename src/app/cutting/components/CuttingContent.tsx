@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import {componentRolls,needsRollAssignment} from '@/lib/cuttingRollComponents';
 import {useAuth} from '@/contexts/AuthContext';
 import {supabase} from '@/lib/supabase/client';
@@ -1041,7 +1043,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       )}
 
       {/* Add / Edit Modal */}
-      {rollAssignment&&<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3"><section role="dialog" aria-modal="true" aria-label="Assign saved rolls to components" className="bg-card rounded-xl p-4 w-full max-w-2xl max-h-[85vh] overflow-auto"><h2 className="font-semibold">Assign saved rolls · {rollAssignment.entryNo}</h2><p className="text-sm text-muted-foreground my-3">This older voucher saved rolls without their component. Select Kurta/Pant or the appropriate component for each roll once. Quantities stay unchanged; assignment is saved when you save the edited voucher.</p>{rollAssignment.rollDetails.map((roll,index)=><div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t py-3"><span className="text-sm">{roll.rollNo||`Roll ${index+1}`} · Consumed {roll.fabricConsumedQty} {rollAssignment.unit}</span><select aria-label={`Component for roll ${index+1}`} className="input-field min-w-0" value={rollOwners[index]||''} onChange={e=>setRollOwners(v=>v.map((x,i)=>i===index?e.target.value:x))}><option value="">Select component</option>{rollAssignment.subComponentDetails.map(sc=><option key={sc.component} value={sc.component}>{sc.component}</option>)}</select></div>)}<p className="text-sm my-3">{rollAssignment.subComponentDetails.map(sc=>`${sc.component}: ${rollOwners.filter(x=>x===sc.component).length} rolls`).join(' · ')}</p><div className="flex gap-3 justify-end"><button className="btn-secondary" onClick={()=>setRollAssignment(null)}>Cancel</button><button className="btn-primary" disabled={rollOwners.some(x=>!x)} onClick={()=>{const fixed={...rollAssignment,rollDetails:rollAssignment.rollDetails.map((roll,i)=>({...roll,component:rollOwners[i]}))};setRollAssignment(null);handleEditEntry(fixed);}}>Continue to edit</button></div></section></div>}
+      {rollAssignment&&<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3"><section role="dialog" aria-modal="true" aria-label="Assign saved rolls to components" className="bg-card rounded-xl p-4 w-full max-w-2xl max-h-[85vh] overflow-auto"><h2 className="font-semibold">Assign saved rolls · {rollAssignment.entryNo}</h2><p className="text-sm text-muted-foreground my-3">This older voucher saved rolls without their component. Select Kurta/Pant or the appropriate component for each roll once. Quantities stay unchanged; assignment is saved when you save the edited voucher.</p>{rollAssignment.rollDetails.map((roll,index)=><div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 border-t py-3"><span className="text-sm">{roll.rollNo||`Roll ${index+1}`} · Consumed {roll.fabricConsumedQty} {rollAssignment.unit}</span><SearchableSelect aria-label={`Component for roll ${index+1}`} className="input-field min-w-0" value={rollOwners[index]||''} onChange={e=>setRollOwners(v=>v.map((x,i)=>i===index?e.target.value:x))}><option value="">Select component</option>{rollAssignment.subComponentDetails.map(sc=><option key={sc.component} value={sc.component}>{sc.component}</option>)}</SearchableSelect></div>)}<p className="text-sm my-3">{rollAssignment.subComponentDetails.map(sc=>`${sc.component}: ${rollOwners.filter(x=>x===sc.component).length} rolls`).join(' · ')}</p><div className="flex gap-3 justify-end"><button className="btn-secondary" onClick={()=>setRollAssignment(null)}>Cancel</button><button className="btn-primary" disabled={rollOwners.some(x=>!x)} onClick={()=>{const fixed={...rollAssignment,rollDetails:rollAssignment.rollDetails.map((roll,i)=>({...roll,component:rollOwners[i]}))};setRollAssignment(null);handleEditEntry(fixed);}}>Continue to edit</button></div></section></div>}
       {showModal && (
         <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-card rounded-2xl shadow-modal w-full max-w-2xl max-h-[92vh] overflow-y-auto">
@@ -1068,13 +1070,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Job Card Ref</label>
-                  <select value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
+                  <SearchableSelect value={form.jobCardRef} onChange={(e) => handleJobCardChange(e.target.value)} className="input-field text-sm">
                     <option value="">-- Select Job Card --</option>
                     <option value="__create_new__" className="text-primary font-600">+ Create New Job Card</option>
                     {jobCards.map((jc) => (
                       <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn}</option>
                     ))}
-                  </select>
+                  </SearchableSelect>
                 </div>
               </div>
 
@@ -1278,13 +1280,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-600 text-muted-foreground">Style Name *</label>
-                <select required value={form.styleName} onChange={(e) => { if (e.target.value === '__create_new__') { router.push('/job-card-management'); } else { setForm({ ...form, styleName: e.target.value }); } }} className="input-field text-sm">
+                <SearchableSelect required value={form.styleName} onChange={(e) => { if (e.target.value === '__create_new__') { router.push('/job-card-management'); } else { setForm({ ...form, styleName: e.target.value }); } }} className="input-field text-sm">
                   <option value="">-- Select Style --</option>
                   <option value="__create_new__" className="text-primary font-600">+ Create New Style (via Job Card)</option>
                   {styleNamesFromJC.map((sn) => (
                     <option key={sn} value={sn}>{sn}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
 
               <div className="flex flex-col gap-1.5">
@@ -1307,11 +1309,11 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                     <button type="button" onClick={() => { setForm({ ...form, cuttingMaster: '' }); setCustomCuttingMaster(''); }} className="px-2 py-1 bg-muted text-muted-foreground rounded-lg text-xs">✕</button>
                   </div>
                 ) : (
-                  <select required value={form.cuttingMaster} onChange={(e) => setForm({ ...form, cuttingMaster: e.target.value })} className="input-field text-sm">
+                  <SearchableSelect required value={form.cuttingMaster} onChange={(e) => setForm({ ...form, cuttingMaster: e.target.value })} className="input-field text-sm">
                     <option value="">-- Select Master --</option>
                     <option value="__create_new__" className="text-primary font-600">+ Create New Cutting Master</option>
                     {cuttingMasters.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  </SearchableSelect>
                 )}
               </div>
 
@@ -1342,15 +1344,15 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                           <label className="text-xs font-600 text-muted-foreground">Component Name</label>
                           {sc.component === 'Other' ? (
                             <div className="flex gap-2">
-                              <select value={sc.component} onChange={(e) => updateSubComponent(sc.id, 'component', e.target.value)} className="input-field text-sm w-32">
+                              <SearchableSelect value={sc.component} onChange={(e) => updateSubComponent(sc.id, 'component', e.target.value)} className="input-field text-sm w-32">
                                 {SUB_COMPONENT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                              </select>
+                              </SearchableSelect>
                               <input type="text" placeholder="Custom name" value={sc.customComponent} onChange={(e) => updateSubComponent(sc.id, 'customComponent', e.target.value)} className="input-field text-sm flex-1" />
                             </div>
                           ) : (
-                            <select value={sc.component} onChange={(e) => updateSubComponent(sc.id, 'component', e.target.value)} className="input-field text-sm">
+                            <SearchableSelect value={sc.component} onChange={(e) => updateSubComponent(sc.id, 'component', e.target.value)} className="input-field text-sm">
                               {SUB_COMPONENT_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
-                            </select>
+                            </SearchableSelect>
                           )}
                         </div>
                         <div className="flex flex-col gap-1 w-28">
@@ -1382,7 +1384,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                       <div className="grid grid-cols-2 gap-3">
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-600 text-muted-foreground">Fabric Name *</label>
-                          <select
+                          <SearchableSelect
                             value={sc.fabricName}
                             onChange={(e) => updateSubComponent(sc.id, 'fabricName', e.target.value)}
                             className="input-field text-sm"
@@ -1397,11 +1399,11 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                 </option>
                               );
                             })}
-                          </select>
+                          </SearchableSelect>
                         </div>
                         <div className="flex flex-col gap-1.5">
                           <label className="text-xs font-600 text-muted-foreground">Unit</label>
-                          <select
+                          <SearchableSelect
                             value={sc.unit}
                             onChange={(e) => updateSubComponent(sc.id, 'unit', e.target.value)}
                             className="input-field text-sm"
@@ -1409,7 +1411,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                             <option>Metres</option>
                             <option>Kg</option>
                             <option>Yards</option>
-                          </select>
+                          </SearchableSelect>
                         </div>
                       </div>
 
@@ -1454,7 +1456,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                               {rollsForFabric.length > 0 && (
                                 <div className="flex flex-col gap-1">
                                   <label className="text-xs font-600 text-muted-foreground">Roll / Lot from Inventory</label>
-                                  <select
+                                  <SearchableSelect
                                     value={roll.fabricRollId}
                                     onChange={(e) => {
                                       const item = rollsForFabric.find((r) => r.id === e.target.value);
@@ -1471,7 +1473,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                         {r.rollNo || (r.sourceModule === 'printer_receipt' ? 'Combined receipt balance (roll split not recorded)' : 'Stock lot')} · {r.sourceReceiptId || r.voucherNo || r.id.slice(0,8)} — {r.stockQty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {r.unit} available
                                       </option>
                                     ))}
-                                  </select>
+                                  </SearchableSelect>
                                   {selectedRollItem && (
                                     <p className="text-xs text-muted-foreground">
                                       Available: <span className="font-600 text-foreground">{selectedRollItem.stockQty.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {selectedRollItem.unit}</span>
@@ -1597,11 +1599,11 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                       <button type="button" onClick={() => { setForm({ ...form, rejectionReason: '' }); setCustomRejectionReason(''); }} className="px-2 py-1 bg-muted text-muted-foreground rounded-lg text-xs">✕</button>
                     </div>
                   ) : (
-                    <select value={form.rejectionReason} onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })} className="input-field text-sm">
+                    <SearchableSelect value={form.rejectionReason} onChange={(e) => setForm({ ...form, rejectionReason: e.target.value })} className="input-field text-sm">
                       <option value="">-- Select Reason --</option>
                       <option value="__create_new__" className="text-primary font-600">+ Create New Reason</option>
                       {REJECTION_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    </SearchableSelect>
                   )}
                 </div>
               )}

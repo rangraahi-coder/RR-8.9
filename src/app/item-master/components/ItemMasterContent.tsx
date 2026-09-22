@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import {erpErrorMessage} from '@/lib/erpError';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -369,7 +371,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                 <span className="text-xs text-purple-500 w-5 shrink-0 tabular-nums">{idx + 1}.</span>
                 {editingId === comp.id ? (
                   <>
-                    <select
+                    <SearchableSelect
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       className="flex-1 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300 min-w-0"
@@ -377,7 +379,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                     >
                       <option value="">-- Component --</option>
                       {COMPONENT_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    </SearchableSelect>
                     <input
                       type="number"
                       value={editQty}
@@ -385,13 +387,13 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
                       className="w-14 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300 text-center"
                       min={1}
                     />
-                    <select
+                    <SearchableSelect
                       value={editUnit}
                       onChange={(e) => setEditUnit(e.target.value)}
                       className="w-16 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300"
                     >
                       {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                    </select>
+                    </SearchableSelect>
                     <button
                       onClick={(e) => { e.stopPropagation(); saveEdit(comp.id); }}
                       type="button"
@@ -439,7 +441,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
         {addingNew && (
           <div className="flex items-center gap-2 px-2.5 py-2 bg-white border border-purple-300 rounded-lg">
             <Plus size={12} className="text-purple-400 shrink-0" />
-            <select
+            <SearchableSelect
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="flex-1 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300 min-w-0"
@@ -447,7 +449,7 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
             >
               <option value="">-- Component --</option>
               {COMPONENT_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
+            </SearchableSelect>
             <input
               type="number"
               value={newQty}
@@ -456,13 +458,13 @@ function CompositionManager({ styleId, setType }: { styleId: string; setType: st
               min={1}
               placeholder="Qty"
             />
-            <select
+            <SearchableSelect
               value={newUnit}
               onChange={(e) => setNewUnit(e.target.value)}
               className="w-16 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300"
             >
               {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-            </select>
+            </SearchableSelect>
             <button
               onClick={(e) => { e.stopPropagation(); addComposition(); }}
               type="button"
@@ -1104,14 +1106,14 @@ function ItemDetailModal({
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground font-medium">Colour <span className="text-red-500">*</span></label>
-                      <select
+                      <SearchableSelect
                         value={editColour}
                         onChange={(e) => setEditColour(e.target.value)}
                         className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                       >
                         <option value="">— Select Colour —</option>
                         {COLOUR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
+                      </SearchableSelect>
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground font-medium">Style No.</label>
@@ -1125,7 +1127,7 @@ function ItemDetailModal({
                     </div>
                     <div className="flex flex-col gap-1">
                       <label className="text-xs text-muted-foreground font-medium">Set Type</label>
-                      <select
+                      <SearchableSelect
                         value={editSetType}
                         onChange={(e) => setEditSetType(e.target.value)}
                         className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -1134,7 +1136,7 @@ function ItemDetailModal({
                         {SET_TYPE_OPTIONS.map((opt) => (
                           <option key={opt} value={opt}>{opt}</option>
                         ))}
-                      </select>
+                      </SearchableSelect>
                     </div>
                   </div>
                 ) : (
@@ -1264,14 +1266,14 @@ function ItemDetailModal({
                             </td>
                             <td className="px-3 py-2 text-foreground">
                               {editMode ? (
-                                <select
+                                <SearchableSelect
                                   value={line.unit}
                                   onChange={(e) => updateLine(line.id, 'unit', e.target.value)}
                                   className="w-20 px-2 py-1 border border-border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 >
                                   <option value="">—</option>
                                   {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                                </select>
+                                </SearchableSelect>
                               ) : (line.unit || <span className="text-muted-foreground italic">—</span>)}
                             </td>
                             <td className="px-3 py-2 text-foreground">
@@ -1287,14 +1289,14 @@ function ItemDetailModal({
                             </td>
                             <td className="px-3 py-2 text-foreground">
                               {editMode ? (
-                                <select
+                                <SearchableSelect
                                   value={line.secondary_unit}
                                   onChange={(e) => updateLine(line.id, 'secondary_unit', e.target.value)}
                                   className="w-20 px-2 py-1 border border-border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                                 >
                                   <option value="">—</option>
                                   {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                                </select>
+                                </SearchableSelect>
                               ) : (line.secondary_unit || <span className="text-muted-foreground italic">—</span>)}
                             </td>
                             <td className="px-3 py-2">
@@ -1338,14 +1340,14 @@ function ItemDetailModal({
                           </div>
                           <div className="flex flex-col gap-0.5">
                             <label className="text-xs text-muted-foreground">Unit</label>
-                            <select
+                            <SearchableSelect
                               value={line.unit}
                               onChange={(e) => updateLine(line.id, 'unit', e.target.value)}
                               className="px-2 py-1 border border-border rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
                             >
                               <option value="">—</option>
                               {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                            </select>
+                            </SearchableSelect>
                           </div>
                           {line.review_status !== 'ok' && (
                             <div className="sm:col-span-4">
@@ -2184,7 +2186,7 @@ function NewItemModal({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground font-medium">Colour <span className="text-red-500">*</span></label>
-                <select
+                <SearchableSelect
                   value={colour}
                   onChange={(e) => setColour(e.target.value)}
                   className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -2192,7 +2194,7 @@ function NewItemModal({
                 >
                   <option value="">— Select Colour —</option>
                   {COLOUR_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
+                </SearchableSelect>
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground font-medium">Style No.</label>
@@ -2206,7 +2208,7 @@ function NewItemModal({
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-muted-foreground font-medium">Set Type</label>
-                <select
+                <SearchableSelect
                   value={setType}
                   onChange={(e) => setSetType(e.target.value)}
                   className="px-2.5 py-1.5 border border-border rounded-lg text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -2215,7 +2217,7 @@ function NewItemModal({
                   {SET_TYPE_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>{opt}</option>
                   ))}
-                </select>
+                </SearchableSelect>
               </div>
             </div>
           </div>
@@ -2320,7 +2322,7 @@ function NewItemModal({
               {addingSubUnit && (
                 <div className="flex items-center gap-2 px-2.5 py-2 bg-white border border-purple-300 rounded-lg">
                   <Plus size={12} className="text-purple-400 shrink-0" />
-                  <select
+                  <SearchableSelect
                     value={newSubName}
                     onChange={(e) => setNewSubName(e.target.value)}
                     className="flex-1 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300 min-w-0"
@@ -2328,7 +2330,7 @@ function NewItemModal({
                   >
                     <option value="">-- Component --</option>
                     {COMPONENT_NAMES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  </SearchableSelect>
                   <input
                     type="number"
                     value={newSubQty}
@@ -2337,13 +2339,13 @@ function NewItemModal({
                     min={1}
                     placeholder="Qty"
                   />
-                  <select
+                  <SearchableSelect
                     value={newSubUnit}
                     onChange={(e) => setNewSubUnit(e.target.value)}
                     className="w-16 px-2 py-1 border border-purple-300 rounded text-xs bg-background focus:outline-none focus:ring-2 focus:ring-purple-300"
                   >
                     {UNIT_OPTIONS.map((u) => <option key={u} value={u}>{u}</option>)}
-                  </select>
+                  </SearchableSelect>
                   <button
                     onClick={addSubUnit}
                     type="button"

@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import React, { useState, useMemo } from 'react';
 import {
   Package,
@@ -115,16 +117,16 @@ function ReceiptModal({ onClose, onSave, receipts }: ReceiptModalProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-600 text-muted-foreground">Category *</label>
-              <select required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field text-sm">
+              <SearchableSelect required value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} className="input-field text-sm">
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </SearchableSelect>
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-600 text-muted-foreground">Party / Supplier *</label>
-            <select required value={form.partyId} onChange={(e) => setForm({ ...form, partyId: e.target.value })} className="input-field text-sm">
+            <SearchableSelect required value={form.partyId} onChange={(e) => setForm({ ...form, partyId: e.target.value })} className="input-field text-sm">
               {FABRIC_PARTIES.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
+            </SearchableSelect>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -151,11 +153,11 @@ function ReceiptModal({ onClose, onSave, receipts }: ReceiptModalProps) {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-600 text-muted-foreground">Unit</label>
-              <select value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input-field text-sm">
+              <SearchableSelect value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} className="input-field text-sm">
                 <option>Metre</option>
                 <option>Kg</option>
                 <option>Yard</option>
-              </select>
+              </SearchableSelect>
             </div>
           </div>
           {form.orderedQty && form.receivedQty && parseFloat(form.receivedQty) < parseFloat(form.orderedQty) && (

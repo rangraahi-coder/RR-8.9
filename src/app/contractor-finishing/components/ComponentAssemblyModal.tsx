@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import {erpErrorMessage} from '@/lib/erpError';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -260,7 +262,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
             <label className="block text-xs font-600 text-muted-foreground font-body mb-1">
               Job Card <span className="text-danger">*</span>
             </label>
-            <select
+            <SearchableSelect
               value={selectedJobCardRef}
               onChange={(e) => setSelectedJobCardRef(e.target.value)}
               className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body ${fieldErrors.jobCard ? 'border-danger' : 'border-border'}`}
@@ -271,7 +273,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
                   {jc.jobCardRef}{jc.styleName ? ` — ${jc.styleName}` : ''}{jc.partyName ? ` (${jc.partyName})` : ''}
                 </option>
               ))}
-            </select>
+            </SearchableSelect>
             {fieldErrors.jobCard && <p className="text-xs text-danger mt-1 font-body">{fieldErrors.jobCard}</p>}
             {jobCardOptions.length === 0 && (
               <p className="text-xs text-muted-foreground mt-1 font-body">No job cards with finished sub-components found. Complete Finishing Receive first.</p>
@@ -397,7 +399,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
           </div>
 
           {/* Error */}
-          {error&&selectedJobCardRef&&composition.length===0&&<div className="p-4 border border-amber-300 rounded-xl mb-3"><p className="text-sm mb-2">Confirm which Item Master item this Job Card assembles:</p><select className="input-field w-full" value={linkStyle} onChange={e=>setLinkStyle(e.target.value)}><option value="">Select Item Master item</option>{styles.map(item=><option key={item.id} value={item.id}>{item.item_name||item.style_no||item.job_card_no} — {item.job_card_no}</option>)}</select><button type="button" disabled={!linkStyle||saving} className="btn-secondary mt-2" onClick={async()=>{setSaving(true);try{const {error}=await createClient().rpc('erp_link_assembly_item',{p_job_ref:selectedJobCardRef,p_style_id:linkStyle});if(error)throw error;setLinkVersion(v=>v+1);}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setSaving(false);}}}>Link selected item</button></div>}
+          {error&&selectedJobCardRef&&composition.length===0&&<div className="p-4 border border-amber-300 rounded-xl mb-3"><p className="text-sm mb-2">Confirm which Item Master item this Job Card assembles:</p><SearchableSelect className="input-field w-full" value={linkStyle} onChange={e=>setLinkStyle(e.target.value)}><option value="">Select Item Master item</option>{styles.map(item=><option key={item.id} value={item.id}>{item.item_name||item.style_no||item.job_card_no} — {item.job_card_no}</option>)}</SearchableSelect><button type="button" disabled={!linkStyle||saving} className="btn-secondary mt-2" onClick={async()=>{setSaving(true);try{const {error}=await createClient().rpc('erp_link_assembly_item',{p_job_ref:selectedJobCardRef,p_style_id:linkStyle});if(error)throw error;setLinkVersion(v=>v+1);}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setSaving(false);}}}>Link selected item</button></div>}
             {error && (
             <div className="flex items-start gap-2 p-3 bg-danger-bg border border-danger-border rounded-xl">
               <AlertCircle size={14} className="text-danger mt-0.5 shrink-0" />

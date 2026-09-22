@@ -1,4 +1,6 @@
 'use client';
+import SearchableSelect from '@/components/SearchableSelect';
+
 import {salesTotals,sizeBreakupError} from '@/lib/services/orderCalculations';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
 import React, { useState, useRef, useEffect } from 'react';
@@ -543,7 +545,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
 
                   {/* Item Name */}
                   <div>
-                    <select
+                    <SearchableSelect
                       value={item.itemName}
                       onChange={(e) => { if (e.target.value === '__create_new__') { router.push('/item-master'); } else { updateItem(idx, 'itemName', e.target.value); } }}
                       className={`input-field text-xs w-full ${errors[`item_name_${idx}`] ? 'border-red-400' : ''}`}
@@ -559,7 +561,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                           <option key={name} value={name}>{name}</option>
                         ))
                       )}
-                    </select>
+                    </SearchableSelect>
                     {errors[`item_name_${idx}`] && (
                       <p className="text-xs text-red-500 mt-0.5">{errors[`item_name_${idx}`]}</p>
                     )}
@@ -663,7 +665,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                       <label className="block text-xs text-muted-foreground mb-1">
                         {lang === 'hi' ? 'इकाई' : 'Unit'}
                       </label>
-                      <select
+                      <SearchableSelect
                         value={item.unit}
                         onChange={(e) => updateItem(idx, 'unit', e.target.value)}
                         className="input-field text-xs"
@@ -672,7 +674,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
                         <option value="Set">Set</option>
                         <option value="Mtr">Mtr</option>
                         <option value="Kg">Kg</option>
-                      </select>
+                      </SearchableSelect>
                     </div>
                     <div>
                       <label className="block text-xs text-muted-foreground mb-1">
