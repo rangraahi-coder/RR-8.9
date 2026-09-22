@@ -1,1 +1,0 @@
-export default function Loading(){return <div role="status" aria-live="polite" className="min-h-[50vh] flex items-center justify-center gap-3"><span aria-hidden="true" className="h-6 w-6 rounded-full border-2 border-pink-500 border-t-transparent animate-spin"/>Loading… Please wait / कृपया प्रतीक्षा करें</div>;}
