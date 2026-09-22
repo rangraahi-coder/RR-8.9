@@ -10,8 +10,18 @@ export async function erpFetch(input:RequestInfo|URL,init?:RequestInit):Promise<
  const finish=typeof window!=='undefined'&&tracked?beginRequest(!['GET','HEAD'].includes(method)&&!readRpc):()=>{};
  const path=typeof window!=='undefined'?window.location.pathname:undefined;
  const report=(error:unknown)=>{if(typeof window!=='undefined'&&tracked)window.dispatchEvent(new CustomEvent('erp-request-error',{detail:{message:erpErrorMessage(error),path}}));};
+ // Use the existing client-info header (no credentials or form contents).
+ // Diagnostic only: this client-supplied value is never an authorization check.
+ const deleteRequest = tracked && (method === 'DELETE' || /\/rpc\/erp_delete_sales_order(?:[?]|$)/.test(url));
+ let requestInit = init;
+ if (deleteRequest && typeof window !== 'undefined') {
+  const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
+  const requestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  headers.set('x-client-info', `rangraahi-delete-v1;screen=${encodeURIComponent(window.location.pathname)};request=${requestId}`);
+  requestInit = {...init, headers};
+ }
  try{
-  const response=await fetch(input,init);
+  const response=await fetch(input,requestInit);
   if(!response.ok&&tracked){
    try{report(await response.clone().json());}catch{report({message:`The server returned HTTP ${response.status} without an error explanation.`});}
   }

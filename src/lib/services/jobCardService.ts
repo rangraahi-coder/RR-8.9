@@ -128,7 +128,7 @@ export const jobCardService = {
     const { data, error } = await supabase.from('job_cards').delete().eq('id', id).select('id');
     if (error) {
       console.error('[jobCardService.delete] error:', error);
-      return false;
+      throw new Error(error.message || 'Could not delete Job Card');
     }
     return data?.length === 1;
   },
@@ -138,7 +138,7 @@ export const jobCardService = {
     const { data, error } = await supabase.from('job_cards').delete().in('id', ids).select('id');
     if (error) {
       console.error('[jobCardService.deleteMany] error:', error);
-      return false;
+      throw new Error(error.message || 'Could not delete Job Cards');
     }
     return data?.length === new Set(ids).size;
   },

@@ -1,4 +1,5 @@
 'use client';
+import RecordDeleteDialog from '@/components/ui/RecordDeleteDialog';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {erpErrorMessage} from '@/lib/erpError';
@@ -61,8 +62,6 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
   const [showNewOrder, setShowNewOrder] = useState(false);
   const [editOrder, setEditOrder] = useState<SalesOrder | null>(null);
   const [deleteOrder, setDeleteOrder] = useState<SalesOrder | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const PAGE_SIZE = 12;
 
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -144,22 +143,13 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
 
   const handleDeleteConfirm = async () => {
     if (!deleteOrder) return;
-    setDeleting(true);
-    setDeleteError(null);
-    try {
-      const ok = await salesOrderService.delete(deleteOrder.id);
-      if (ok) {
-        setOrders((prev) => prev.filter((o) => o.id !== deleteOrder.id));
-        setDeleteOrder(null);
-        if (selectedOrder?.id === deleteOrder.id) setSelectedOrder(null);
-      } else {
-        setDeleteError(lang === 'hi' ? 'डिलीट नहीं हो सका। पुनः प्रयास करें।' : 'Could not delete. Please try again.');
-      }
-    } catch (error) {
-      setDeleteError(erpErrorMessage(error));
-    } finally {
-      setDeleting(false);
-    }
+    const id = deleteOrder.id;
+    const ok = await salesOrderService.delete(id);
+    if (!ok) throw new Error('Deletion was not confirmed. Refresh the list before retrying.');
+    ++loadVersion.current;
+    setOrders(prev => prev.filter(o => o.id !== id));
+    setDeleteOrder(null);
+    setSelectedOrder(prev => prev?.id === id ? null : prev);
   };
 
   const reloadOrders = async () => { await loadOrders(); setPage(1); };
@@ -436,7 +426,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                             <Pencil size={13} />
                           </button>
                           <button
-                            onClick={() => { setDeleteOrder(order); setDeleteError(null); }}
+                            onClick={() => { setDeleteOrder(order); }}
                             className="p-1.5 rounded-lg hover:bg-red-50 text-muted-foreground hover:text-red-500 transition-all"
                             title={lang === 'hi' ? 'हटाएं' : 'Delete'}
                           >
@@ -517,60 +507,10 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteOrder && (
-        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => !deleting && setDeleteOrder(null)} />
-          <div className="relative bg-card border border-border rounded-2xl w-full max-w-sm shadow-2xl p-6">
-            <div className="flex items-start gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
-                <AlertTriangle size={18} className="text-red-500" />
-              </div>
-              <div>
-                <h3 className="font-700 text-foreground text-base">
-                  {lang === 'hi' ? 'ऑर्डर हटाएं?' : 'Delete Sales Order?'}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {lang === 'hi'
-                    ? `वाउचर ${deleteOrder.vchNo} (${deleteOrder.partyName}) को स्थायी रूप से हटाया जाएगा। यह क्रिया वापस नहीं की जा सकती।`
-                    : `Voucher ${deleteOrder.vchNo} (${deleteOrder.partyName}) will be permanently deleted. This action cannot be undone.`}
-                </p>
-              </div>
-            </div>
-            {deleteError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 text-xs text-red-700 mb-4">
-                {deleteError}
-              </div>
-            )}
-            <div className="flex gap-2.5">
-              <button
-                onClick={handleDeleteConfirm}
-                disabled={deleting}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white text-sm font-600 py-2.5 rounded-xl transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {deleting ? (
-                  <>
-                    <Loader2 size={13} className="animate-spin" />
-                    {lang === 'hi' ? 'हटाया जा रहा है...' : 'Deleting...'}
-                  </>
-                ) : (
-                  <>
-                    <Trash2 size={13} />
-                    {lang === 'hi' ? 'हाँ, हटाएं' : 'Yes, Delete'}
-                  </>
-                )}
-              </button>
-              <button
-                onClick={() => setDeleteOrder(null)}
-                disabled={deleting}
-                className="btn-secondary text-sm px-5 disabled:opacity-60"
-              >
-                {lang === 'hi' ? 'रद्द करें' : 'Cancel'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {deleteOrder && <RecordDeleteDialog key={deleteOrder.id} lang={lang}
+        records={[{id:deleteOrder.id,reference:deleteOrder.vchNo,
+          details:`${deleteOrder.partyName} · ${deleteOrder.date} · ${deleteOrder.totalQty} pcs · ${deleteOrder.items.map(i => `${i.itemName} (${i.paramColour || '—'}, ${i.paramSize || '—'}): ${i.qty}`).join('; ')}`}]}
+        onCancel={() => setDeleteOrder(null)} onConfirm={handleDeleteConfirm} />}
 
       {/* Order Detail Drawer */}
       {selectedOrder && (
@@ -703,7 +643,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                   {lang === 'hi' ? 'संपादित करें' : 'Edit Order'}
                 </button>
                 <button
-                  onClick={() => { setDeleteOrder(selectedOrder); setSelectedOrder(null); setDeleteError(null); }}
+                  onClick={() => { setDeleteOrder(selectedOrder); setSelectedOrder(null); }}
                   className="px-4 py-2 rounded-xl border border-red-200 text-red-500 hover:bg-red-50 text-sm font-600 transition-colors flex items-center gap-1.5"
                 >
                   <Trash2 size={14} />

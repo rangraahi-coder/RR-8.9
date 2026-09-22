@@ -1,4 +1,5 @@
 'use client';
+import RecordDeleteDialog from '@/components/ui/RecordDeleteDialog';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, Filter, Download, AlertTriangle, CheckCircle2, ChevronUp, ChevronDown, Eye, Edit3, Trash2, ClipboardList, X, Layers } from 'lucide-react';
 import Link from 'next/link';
@@ -58,6 +59,7 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
   const [blockedOnly, setBlockedOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>('jobCardNo');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [deleteCards, setDeleteCards] = useState<JobCard[] | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [jobCards, setJobCards] = useState<JobCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -167,17 +169,28 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
     }
   };
 
-  const handleBulkDelete = async () => {
-    const ids = Array.from(selectedIds);
+  const handleBulkDelete = () => {
+    const targets = jobCards.filter(j => selectedIds.has(j.id));
+    if (targets.length !== selectedIds.size) {
+      toast.error('Selection is out of date. Refresh and select the records again.');
+      setSelectedIds(new Set()); return;
+    }
+    if (targets.length) setDeleteCards(targets);
+  };
+  const confirmJobDelete = async () => {
+    if (!deleteCards?.length) return;
+    const ids = deleteCards.map(j => j.id);
     const ok = await jobCardService.deleteMany(ids);
     if (!ok) {
-      toast.error('Delete was not fully confirmed. Refreshing the actual saved records.');
       await loadJobCards();
-      return;
+      throw new Error('Deletion was not fully confirmed. Check the refreshed list before retrying.');
     }
-    setJobCards((prev) => prev.filter((j) => !ids.includes(j.id)));
+    ++loadVersion.current;
+    setJobCards(prev => prev.filter(j => !ids.includes(j.id)));
+    setSelectedIds(prev => new Set([...prev].filter(id => !ids.includes(id))));
+    setDetailCard(prev => prev && ids.includes(prev.id) ? null : prev);
+    setDeleteCards(null);
     toast.success(`${ids.length} job cards deleted`);
-    setSelectedIds(new Set());
   };
 
   const SortIcon = ({ field }: { field: SortField }) => (
@@ -474,15 +487,8 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
                           <button
                             title={lang === 'hi' ? 'हटाएं — यह पूर्ववत नहीं होगा' : 'Delete — this cannot be undone'}
                             className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-all duration-150"
-                            onClick={async () => {
-                              const ok = await jobCardService.delete(jc.id);
-                              if (ok) {
-                                setJobCards((prev) => prev.filter((j) => j.id !== jc.id));
-                                toast.success(lang === 'hi' ? `${jc.jobCardNo} हटाया गया` : `${jc.jobCardNo} deleted`);
-                              } else {
-                                toast.error(lang === 'hi' ? 'हटाने में त्रुटि' : 'Failed to delete');
-                              }
-                            }}
+                            type="button"
+                            onClick={() => setDeleteCards([jc])}
                           >
                             <Trash2 size={14} />
                           </button>
@@ -496,6 +502,11 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
           </table>
         </div>
       </div>
+
+      {deleteCards && <RecordDeleteDialog lang={lang}
+        records={deleteCards.map(j => ({id:j.id, reference:j.jobCardNo,
+          details:`${j.partyName} · PO: ${j.poNo} · ${j.designCode || j.styleEn} · ${j.colors.join(', ')} · ${j.totalPieces} pcs · ${j.createdDate}`}))}
+        onCancel={() => setDeleteCards(null)} onConfirm={confirmJobDelete} />}
 
       {/* Bulk Action Bar */}
       {selectedIds.size > 0 && (
