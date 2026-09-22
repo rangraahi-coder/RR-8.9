@@ -130,10 +130,11 @@ export const dyeingProcessingService = {
 
   async delete(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('dyeing_processing_entries')
-      .delete()
+      .delete({count:'exact'})
       .eq('id', id);
+    if (!error && count !== 1) return false;
     if (error) {
       console.error('[dyeingProcessingService.delete]', error);
       return false;

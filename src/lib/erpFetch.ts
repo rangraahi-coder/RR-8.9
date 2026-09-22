@@ -25,6 +25,10 @@ export async function erpFetch(input:RequestInfo|URL,init?:RequestInit):Promise<
   if(!response.ok&&tracked){
    try{report(await response.clone().json());}catch{report({message:`The server returned HTTP ${response.status} without an error explanation.`});}
   }
+  // Read RPCs must never trigger a refresh loop. Only known writes invalidate data.
+  const writeRpc=/\/rpc\/(erp_save_job_approval|erp_link_assembly_item|delete_original_item_variant|edit_original_item_variant|merge_original_item_styles|save_original_qc_entry|erp_save_dashboard_settings|erp_link_receipt_jobs|delete_original_component_assembly|save_original_component_assembly|convert_original_component_to_item|erp_delete_contractor_receive|erp_save_contractor_receive|erp_save_team_voucher|erp_cancel_dispatch|save_original_dispatch|erp_edit_manual_fabric|save_original_finishing_entry|receive_printer_fabric_with_stock|erp_delete_sales_order|erp_delete_cutting|recalculate_sales_order_status|save_original_sales_order|create_original_item)(?:[?]|$)/.test(url);
+  const tableWrite=url.includes('/rest/v1/')&&!url.includes('/rpc/')&&['POST','PATCH','DELETE'].includes(method);
+  if(response.ok&&typeof window!=='undefined'&&(tableWrite||(method==='POST'&&writeRpc)))window.dispatchEvent(new CustomEvent('erp-data-changed'));
   return response;
  }catch(error){report(error);throw error;}finally{finish();}
 }

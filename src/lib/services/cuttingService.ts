@@ -342,46 +342,9 @@ export const cuttingService = {
   },
 
   async delete(id: string): Promise<boolean> {
-    const supabase = createClient();
-
-    // Fetch roll details AND emb_receive_items before deleting so we can restore stock
-    const { data: existingRow } = await supabase
-      .from('cutting_entries')
-      .select('roll_details, emb_receive_items')
-      .eq('id', id)
-      .single();
-
-    // Delete sub-components first (foreign key)
-    await supabase.from('cutting_sub_components').delete().eq('cutting_entry_id', id);
-
-    const { error } = await supabase
-      .from('cutting_entries')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('[cuttingService.delete] error:', error);
-      return false;
-    }
-
-    // Restore consumed qty back to fabric inventory
-    const oldRollDetails: Array<{ fabricRollId: string; fabricConsumedQty: number }> =
-      Array.isArray(existingRow?.roll_details) ? existingRow.roll_details : [];
-
-    if (oldRollDetails.length > 0) {
-      /* Stock is posted by the database voucher transaction. */
-    }
-
-    // Restore cutting_stock pieces for each emb-received item that was used
-    const oldEmbReceiveItems: EmbReceiveItem[] =
-      Array.isArray(existingRow?.emb_receive_items) ? existingRow.emb_receive_items : [];
-
-    for (const item of oldEmbReceiveItems) {
-      if (item.piecesUsed > 0) {
-        /* Stock is posted by the database voucher transaction. */
-      }
-    }
-
+    const {data,error}=await createClient().rpc('erp_delete_cutting',{p_id:id});
+    if(error)throw new Error(error.message);
+    if(data!==id)throw new Error('Cutting deletion was not confirmed. Refresh and check the voucher.');
     return true;
   },
 

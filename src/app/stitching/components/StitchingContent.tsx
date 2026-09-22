@@ -106,8 +106,8 @@ export default function StitchingContent() {
     if (activeTab === 'audit') loadAudit();
   }, [activeTab, loadAudit]);
 
-  useRealtimeTable('stitch_issue_vouchers', () => { loadIssueVouchers(); loadReceiveVouchers(); });
-  useRealtimeTable('stitch_receive_vouchers', () => { loadReceiveVouchers(); loadIssueVouchers(); });
+  useRealtimeTable('stitch_issue_vouchers', () => Promise.all([loadIssueVouchers(), loadReceiveVouchers()]));
+  useRealtimeTable('stitch_receive_vouchers', () => Promise.all([loadReceiveVouchers(), loadIssueVouchers()]));
   useRealtimeTable('stitch_operators', loadOperators);
   useRealtimeTable('job_cards', refreshJobCards);
 

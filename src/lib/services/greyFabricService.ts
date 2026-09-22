@@ -138,10 +138,11 @@ export const greyFabricService = {
 
   async delete(id: string): Promise<{ success: boolean; error?: string }> {
     const supabase = createClient();
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('grey_fabric_purchases')
-      .delete()
+      .delete({count:'exact'})
       .eq('id', id);
+    if (!error && count !== 1) return {success:false,error:'Delete was not confirmed. Refresh and check the voucher or your access.'};
     if (error) {
       console.error('greyFabricService.delete error:', error.message);
       return { success: false, error: error.message };

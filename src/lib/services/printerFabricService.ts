@@ -97,13 +97,13 @@ export const printerFabricService = {
   },
   // ─── Issues ───────────────────────────────────────────────────────────────
 
-  async getAllIssues(): Promise<PrinterFabricIssue[]> {
+  async getAllIssues(strict = false): Promise<PrinterFabricIssue[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('printer_fabric_issues')
       .select('*')
       .order('created_at', { ascending: false });
-    if (error) { console.error('[printerFabricService.getAllIssues]', error); return []; }
+    if (error) { if(strict)throw new Error(error.message); console.error('[printerFabricService.getAllIssues]', error); return []; }
     return (data || []).map(rowToIssue);
   },
 
@@ -319,10 +319,11 @@ export const printerFabricService = {
 
   async deleteIssue(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('printer_fabric_issues')
-      .delete()
+      .delete({count:'exact'})
       .eq('id', id);
+    if (!error && count !== 1) return false;
     if (error) { console.error('[printerFabricService.deleteIssue]', error); return false; }
     return true;
   },

@@ -174,7 +174,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   }, [loadEntries]);
 
   useRealtimeTable('cutting_entries', () => {
-    loadEntries();
+    return loadEntries();
   });
 
   useEffect(() => {
@@ -187,7 +187,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   }, []);
 
   useRealtimeTable('fabric_inventory', () => {
-    fabricInventoryService.getAll().then((items) => {
+    return fabricInventoryService.getAll().then((items) => {
       setFabricItems(items);
     }).catch(() => {});
   });
@@ -204,11 +204,11 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   }, [loadCuttingMasters]);
 
   useRealtimeTable('cutting_masters', () => {
-    loadCuttingMasters();
+    return loadCuttingMasters();
   });
 
   // Load embroidery-received pending materials when job card changes
-  const loadEmbPending = useCallback(async (jobCardRef: string) => {
+  const loadEmbPending = useCallback(async (jobCardRef: string, resetSelection = true) => {
     if (!jobCardRef) {
       setEmbPendingItems([]);
       setSelectedEmbItems([]);
@@ -224,8 +224,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       ]);
       setEmbPendingItems(items);
       setEmbFlowSummary(summary);
-      // Reset selections when job card changes
-      setSelectedEmbItems([]);
+      // Background quantity refresh must preserve the entered draft.
+      if (resetSelection) setSelectedEmbItems([]);
     } catch {
       setEmbPendingItems([]);
       setEmbFlowSummary([]);
@@ -243,13 +243,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   // Real-time: reload emb pending qty when emb issue or receive vouchers change
   useRealtimeTable('emb_issue_vouchers', () => {
     if (formJobCardRefRef.current) {
-      loadEmbPending(formJobCardRefRef.current);
+      return loadEmbPending(formJobCardRefRef.current, false);
     }
   });
 
   useRealtimeTable('emb_receive_vouchers', () => {
     if (formJobCardRefRef.current) {
-      loadEmbPending(formJobCardRefRef.current);
+      return loadEmbPending(formJobCardRefRef.current, false);
     }
   });
 

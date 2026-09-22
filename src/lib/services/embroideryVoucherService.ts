@@ -446,7 +446,8 @@ export const embroideryVoucherService = {
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
-    const {error}=await createClient().from('emb_issue_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
+    const {error, count}=await createClient().from('emb_issue_vouchers').delete({count:'exact'}).eq('id',id);
+    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
   },
 
   async getNextIssueVoucherNo(handwork=false): Promise<string> {
@@ -610,7 +611,8 @@ export const embroideryVoucherService = {
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
-    const {error}=await createClient().from('emb_receive_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
+    const {error, count}=await createClient().from('emb_receive_vouchers').delete({count:'exact'}).eq('id',id);
+    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
   },
 
   async getNextReceiveVoucherNo(handwork=false): Promise<string> {

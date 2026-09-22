@@ -251,10 +251,11 @@ export const fabricInventoryService = {
   async delete(id: string): Promise<boolean> {
     const supabase = createClient();
     try {
-      const { error } = await supabase
+      const { error, count } = await supabase
         .from('fabric_inventory')
-        .delete()
+        .delete({count:'exact'})
         .eq('id', id);
+    if (!error && count !== 1) return false;
       if (error) {
         if (isSchemaError(error)) throw error;
         return false;

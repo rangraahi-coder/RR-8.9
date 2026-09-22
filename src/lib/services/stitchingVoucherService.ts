@@ -289,7 +289,8 @@ export const stitchingVoucherService = {
 
   async deleteOperator(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase.from('stitch_operators').delete().eq('id', id);
+    const { error, count } = await supabase.from('stitch_operators').delete({count:'exact'}).eq('id', id);
+    if (!error && count !== 1) return false;
     if (error) { console.error('[deleteOperator]', error); return false; }
     return true;
   },
@@ -373,7 +374,8 @@ export const stitchingVoucherService = {
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
- const {error}=await createClient().from('stitch_issue_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
+ const {error, count}=await createClient().from('stitch_issue_vouchers').delete({count:'exact'}).eq('id',id);
+    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
   },
 
   // ── Receive Vouchers ───────────────────────────────────────────────────────
@@ -456,7 +458,8 @@ export const stitchingVoucherService = {
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
- const {error}=await createClient().from('stitch_receive_vouchers').delete().eq('id',id);if(error)throw new Error(error.message);return true;
+ const {error, count}=await createClient().from('stitch_receive_vouchers').delete({count:'exact'}).eq('id',id);
+    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
   },
 
   // ── Audit Trail ────────────────────────────────────────────────────────────

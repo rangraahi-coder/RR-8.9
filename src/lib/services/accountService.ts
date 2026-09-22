@@ -131,7 +131,8 @@ export const accountService = {
   async delete(id: string): Promise<boolean> {
     const supabase = createClient();
     try {
-      const { error } = await supabase.from('accounts').delete().eq('id', id);
+      const { error, count } = await supabase.from('accounts').delete({count:'exact'}).eq('id', id);
+    if (!error && count !== 1) return false;
       if (error) {
         if (isSchemaError(error)) throw error;
         return false;

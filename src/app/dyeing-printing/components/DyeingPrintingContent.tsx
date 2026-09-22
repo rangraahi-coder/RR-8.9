@@ -1,7 +1,8 @@
 'use client';
+import PrinterQuantityDetails from './PrinterQuantityDetails';
 import { toast } from 'sonner';
 import VoucherDetails from '@/components/VoucherDetails';
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { Plus, X, Droplets, Pencil, Trash2, CheckCircle, Clock, FlaskConical, Printer, Package, AlertCircle, Search, Ruler, TrendingDown, ArrowUpFromLine, Eye } from 'lucide-react';
 import { DyeingProcessingEntry, DyeingProcessType, DYEING_PROCESS_TYPE_LABELS } from '../data/dyeingData';
 import { dyeingProcessingService } from '@/lib/services/dyeingProcessingService';
@@ -457,6 +458,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
     return Array.from(map.values()).sort((a, b) => a.displayLabel.localeCompare(b.displayLabel));
   }, [consolidatedOutstanding]);
 
+  const [quantityIssueId, setQuantityIssueId] = useState<string | null>(null);
   const [viewIssue, setViewIssue] = useState<PrinterFabricIssue | null>(null);
   const [deleteIssueTarget, setDeleteIssueTarget] = useState<PrinterFabricIssue | null>(null);
   const [deletingIssue, setDeletingIssue] = useState(false);
@@ -468,9 +470,16 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
     setLoading(false);
   }, []);
 
+  const ledgerVersion = useRef(0);
+  const [ledgerError, setLedgerError] = useState('');
   const loadAllIssues = useCallback(async () => {
-    const data = await printerFabricService.getAllIssues();
-    setAllIssues(data);
+    const version=++ledgerVersion.current;
+    try {
+      const data = await printerFabricService.getAllIssues(true);
+      if(version===ledgerVersion.current){setAllIssues(data);setLedgerError('');}
+    } catch(e) {
+      if(version===ledgerVersion.current)setLedgerError(e instanceof Error?e.message:'Could not refresh printer ledger');
+    }
   }, []);
 
   const loadEligibleFabrics = useCallback(async (allGreyFabrics: GreyFabricPurchase[]) => {
@@ -523,20 +532,20 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
   }, [printerReceiptForm.printerAccount]);
 
   useRealtimeTable('dyeing_processing_entries', loadEntries);
-  useRealtimeTable('printer_fabric_issues', () => {
-    loadAllIssues();
-    greyFabricService.getAll().then((fabrics) => {
+  useRealtimeTable('printer_fabric_issues', () => Promise.all([
+    loadAllIssues(),
+    greyFabricService.getAll().then(async (fabrics) => {
       setGreyFabrics(fabrics);
-      loadEligibleFabrics(fabrics);
-    });
-  });
-  useRealtimeTable('printer_fabric_receipts', () => {
-    loadAllIssues();
-    greyFabricService.getAll().then((fabrics) => {
+      await loadEligibleFabrics(fabrics);
+    }),
+  ]));
+  useRealtimeTable('printer_fabric_receipts', () => Promise.all([
+    loadAllIssues(),
+    greyFabricService.getAll().then(async (fabrics) => {
       setGreyFabrics(fabrics);
-      loadEligibleFabrics(fabrics);
-    });
-  });
+      await loadEligibleFabrics(fabrics);
+    }),
+  ]));
   useRealtimeTable('job_cards', refreshJobCards);
 
   // Stats
@@ -1287,7 +1296,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border flex items-center gap-3">
               <Printer size={15} className="text-orange-500" />
-              <span className="text-sm font-600 text-foreground">Fabric Pending with Printer</span>
+              <span className="text-sm font-600 text-foreground">Fabric Pending with Printer</span>{ledgerError&&<p role="alert" className="text-red-700 text-sm">Refresh failed: {ledgerError}. Previous values retained. <button type="button" className="underline" onClick={()=>void loadAllIssues()}>Retry</button></p>}
               <span className="ml-auto text-xs text-muted-foreground">{allIssues.length} issues</span>
             </div>
             <div className="overflow-x-auto">
@@ -1324,8 +1333,8 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                           <span className="text-xs font-600 text-foreground">{issue.grayFabricRef}</span>
                           {issue.fabricName && <div className="text-xs text-muted-foreground">{issue.fabricName}</div>}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-600 text-foreground">{issue.qtyIssued.toFixed(2)}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-success font-600">{issue.qtyReceived.toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-600 text-foreground"><button type="button" className="underline underline-offset-4 hover:text-primary" aria-label={`View issued vouchers for ${issue.issueNo}`} onClick={()=>setQuantityIssueId(issue.id)}>{issue.qtyIssued.toFixed(2)}</button></td>
+                        <td className="px-4 py-3 text-right tabular-nums text-success font-600"><button type="button" className="underline underline-offset-4 hover:text-primary" aria-label={`View received vouchers for ${issue.issueNo}`} onClick={()=>setQuantityIssueId(issue.id)}>{issue.qtyReceived.toFixed(2)}</button></td>
                         <td className="px-4 py-3 text-right tabular-nums font-700 text-orange-600">{issue.qtyPending.toFixed(2)}</td>
                         <td className="px-4 py-3">
                           <span className={`px-2 py-0.5 rounded-full text-xs font-600 ${
@@ -2000,6 +2009,8 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
           </div>
         </div>
       )}
+
+      {quantityIssueId && <PrinterQuantityDetails issueId={quantityIssueId} onClose={()=>setQuantityIssueId(null)}/> }
 
       {/* View Printer Issue Modal */}
       {viewIssue && (

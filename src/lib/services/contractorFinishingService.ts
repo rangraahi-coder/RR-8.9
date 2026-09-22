@@ -353,7 +353,8 @@ export const contractorFinishingService = {
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase.from('contractor_issue_vouchers').delete().eq('id', id);
+    const { error, count } = await supabase.from('contractor_issue_vouchers').delete({count:'exact'}).eq('id', id);
+    if (!error && count !== 1) return false;
     if (error) { console.error('[deleteIssueVoucher]', error); return false; }
     return true;
   },
@@ -743,7 +744,8 @@ export const contractorFinishingService = {
     // ── Step 3: Delete components then the voucher ──
     await supabase.from('finishing_receive_components').delete().eq('receive_voucher_id', id);
 
-    const { error } = await supabase.from('finishing_receive_vouchers').delete().eq('id', id);
+    const { error, count } = await supabase.from('finishing_receive_vouchers').delete({count:'exact'}).eq('id', id);
+    if (!error && count !== 1) return false;
     if (error) { console.error('[deleteFinishingReceiveVoucher]', error); return false; }
     return true;
   },
