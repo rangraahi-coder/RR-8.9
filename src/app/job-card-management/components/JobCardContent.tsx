@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, Filter, Download, AlertTriangle, CheckCircle2, ChevronUp, ChevronDown, Eye, Edit3, Trash2, ClipboardList, X, Layers } from 'lucide-react';
 import Link from 'next/link';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -65,24 +65,38 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editCard, setEditCard] = useState<JobCard | null>(null);
 
-  async function loadJobCards() {
-    setLoading(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadVersion = useRef(0);
+  const loadJobCards = useCallback(async () => {
+    const version = ++loadVersion.current;
     try {
-      let data = await jobCardService.getAll();
+      const data = await jobCardService.getAll();
+      if (version !== loadVersion.current) return;
       setJobCards(data);
-    } catch {
-      setJobCards([]);
+      setLoadError(null);
+    } catch (e) {
+      if (version === loadVersion.current) setLoadError(e instanceof Error ? e.message : 'Could not refresh records');
     } finally {
-      setLoading(false);
+      if (version === loadVersion.current) setLoading(false);
     }
-  }
-
-  useEffect(() => {
-    loadJobCards();
   }, []);
-
-  // Realtime: re-fetch whenever any user inserts/updates/deletes a job card
+  useEffect(() => { void loadJobCards(); return () => { ++loadVersion.current; }; }, [loadJobCards]);
   useRealtimeTable('job_cards', loadJobCards);
+
+  const jobSaveBusy = useRef(false);
+  const [jobSaving, setJobSaving] = useState(false);
+  async function saveJobChange(id: string, change: Partial<JobCard>, message: string) {
+    if (jobSaveBusy.current) return;
+    jobSaveBusy.current = true; setJobSaving(true);
+    try {
+      const saved = await jobCardService.update(id, change);
+      if (!saved?.id) throw new Error('Save was not confirmed. Check the record before retrying.');
+      setJobCards(prev => prev.map(j => j.id === id ? saved : j));
+      setDetailCard(null);
+      toast.success(message);
+    } catch (e) { toast.error(e instanceof Error ? e.message : 'Save was not confirmed'); }
+    finally { jobSaveBusy.current = false; setJobSaving(false); }
+  }
 
   const STAGES = [
     { value: 'all', labelEn: 'All Stages', labelHi: 'सभी स्टेज' },
@@ -155,9 +169,14 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
 
   const handleBulkDelete = async () => {
     const ids = Array.from(selectedIds);
-    await jobCardService.deleteMany(ids);
-    setJobCards((prev) => prev.filter((j) => !selectedIds.has(j.id)));
-    toast.success(`${selectedIds.size} ${lang === 'hi' ? 'जॉब कार्ड हटाए गए' : 'job cards deleted'}`);
+    const ok = await jobCardService.deleteMany(ids);
+    if (!ok) {
+      toast.error('Delete was not fully confirmed. Refreshing the actual saved records.');
+      await loadJobCards();
+      return;
+    }
+    setJobCards((prev) => prev.filter((j) => !ids.includes(j.id)));
+    toast.success(`${ids.length} job cards deleted`);
     setSelectedIds(new Set());
   };
 
@@ -173,6 +192,8 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
 
   return (
     <div className="space-y-5">
+      {loadError && <div role="alert" className="p-3 rounded-xl border border-red-300 bg-red-50 text-red-800 text-sm">Refresh failed: {loadError}. Previously loaded records are retained; this does not mean they were deleted. <button type="button" className="underline font-semibold" onClick={()=>void loadJobCards()}>Retry</button></div>}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
@@ -506,26 +527,15 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
         </div>
       )}
 
+      {jobSaving && <div role="status" className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-white border rounded-xl p-3 shadow">Saving… Please wait</div>}
       {/* Detail Drawer */}
       {detailCard && (
         <JobCardDetailDrawer
           jobCard={detailCard}
           lang={lang}
           onClose={() => setDetailCard(null)}
-          onStageUpdate={(id, stage) => {
-            setJobCards((prev) =>
-              prev.map((j) => (j.id === id ? { ...j, stage } : j))
-            );
-            toast.success(lang === 'hi' ? 'स्टेज अपडेट हो गई' : 'Stage updated');
-          }}
-          onBlockageResolve={(id) => {
-            setJobCards((prev) =>
-              prev.map((j) =>
-                j.id === id ? { ...j, isBlocked: false, blockageReasonEn: undefined, blockageReasonHi: undefined } : j
-              )
-            );
-            toast.success(lang === 'hi' ? 'रुकावट हटाई गई' : 'Blockage resolved');
-          }}
+          onStageUpdate={(id, stage) => { void saveJobChange(id, {stage}, 'Stage updated'); }}
+          onBlockageResolve={(id) => { void saveJobChange(id, {isBlocked:false, blockageReasonEn:'', blockageReasonHi:'', blockageDays:0}, 'Blockage resolved'); }}
           onEdit={(card) => {
             setDetailCard(null);
             setEditCard(card);

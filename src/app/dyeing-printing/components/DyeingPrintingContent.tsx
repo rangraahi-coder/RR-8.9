@@ -1,4 +1,5 @@
 'use client';
+import { toast } from 'sonner';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Plus, X, Droplets, Pencil, Trash2, CheckCircle, Clock, FlaskConical, Printer, Package, AlertCircle, Search, Ruler, TrendingDown, ArrowUpFromLine, Eye } from 'lucide-react';
@@ -1011,10 +1012,14 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
           setSuccessMsg(`Fabric received and posted to Finished Inventory as "${finishedFabricName.trim()}"!`);
         }
       } else {
-        setSuccessMsg('Entry updated but inventory post failed: ' + punchResult.error);
+        toast.error('Entry updated but inventory post failed: ' + punchResult.error);
+        setReceiveSaving(false);
+        return;
       }
     } else {
-      setSuccessMsg('Failed to update entry.');
+      toast.error('Failed to update entry.');
+      setReceiveSaving(false);
+      return;
     }
 
     setReceiveSaving(false);

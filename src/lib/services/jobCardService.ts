@@ -65,7 +65,7 @@ export const jobCardService = {
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[jobCardService.getAll] error:', error);
-      return [];
+      throw new Error(error.message || 'Job Cards could not be loaded');
     }
     return (data || []).map(rowToJobCard);
   },
@@ -91,6 +91,7 @@ export const jobCardService = {
       return null;
     }
     // DB trigger automatically recalculates the sales order status
+    if (!data?.id) return null;
     return rowToJobCard(data);
   },
 
@@ -118,28 +119,27 @@ export const jobCardService = {
       return null;
     }
     // DB trigger automatically recalculates the sales order status
+    if (!data?.id) return null;
     return rowToJobCard(data);
   },
 
   async delete(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase.from('job_cards').delete().eq('id', id);
+    const { data, error } = await supabase.from('job_cards').delete().eq('id', id).select('id');
     if (error) {
       console.error('[jobCardService.delete] error:', error);
       return false;
     }
-    // DB trigger automatically reverses the sales order impact
-    return true;
+    return data?.length === 1;
   },
 
   async deleteMany(ids: string[]): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase.from('job_cards').delete().in('id', ids);
+    const { data, error } = await supabase.from('job_cards').delete().in('id', ids).select('id');
     if (error) {
       console.error('[jobCardService.deleteMany] error:', error);
       return false;
     }
-    // DB trigger automatically reverses the sales order impact for each deleted job card
-    return true;
+    return data?.length === new Set(ids).size;
   },
 };

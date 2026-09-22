@@ -75,15 +75,13 @@ export const salesOrderService = {
         .select('*, sales_order_items(*)')
         .order('created_at', { ascending: false });
       if (error) {
-        if (isSchemaError(error)) throw error;
-        return [];
+        throw error;
       }
       return (orders || []).map((row) =>
         rowToOrder(row, (row.sales_order_items || []).map(itemRowToItem))
       );
     } catch (error: any) {
-      if (isSchemaError(error)) throw error;
-      return [];
+      throw new Error(error?.message || 'Sales Orders could not be loaded');
     }
   },
 
@@ -108,6 +106,7 @@ export const salesOrderService = {
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;
+      if (!orderRow?.id) throw new Error('Database did not confirm the saved Sales Order. Check the list before retrying.');
       return rowToOrder(orderRow, order.items);
     } catch (error: any) {
       console.error('Sales order create exception:', error);
@@ -173,6 +172,7 @@ export const salesOrderService = {
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;
+      if (!orderRow?.id) throw new Error('Database did not confirm the saved Sales Order. Check the list before retrying.');
       return rowToOrder(orderRow, order.items);
     } catch (error: any) {
       throw error;

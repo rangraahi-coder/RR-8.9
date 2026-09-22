@@ -62,6 +62,7 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
     editCard?.sizeRatios ? { ...editCard.sizeRatios } : {}
   );
   const [isLoading, setIsLoading] = useState(false);
+  const saveBusy = useRef(false);
 
   // Live data from RealtimeDataContext
   const { accounts, itemVariantsLoading, refreshSalesOrders } = useRealtimeData();
@@ -345,7 +346,10 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
   };
 
   const onSubmit = async (data: CreateJobCardFormData) => {
+    if (saveBusy.current) return;
+    saveBusy.current = true;
     setIsLoading(true);
+    try {
 
     // Validate: if size ratios are set, their total must match totalPieces
     if (Object.keys(sizeRatios).length > 0 && selectedSizes.length > 0) {
@@ -444,6 +448,12 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
 
       invalidateJobCardsCache();
       onCreate(saved);
+    }
+    } catch (error) {
+      toast.error(erpErrorMessage(error));
+    } finally {
+      saveBusy.current = false;
+      setIsLoading(false);
     }
   };
 

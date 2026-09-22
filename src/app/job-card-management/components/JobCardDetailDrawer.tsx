@@ -232,7 +232,7 @@ export default function JobCardDetailDrawer({
                     </p>
                   </div>
                   <button
-                    onClick={() => { onBlockageResolve(jobCard.id); onClose(); }}
+                    onClick={() => { onBlockageResolve(jobCard.id); }}
                     className="text-xs font-700 text-success bg-success-bg border border-success-border px-3 py-1.5 rounded-lg hover:bg-success/10 transition-all duration-150 flex-shrink-0"
                   >
                     {lang === 'hi' ? 'हल करें' : 'Resolve'}
@@ -326,7 +326,6 @@ export default function JobCardDetailDrawer({
                         onClick={() => {
                           if (isNext) {
                             onStageUpdate(jobCard.id, stage);
-                            onClose();
                           }
                         }}
                         disabled={!isNext}
@@ -611,7 +610,7 @@ function BlockageTab({ jobCard, lang, onBlockageResolve, onClose, showBlockageFo
             </div>
           </div>
           <button
-            onClick={() => { onBlockageResolve(jobCard.id); onClose(); }}
+            onClick={() => { onBlockageResolve(jobCard.id); }}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-success text-white rounded-xl text-sm font-700 hover:bg-success/90 transition-all duration-150"
           >
             <CheckCircle2 size={16} />

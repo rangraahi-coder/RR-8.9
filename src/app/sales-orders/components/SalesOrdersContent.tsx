@@ -1,6 +1,6 @@
 'use client';
 import VoucherDetails from '@/components/VoucherDetails';
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {erpErrorMessage} from '@/lib/erpError';
 import Link from 'next/link';
 import { Search, Filter, ChevronUp, ChevronDown, Eye, FileText, Building2, User, X, Package, Plus, Pencil, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
@@ -65,28 +65,23 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const PAGE_SIZE = 12;
 
-  useEffect(() => {
-    async function loadOrders() {
-      setLoading(true);
-      try {
-        let data = await salesOrderService.getAll();
-        setOrders(data);
-      } catch {
-        setOrders([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadOrders();
-  }, []);
-
-  // Realtime: re-fetch whenever any user adds/edits/deletes a sales order
-  useRealtimeTable('sales_orders', async () => {
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadVersion = useRef(0);
+  const loadOrders = useCallback(async () => {
+    const version = ++loadVersion.current;
     try {
-      let data = await salesOrderService.getAll();
+      const data = await salesOrderService.getAll();
+      if (version !== loadVersion.current) return;
       setOrders(data);
-    } catch {}
-  });
+      setLoadError(null);
+    } catch (e) {
+      if (version === loadVersion.current) setLoadError(e instanceof Error ? e.message : 'Could not refresh records');
+    } finally {
+      if (version === loadVersion.current) setLoading(false);
+    }
+  }, []);
+  useEffect(() => { void loadOrders(); return () => { ++loadVersion.current; }; }, [loadOrders]);
+  useRealtimeTable('sales_orders', loadOrders);
 
   const filtered = useMemo(() => {
     let data = [...orders];
@@ -167,16 +162,12 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
     }
   };
 
-  const reloadOrders = async () => {
-    try {
-      let data = await salesOrderService.getAll();
-      setOrders(data);
-    } catch {}
-    setPage(1);
-  };
+  const reloadOrders = async () => { await loadOrders(); setPage(1); };
 
   return (
     <div className="space-y-5">
+      {loadError && <div role="alert" className="p-3 rounded-xl border border-red-300 bg-red-50 text-red-800 text-sm">Refresh failed: {loadError}. Previously loaded records are retained; this does not mean they were deleted. <button type="button" className="underline font-semibold" onClick={()=>void loadOrders()}>Retry</button></div>}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
