@@ -239,8 +239,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
       setReceiveReceiptNoLoading(true);
       printerFabricService.getNextReceiptNo().then((no) => {
         setReceiveReceiptNo(no);
-        setReceiveReceiptNoLoading(false);
-      });
+      }).catch((e:Error)=>setReceiveSubmitError(e.message)).finally(()=>setReceiveReceiptNoLoading(false));
     }
   }, [activeTab]);
 
@@ -347,9 +346,10 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     setReceiveSubmitted(false);
     // Load next receipt no
     setReceiveReceiptNoLoading(true);
-    const no = await printerFabricService.getNextReceiptNo();
-    setReceiveReceiptNo(no);
-    setReceiveReceiptNoLoading(false);
+    setReceiveReceiptNo('');
+    try {setReceiveReceiptNo(await printerFabricService.getNextReceiptNo());}
+    catch(e){setReceiveSubmitError(e instanceof Error?e.message:'Receipt number could not be reserved.');}
+    finally{setReceiveReceiptNoLoading(false);}
   };
 
   const [customCategories, setCustomCategories] = useState<{ value: string; label: string }[]>([]);

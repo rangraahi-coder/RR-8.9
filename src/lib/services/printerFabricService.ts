@@ -411,9 +411,9 @@ export const printerFabricService = {
 
   async getNextReceiptNo(): Promise<string> {
     const supabase = createClient();
-    const { count } = await supabase
-      .from('printer_fabric_receipts').select('*', { count: 'exact', head: true });
-    const next = (count ?? 0) + 1;
-    return `PFR-${String(next).padStart(4, '0')}`;
+    const {data,error}=await supabase.rpc('erp_next_printer_receipt_no');
+    if(error)throw new Error(error.message);
+    if(typeof data!=='string'||!data.startsWith('PFR-'))throw new Error('Receipt number could not be reserved.');
+    return data;
   },
 };

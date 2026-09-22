@@ -879,6 +879,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
 
     setSaving(true);
     setSaveError(null);
+    try {
     const receiptNo = await printerFabricService.getNextReceiptNo();
 
     if (qualityGroup && qualityGroup.issueIds.length > 1) {
@@ -982,6 +983,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
       setGreyFabrics(fabrics);
       loadEligibleFabrics(fabrics);
     });
+    } catch(e){setSaveError(e instanceof Error?e.message:'Receipt could not be confirmed.');} finally{setSaving(false);}
   }
 
   async function handleDelete() {

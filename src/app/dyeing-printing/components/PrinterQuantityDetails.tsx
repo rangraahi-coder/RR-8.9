@@ -5,13 +5,17 @@ import {createClient} from '@/lib/supabase/client';
 import {erpErrorMessage} from '@/lib/erpError';
 import VoucherDetails from '@/components/VoucherDetails';
 import {useRealtimeTable} from '@/lib/hooks/useRealtimeTable';
+import {useAuth} from '@/contexts/AuthContext';
+import RecordDeleteDialog from '@/components/ui/RecordDeleteDialog';
+import ReceiptEditDialog,{type EditableReceipt} from './ReceiptEditDialog';
 import {printerReceiptTotals} from '@/lib/printerReceiptTotals';
 
-type Receipt={id:string;receipt_no:string;date:string;qty_received:number;grey_consumed:number|null;shrinkage:number|null;shortage:number|null;processed_fabric_name:string|null};
+type Receipt=EditableReceipt & {id:string;receipt_no:string;date:string;qty_received:number;grey_consumed:number|null;shrinkage:number|null;shortage:number|null;processed_fabric_name:string|null};
 type Issue={id:string;issue_no:string;printer_account:string;fabric_name:string;qty_issued:number;qty_received:number;qty_actual_received:number|null;qty_pending:number};
 const qty=(n:number)=>n.toLocaleString('en-IN',{minimumFractionDigits:3,maximumFractionDigits:3});
 export default function PrinterQuantityDetails({issueId,onClose}:{issueId:string;onClose:()=>void}){
  const [data,setData]=useState<{issue:Issue;receipts:Receipt[]}|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+ const {can}=useAuth();const [editing,setEditing]=useState<Receipt|null>(null),[deleting,setDeleting]=useState<Receipt|null>(null);
  const version=useRef(0);
  const refresh=useCallback(async()=>{
   const run=++version.current;setLoading(true);setError('');
@@ -21,7 +25,7 @@ export default function PrinterQuantityDetails({issueId,onClose}:{issueId:string
    if(result.error)throw result.error;
    const receipts:Receipt[]=[];
    for(let from=0;;from+=1000){
-    const page=await db.from('printer_fabric_receipts').select('id,receipt_no,date,qty_received,grey_consumed,shrinkage,shortage,processed_fabric_name').eq('issue_id',issueId).order('id').range(from,from+999);
+    const page=await db.from('printer_fabric_receipts').select('id,receipt_no,date,qty_received,grey_consumed,shrinkage,shortage,processed_fabric_name,updated_at,shrinkage_percent,remarks,roll_details').eq('issue_id',issueId).order('id').range(from,from+999);
     if(page.error)throw page.error;
     receipts.push(...(page.data||[]));if((page.data||[]).length<1000)break;
    }
@@ -48,11 +52,14 @@ export default function PrinterQuantityDetails({issueId,onClose}:{issueId:string
       <div className="flex flex-wrap justify-between gap-2"><VoucherDetails table="printer_fabric_receipts" recordId={r.id} label={r.receipt_no}/><span>{r.date}</span></div>
       <p className="text-sm">{r.processed_fabric_name||'Finished fabric'}</p>
       <dl className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm"><div><dt>Received</dt><dd>{qty(Number(r.qty_received))} Mt.</dd></div><div><dt>Recorded shrinkage / shortage</dt><dd>{qty(Number(r.shrinkage||0)+Number(r.shortage||0))} Mt.</dd></div><div><dt>Grey consumed</dt><dd>{qty(printerReceiptTotals([r]).consumed)} Mt.</dd></div></dl>
+      <div className="flex flex-wrap gap-4 text-sm">{can('receive','edit')&&<button type="button" className="underline" onClick={()=>setEditing(r)}>Edit receipt</button>}{can('receive','delete')&&<button type="button" className="underline text-red-700" onClick={()=>setDeleting(r)}>Delete receipt and unused rolls</button>}</div>
      </article>)}
      <div className="border-t pt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 font-semibold"><p>Receipt total: {qty(totals.received)} Mt.</p><p>Grey consumed: {qty(totals.consumed)} Mt.</p><p>Calculated pending: {qty(Number(data.issue.qty_issued)-totals.consumed)} Mt.</p></div>
      <p className="text-xs text-muted-foreground">Stored ledger: Received {qty(Number(data.issue.qty_actual_received??data.issue.qty_received))} Mt. · Pending {qty(Number(data.issue.qty_pending))} Mt.</p>
     </>}
    </div>
   </section>
+  {editing&&<ReceiptEditDialog receipt={editing} onClose={()=>setEditing(null)} onSaved={()=>{setEditing(null);void refresh();}}/>}
+  {deleting&&<RecordDeleteDialog lang="en" records={[{id:deleting.id,reference:deleting.receipt_no,details:`Delete this receipt and its unused stock; reverse ${qty(printerReceiptTotals([deleting]).consumed)} Mt. of grey consumption.`}]} onCancel={()=>setDeleting(null)} onConfirm={async()=>{const {data:deleted,error:err}=await createClient().rpc('erp_mutate_printer_receipt',{p_id:deleting.id,p_expected_updated_at:deleting.updated_at,p_changes:null});if(err)throw err;if(deleted!==deleting.id)throw new Error('Deletion was not confirmed.');setDeleting(null);void refresh();}}/>}
  </div>,document.body);
 }
