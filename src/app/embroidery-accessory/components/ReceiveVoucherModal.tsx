@@ -1,7 +1,7 @@
 'use client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Layers, Package, AlertCircle, CheckCircle, Info, Scissors, AlertTriangle } from 'lucide-react';
 import { embroideryVoucherService, EmbIssueVoucher, EmbReceiveVoucher, ReceiveFabricItem, ReceiveAccessoryItem, ReceiveCuttingItem } from '@/lib/services/embroideryVoucherService';
 
@@ -32,6 +32,11 @@ interface Props {
 }
 
 export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId, onClose, onSaved, editVoucher, handwork=false }: Props) {
+  const jobKey=(v:EmbIssueVoucher)=>v.jobCardRef?.trim()||'__unlinked__';
+  const initialIssue=issueVouchers.find(v=>v.id===(editVoucher?.issueVoucherId||preSelectedIssueId));
+  const [selectedJob,setSelectedJob]=useState(initialIssue?jobKey(initialIssue):(editVoucher?.jobCardRef?.trim()||''));
+  const loadGeneration=useRef(0);
+  useEffect(()=>()=>{++loadGeneration.current;},[]);
   const [voucherNo, setVoucherNo] = useState('');
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
   const [selectedIssueId, setSelectedIssueId] = useState(preSelectedIssueId || '');
@@ -46,9 +51,15 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const eligibleVouchers = issueVouchers.filter(
-    (v) => v.status === 'open' || v.status === 'partially_received' || (editVoucher && v.id === editVoucher.issueVoucherId)
-  );
+  const processVouchers=issueVouchers.filter(v=>(v.processType==='handwork')===handwork);
+  const pendingVouchers=processVouchers.filter(v=>v.status==='open'||v.status==='partially_received'||v.id===editVoucher?.issueVoucherId);
+  const jobOptions=Array.from(new Map(pendingVouchers.map(v=>[jobKey(v),{key:jobKey(v),style:v.styleName}])).values());
+  const eligibleVouchers=pendingVouchers.filter(v=>jobKey(v)===selectedJob);
+  function changeJob(key:string){
+    if(editVoucher)return;
+    ++loadGeneration.current;setSelectedJob(key);setSelectedIssueId('');setSelectedIssue(null);
+    setFabricItems([]);setAccessoryItems([]);setCuttingItems([]);setLoadingItems(false);setError(null);setFieldErrors({});
+  }
 
   useEffect(() => {
     if (editVoucher) {
@@ -57,6 +68,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
       setSelectedIssueId(editVoucher.issueVoucherId);
       const issue = issueVouchers.find((v) => v.id === editVoucher.issueVoucherId) || null;
       setSelectedIssue(issue);
+      if(issue)setSelectedJob(jobKey(issue));
       setFabricItems((editVoucher.fabricItems || []).map((f) => ({ ...f, receiveUnit: f.receiveUnit || f.unit, rejectedQty: (f as any).rejectedQty || 0, rejectionReason: (f as any).rejectionReason || '' })));
       setAccessoryItems((editVoucher.accessoryItems || []).map((a) => ({ ...a, receiveUnit: a.receiveUnit || a.unit, rejectedQty: (a as any).rejectedQty || 0, rejectionReason: (a as any).rejectionReason || '' })));
       setCuttingItems((editVoucher.cuttingItems || []).map((c) => ({ ...c, receiveUnit: c.receiveUnit || c.unit, rejectedPieces: (c as any).rejectedPieces || 0, rejectionReason: (c as any).rejectionReason || '' })));
@@ -69,37 +81,36 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
 
   useEffect(() => {
     if (!editVoucher && preSelectedIssueId) {
-      loadIssueVoucherItems(preSelectedIssueId);
+      const issue=processVouchers.find(v=>v.id===preSelectedIssueId);
+      if(issue){setSelectedJob(jobKey(issue));void loadIssueVoucherItems(preSelectedIssueId,jobKey(issue));}
     }
   }, [preSelectedIssueId]);
 
-  async function loadIssueVoucherItems(issueId: string) {
-    setSelectedIssueId(issueId);
-    setFabricItems([]);
-    setAccessoryItems([]);
-    setCuttingItems([]);
-    if (!issueId) { setSelectedIssue(null); return; }
-
-    setLoadingItems(true);
-    const issue = issueVouchers.find((v) => v.id === issueId) || null;
-    setSelectedIssue(issue);
-
-    if (issue) {
-      const [fabrics, accessories, cuttings] = await Promise.all([
+  async function loadIssueVoucherItems(issueId: string,expectedJob=selectedJob) {
+    const generation=++loadGeneration.current;
+    setSelectedIssueId(issueId);setSelectedIssue(null);
+    setFabricItems([]);setAccessoryItems([]);setCuttingItems([]);setError(null);
+    if(!issueId){setLoadingItems(false);return;}
+    const issue=pendingVouchers.find(v=>v.id===issueId&&jobKey(v)===expectedJob);
+    if(!issue){setSelectedIssueId('');setLoadingItems(false);setError('Select an eligible Issue Challan belonging to this Job Card.');return;}
+    setSelectedIssue(issue);setLoadingItems(true);
+    try {
+      const [fabrics,accessories,cuttings]=await Promise.all([
         embroideryVoucherService.buildReceiveFabricItems(issue),
         embroideryVoucherService.buildReceiveAccessoryItems(issue),
         embroideryVoucherService.buildReceiveCuttingItems(issue),
       ]);
-      setFabricItems(fabrics.map((f) => ({ ...f, rejectedQty: 0, rejectionReason: '' })));
-      setAccessoryItems(accessories.map((a) => ({ ...a, rejectedQty: 0, rejectionReason: '' })));
-      setCuttingItems(cuttings.map((c) => ({ ...c, rejectedPieces: 0, rejectionReason: '' })));
-    }
-    setLoadingItems(false);
+      if(generation!==loadGeneration.current)return;
+      setFabricItems(fabrics.map(f=>({...f,rejectedQty:0,rejectionReason:''})));
+      setAccessoryItems(accessories.map(a=>({...a,rejectedQty:0,rejectionReason:''})));
+      setCuttingItems(cuttings.map(c=>({...c,rejectedPieces:0,rejectionReason:''})));
+    }catch(e){if(generation===loadGeneration.current){setSelectedIssue(null);setError(e instanceof Error?e.message:'Issue quantities could not load. Select the challan again.');}}
+    finally{if(generation===loadGeneration.current)setLoadingItems(false);}
   }
-
-  async function handleIssueVoucherSelect(issueId: string) {
+  async function handleIssueVoucherSelect(issueId:string){
+    if(editVoucher)return;
     await loadIssueVoucherItems(issueId);
-    if (issueId) setFieldErrors((prev) => ({ ...prev, issueVoucher: '' }));
+    if(issueId)setFieldErrors(prev=>({...prev,issueVoucher:''}));
   }
 
   // ── Fabric item updates ────────────────────────────────────────────────────
@@ -267,6 +278,9 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
     setError(null);
 
     const newErrors: Record<string, string> = {};
+    if(loadingItems||saving)return;
+    if(!selectedJob)newErrors.jobCard='Select a Job Card first.';
+    if(!selectedIssue||selectedIssue.id!==selectedIssueId||jobKey(selectedIssue)!==selectedJob||!eligibleVouchers.some(v=>v.id===selectedIssueId))newErrors.issueVoucher='Issue Challan must belong to the selected Job Card and process.';
     if (isCuttingIssue && cuttingItems.some(c =>
       (c.receiveUnit || c.unit) !== c.unit || !selectedIssue?.cuttingItems.some(source => source.component === c.component && source.unit === c.unit)
     )) newErrors.receiveQty = 'Issued parts must be received with the same part name and unit. Review the linked Issue Voucher.';
@@ -408,10 +422,20 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
             />
           </div>
 
+          <div>
+            <label className="block text-xs font-600 text-muted-foreground mb-1">Job Card *</label>
+            <SearchableSelect aria-label="Receive Job Card" value={selectedJob} onChange={e=>changeJob(e.target.value)} required disabled={!!editVoucher||saving} className="input-field w-full">
+              <option value="">— Select Job Card —</option>
+              {jobOptions.map(j=><option key={j.key} value={j.key}>{j.key==='__unlinked__'?'No Job Card — earlier unlinked vouchers':`${j.key}${j.style?' | '+j.style:''}`}</option>)}
+            </SearchableSelect>
+            {fieldErrors.jobCard&&<p className="text-xs text-danger">{fieldErrors.jobCard}</p>}
+            {editVoucher&&<p className="text-xs text-muted-foreground mt-1">Job Card and Issue Challan remain linked to this saved receipt.</p>}
+          </div>
           {/* Issue Voucher Selection */}
           <div>
             <label className="block text-xs font-600 text-muted-foreground font-body mb-1">Issue Challan / Voucher No *</label>
             <SearchableSelect
+              disabled={!selectedJob||!!editVoucher||saving}
               value={selectedIssueId}
               onChange={(e) => handleIssueVoucherSelect(e.target.value)}
               required
@@ -427,7 +451,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
             </SearchableSelect>
             {fieldErrors.issueVoucher && <p className="text-xs text-danger mt-0.5">{fieldErrors.issueVoucher}</p>}
             {eligibleVouchers.length === 0 && (
-              <p className="text-xs text-warning font-body mt-1">No open Issue Challans found. Create an Issue Voucher first.</p>
+              <p className="text-xs text-warning font-body mt-1">{selectedJob?'No pending Issue Challans for this Job Card.':'Select a Job Card to see its pending Issue Challans.'}</p>
             )}
           </div>
 
@@ -867,7 +891,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
             </button>
             <button
               type="submit"
-              disabled={saving || !selectedIssue || (!hasFabric && !hasAccessory && !hasCutting)}
+              disabled={saving || loadingItems || !selectedJob || !selectedIssue || (!hasFabric && !hasAccessory && !hasCutting)}
               className="px-5 py-2 bg-success text-white rounded-xl text-sm font-600 font-body hover:bg-success/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving…' : editVoucher ? 'Update Receive Voucher' : 'Save Receive Voucher'}
