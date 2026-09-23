@@ -129,6 +129,10 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
     );
   }
 
+  function withFabricPrice(f: ReceiveFabricItem): ReceiveFabricItem {
+    return f.embroideryRate == null ? f : { ...f, embroideryCharge: Math.round(Number(f.receivedQty || 0) * f.embroideryRate * 100) / 100 };
+  }
+
   function updateFabricReceiveUnit(i: number, unit: string) {
     setFabricItems((prev) =>
       prev.map((f, idx) => idx === i ? { ...f, receiveUnit: unit } : f)
@@ -285,7 +289,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
 
     if (!selectedIssue && !editVoucher) { setError('Please select an Issue Voucher.'); return; }
 
-    const enrichedFabricItems = fabricItems
+    const enrichedFabricItems = fabricItems.map(withFabricPrice)
       .filter((f) => f.receivedQty > 0 || (f as any).rejectedQty > 0)
       .map((f) => ({ ...f, receiveUnit: f.receiveUnit || f.unit }));
     const enrichedAccessoryItems = accessoryItems
@@ -298,7 +302,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
     if (editVoucher) {
       const totalPiecesReceived = enrichedCuttingItems.reduce((s, c) => s + (c.receivedPieces || 0), 0);
       // When editing, save ALL items (including zero-qty ones) so DB reflects actual current state
-      const allFabricItems = fabricItems.map((f) => ({ ...f, receiveUnit: f.receiveUnit || f.unit }));
+      const allFabricItems = fabricItems.map(withFabricPrice).map((f) => ({ ...f, receiveUnit: f.receiveUnit || f.unit }));
       const allAccessoryItems = accessoryItems.map((a) => ({ ...a, receiveUnit: a.receiveUnit || a.unit }));
       const allCuttingItems = cuttingItems.map((c) => ({ ...c, receiveUnit: c.receiveUnit || c.unit }));
       const ok = await embroideryVoucherService.updateReceiveVoucher(editVoucher.id, {
@@ -481,7 +485,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                   <span className="text-muted-foreground">/ Issued: {totalFabricIssued.toFixed(3)}</span>
                 </div>
               </div>
-              <div className="border border-border rounded-xl overflow-hidden">
+              <div className="border border-border rounded-xl overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40">
                     <tr>
@@ -493,6 +497,8 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                       <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body"><span className="text-primary font-700">Recv Unit</span></th>
                       <th className="text-right px-3 py-2 font-600 text-danger font-body">Rejected Qty</th>
                       <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body">Rejection Reason</th>
+                      <th className="px-3 py-2">Rate (₹ / receive unit)</th>
+                      <th className="px-3 py-2">{handwork ? 'Handwork Price (₹)' : 'Embroidery Price (₹)'}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -548,12 +554,15 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                               </SearchableSelect>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
+                          <td className="px-3 py-2"><input aria-label="Fabric processing rate" type="number" min="0" step="0.01" className="w-24 border rounded px-2 py-1" value={f.embroideryRate ?? ''} onChange={e => { const rate = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)); setFabricItems(prev => prev.map((row, index) => index === i ? { ...row, embroideryRate: rate } : row)); }} /></td>
+                          <td className="px-3 py-2"><input aria-label="Fabric processing price" type="number" min="0" step="0.01" className="w-24 border rounded px-2 py-1" value={withFabricPrice(f).embroideryCharge ?? ''} onChange={e => { const price = e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)); setFabricItems(prev => prev.map((row, index) => index === i ? { ...row, embroideryRate: undefined, embroideryCharge: price } : row)); }} /></td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs mt-2">Rate × accepted received quantity = price. Enter a price directly for a fixed charge. Total: ₹{fabricItems.reduce((sum, f) => sum + (withFabricPrice(f).embroideryCharge || 0), 0).toFixed(2)}</p>
             </div>
           )}
 
@@ -682,7 +691,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                         <th className="text-right px-3 py-2 font-600 text-danger font-body">Rejected Qty</th>
                         <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body">Rejection Reason</th>
                         <th className="text-right px-3 py-2 font-600 text-muted-foreground font-body">
-                          <span className="text-orange-600 font-700">{isCuttingIssue ? 'Cut Charges (₹)' : 'Emb Charges (₹)'}</span>
+                          <span className="text-orange-600 font-700">{handwork ? 'Handwork Price (₹)' : 'Embroidery Price (₹)'}</span>
                         </th>
                         {!isCuttingIssue && <th className="px-2 py-2"></th>}
                       </tr>

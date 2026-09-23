@@ -137,6 +137,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   // Embroidery-received pending materials for selected job card
   const [embPendingItems, setEmbPendingItems] = useState<CuttingStockItem[]>([]);
+  const [embFabricReferences, setEmbFabricReferences] = useState<Awaited<ReturnType<typeof cuttingService.getEmbFabricReferences>>>([]);
+  const [embLoadError, setEmbLoadError] = useState('');
   const [loadingEmbPending, setLoadingEmbPending] = useState(false);
   // Selected emb items with user-entered piecesUsed
   const [selectedEmbItems, setSelectedEmbItems] = useState<SelectedEmbItem[]>([]);
@@ -210,29 +212,44 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     return loadCuttingMasters();
   });
 
+  const embLoadGeneration = useRef(0);
+
   // Load embroidery-received pending materials when job card changes
   const loadEmbPending = useCallback(async (jobCardRef: string, resetSelection = true) => {
+    const generation = ++embLoadGeneration.current;
     if (!jobCardRef) {
+      setLoadingEmbPending(false);
+      setLoadingEmbSummary(false);
       setEmbPendingItems([]);
       setSelectedEmbItems([]);
       setEmbFlowSummary([]);
+      setEmbFabricReferences([]);
+      setEmbLoadError('');
       return;
     }
+    setEmbLoadError('');
     setLoadingEmbPending(true);
     setLoadingEmbSummary(true);
     try {
-      const [items, summary] = await Promise.all([
+      const [items, summary, fabrics] = await Promise.all([
         cuttingService.getEmbReceivePendingByJobCard(jobCardRef),
         cuttingService.getEmbCuttingSummaryByJobCard(jobCardRef),
+        cuttingService.getEmbFabricReferences(jobCardRef),
       ]);
+      if (generation !== embLoadGeneration.current) return;
       setEmbPendingItems(items);
       setEmbFlowSummary(summary);
+      setEmbFabricReferences(fabrics);
       // Background quantity refresh must preserve the entered draft.
       if (resetSelection) setSelectedEmbItems([]);
     } catch {
+      if (generation !== embLoadGeneration.current) return;
+      setEmbLoadError('Embroidery quantities could not be loaded. Re-select the Job Card to retry.');
+      setEmbFabricReferences([]);
       setEmbPendingItems([]);
       setEmbFlowSummary([]);
     } finally {
+      if (generation !== embLoadGeneration.current) return;
       setLoadingEmbPending(false);
       setLoadingEmbSummary(false);
     }
@@ -733,6 +750,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       setEmbPendingItems([]);
       setSelectedEmbItems([]);
       setEmbFlowSummary([]);
+      setEmbFabricReferences([]);
+      setEmbLoadError('');
       return;
     }
     const jc = jobCards.find((j) => j.jobCardRef === val);
@@ -978,7 +997,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                               <div className="flex flex-col gap-2">
                                 <p className="text-xs font-700 text-amber-700 uppercase tracking-wide flex items-center gap-1.5">
                                   <Package size={12} />
-                                  Embroidery-Received Materials Used
+                                  Embroidery / Handwork Received Materials Used
                                 </p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   {entry.embReceiveItems.map((item, idx) => (
@@ -1098,12 +1117,23 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 );
               })()}
 
-              {/* ── Embroidery Flow Summary ── */}
+              {embLoadError && <p role="alert" className="text-danger text-sm">{embLoadError}</p>}
+          {embFabricReferences.length > 0 && (
+            <div className="border border-border rounded-xl p-4 space-y-2">
+              <h3 className="font-semibold">Embroidery / Handwork fabric receipt references</h3>
+              <p className="text-xs text-muted-foreground">Select the matching Fabric Inventory roll below. Receipt quantities are references, not an additional available stock balance.</p>
+              {embFabricReferences.map(f => <div key={f.key} className="text-sm break-words">
+                <VoucherDetails table="emb_receive_vouchers" recordId={f.receiptId} label={f.voucherNo}/> · {f.issueVoucherNo} · {f.fabricName} · Received {f.receivedQty} {f.unit}
+                <span className="block text-xs text-muted-foreground">Inventory reference: {f.rollId}</span>
+              </div>)}
+            </div>
+          )}
+          {/* ── Embroidery Flow Summary ── */}
               {form.jobCardRef && form.jobCardRef !== '__create_new__' && embFlowSummary.length > 0 && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Package size={14} className="text-blue-600" />
-                    <p className="text-xs font-700 text-blue-700">Embroidery Flow Summary — {form.jobCardRef}</p>
+                    <p className="text-xs font-700 text-blue-700">Embroidery / Handwork Flow Summary — {form.jobCardRef}</p>
                     {loadingEmbSummary && <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin ml-1" />}
                   </div>
                   <div className="border border-blue-200 rounded-xl overflow-hidden">
@@ -1118,7 +1148,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                     </div>
                     <div className="divide-y divide-blue-100">
                       {embFlowSummary.map((row) => (
-                        <div key={row.component} className="grid grid-cols-5 gap-2 px-3 py-2 text-xs">
+                        <div key={`${row.component}:${row.unit}`} className="grid grid-cols-5 gap-2 px-3 py-2 text-xs">
                           <span className="font-600 text-foreground">{row.component}</span>
                           <span className="text-right tabular-nums text-muted-foreground">{row.embIssued} {row.unit}</span>
                           <span className="text-right tabular-nums text-foreground font-600">{row.embReceived} {row.unit}</span>
@@ -1129,7 +1159,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                         </div>
                       ))}
                     </div>
-                    {embFlowSummary.length > 0 && (
+                    {new Set(embFlowSummary.map(row => row.unit)).size === 1 && (
                       <div className="bg-blue-50 border-t border-blue-200 px-3 py-1.5 grid grid-cols-5 gap-2 text-xs font-700">
                         <span className="text-blue-700">Total</span>
                         <span className="text-right tabular-nums text-muted-foreground">{embFlowSummary.reduce((s, r) => s + r.embIssued, 0)}</span>
@@ -1142,12 +1172,12 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 </div>
               )}
 
-              {/* ── Embroidery-Received Materials ── */}
+              {/* ── Embroidery / Handwork Received Materials ── */}
               {form.jobCardRef && form.jobCardRef !== '__create_new__' && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-2">
                     <Package size={14} className="text-amber-600" />
-                    <p className="text-xs font-700 text-amber-700">Embroidery-Received Materials</p>
+                    <p className="text-xs font-700 text-amber-700">Embroidery / Handwork Received Materials</p>
                     {loadingEmbPending && (
                       <div className="w-3.5 h-3.5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin ml-1" />
                     )}
@@ -1156,7 +1186,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                   {!loadingEmbPending && embPendingItems.length === 0 && (
                     <div className="flex items-center gap-2 bg-muted/30 border border-border rounded-lg px-3 py-2.5 text-xs text-muted-foreground">
                       <AlertCircle size={13} />
-                      No embroidery-received materials found for this Job Card.
+                      No pending embroidery / handwork received cutting pieces for this Job Card.
                     </div>
                   )}
 

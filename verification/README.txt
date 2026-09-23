@@ -1,1 +1,0 @@
-Regression test source for reference. Runs from the development repository with @electric-sql/pglite, component-approval-update/01-COMPONENT-APPROVALS.sql and approval-link-fix/01-APPROVAL-ITEM-LINK-FIX.sql. No production test data changes are included. Do not run this file in Supabase SQL Editor.

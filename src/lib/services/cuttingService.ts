@@ -103,78 +103,87 @@ export const cuttingService = {
     const supabase = createClient();
 
     // 1. Get all issue vouchers for this job card
-    const { data: issueVouchers } = await supabase
+    const { data: issueVouchers, error: issueVouchersError } = await supabase
       .from('emb_issue_vouchers')
       .select('id, cutting_items')
       .eq('job_card_ref', jobCardRef);
+    if (issueVouchersError) throw issueVouchersError;
 
     // 2. Get all receive vouchers for those issue vouchers
     const issueIds = (issueVouchers || []).map((iv: any) => iv.id);
     let receiveVouchers: any[] = [];
     if (issueIds.length > 0) {
-      const { data: rvs } = await supabase
+      const { data: rvs, error: rvsError } = await supabase
         .from('emb_receive_vouchers')
-        .select('cutting_items')
+        .select('id, cutting_items')
         .in('issue_voucher_id', issueIds);
+    if (rvsError) throw rvsError;
       receiveVouchers = rvs || [];
     }
     // Also get receive vouchers directly linked to job card
-    const { data: directRvs } = await supabase
+    const { data: directRvs, error: directRvsError } = await supabase
       .from('emb_receive_vouchers')
-      .select('cutting_items')
+      .select('id, cutting_items')
       .eq('job_card_ref', jobCardRef);
+    if (directRvsError) throw directRvsError;
     for (const rv of directRvs || []) {
-      receiveVouchers.push(rv);
+      if (!receiveVouchers.some(existing => existing.id === rv.id)) receiveVouchers.push(rv);
     }
 
     // 3. Get cutting_entries.emb_receive_items for this job card
-    const { data: cuttingEntries } = await supabase
+    const { data: cuttingEntries, error: cuttingEntriesError } = await supabase
       .from('cutting_entries')
       .select('emb_receive_items')
       .eq('job_card_ref', jobCardRef);
+    if (cuttingEntriesError) throw cuttingEntriesError;
 
-    // Build maps by component
+    const key = (component: string, unit: string) => JSON.stringify([component || 'Item', unit || 'Pcs']);
+
+    // Build maps by component and unit; never sum metres with pieces.
     const issuedMap: Record<string, { qty: number; unit: string }> = {};
     const receivedMap: Record<string, { qty: number; unit: string }> = {};
     const issuedToCuttingMap: Record<string, { qty: number; unit: string }> = {};
 
     for (const iv of issueVouchers || []) {
       for (const ci of (Array.isArray(iv.cutting_items) ? iv.cutting_items : [])) {
-        const comp = ci.component || 'Item';
+        const comp = key(ci.component, ci.unit);
         const prev = issuedMap[comp] || { qty: 0, unit: ci.unit || 'Pcs' };
-        issuedMap[comp] = { qty: prev.qty + (ci.pieces || 0), unit: ci.unit || 'Pcs' };
+        issuedMap[comp] = { qty: prev.qty + Number(ci.pieces || 0), unit: ci.unit || 'Pcs' };
       }
     }
 
     for (const rv of receiveVouchers) {
       for (const ci of (Array.isArray(rv.cutting_items) ? rv.cutting_items : [])) {
-        const comp = ci.component || 'Item';
+        const comp = key(ci.component, ci.receiveUnit || ci.unit);
         const prev = receivedMap[comp] || { qty: 0, unit: ci.receiveUnit || ci.unit || 'Pcs' };
-        receivedMap[comp] = { qty: prev.qty + (ci.receivedPieces || 0), unit: ci.receiveUnit || ci.unit || 'Pcs' };
+        receivedMap[comp] = { qty: prev.qty + Number(ci.receivedPieces || 0), unit: ci.receiveUnit || ci.unit || 'Pcs' };
       }
     }
 
     for (const ce of cuttingEntries || []) {
       for (const item of (Array.isArray(ce.emb_receive_items) ? ce.emb_receive_items : [])) {
-        const comp = item.component || 'Item';
+        const comp = key(item.component, item.unit);
         const prev = issuedToCuttingMap[comp] || { qty: 0, unit: item.unit || 'Pcs' };
-        issuedToCuttingMap[comp] = { qty: prev.qty + (item.piecesUsed || 0), unit: item.unit || 'Pcs' };
+        issuedToCuttingMap[comp] = { qty: prev.qty + Number(item.piecesUsed || 0), unit: item.unit || 'Pcs' };
       }
     }
 
     // Also check cutting_stock for real DB rows (issued_pieces)
-    const { data: stockRows } = await supabase
+    const { data: stockRows, error: stockRowsError } = await supabase
       .from('cutting_stock')
       .select('component, issued_pieces, unit')
       .eq('job_card_ref', jobCardRef)
       .gt('issued_pieces', 0);
+    if (stockRowsError) throw stockRowsError;
 
+    const stockIssued: Record<string, { qty: number; unit: string }> = {};
     for (const sr of stockRows || []) {
-      const comp = sr.component || 'Item';
-      // Only add if not already counted via cutting_entries
-      if (!issuedToCuttingMap[comp]) {
-        issuedToCuttingMap[comp] = { qty: sr.issued_pieces || 0, unit: sr.unit || 'Pcs' };
-      }
+      const comp = key(sr.component, sr.unit);
+      const prev = stockIssued[comp]?.qty || 0;
+      stockIssued[comp] = { qty: prev + Number(sr.issued_pieces || 0), unit: sr.unit || 'Pcs' };
+    }
+    for (const [comp, value] of Object.entries(stockIssued)) {
+      if (!issuedToCuttingMap[comp]) issuedToCuttingMap[comp] = value;
     }
 
     // Build summary from all components seen
@@ -190,7 +199,7 @@ export const cuttingService = {
       const issuedToCutting = issuedToCuttingMap[comp]?.qty || 0;
       const unit = receivedMap[comp]?.unit || issuedMap[comp]?.unit || issuedToCuttingMap[comp]?.unit || 'Pcs';
       return {
-        component: comp,
+        component: JSON.parse(comp)[0],
         embIssued: issued,
         embReceived: received,
         issuedToCutting,
@@ -198,6 +207,30 @@ export const cuttingService = {
         unit,
       };
     }).filter((s) => s.embReceived > 0 || s.issuedToCutting > 0);
+  },
+
+  async getEmbFabricReferences(jobCardRef: string) {
+    if (!jobCardRef) return [];
+    const db = createClient();
+    const issues = await db.from('emb_issue_vouchers').select('id').eq('job_card_ref', jobCardRef);
+    if (issues.error) throw issues.error;
+    const direct = await db.from('emb_receive_vouchers').select('id, voucher_no, issue_voucher_no, fabric_items').eq('job_card_ref', jobCardRef);
+    if (direct.error) throw direct.error;
+    let linked: any[] = [];
+    if (issues.data?.length) {
+      const result = await db.from('emb_receive_vouchers').select('id, voucher_no, issue_voucher_no, fabric_items').in('issue_voucher_id', issues.data.map((v: any) => v.id));
+      if (result.error) throw result.error;
+      linked = result.data || [];
+    }
+    const receipts = new Map<string, any>();
+    for (const row of [...(direct.data || []), ...linked]) receipts.set(row.id, row);
+    return [...receipts.values()].flatMap(row => (Array.isArray(row.fabric_items) ? row.fabric_items : [])
+      .filter((f: any) => Number(f.receivedQty) > 0)
+      .map((f: any, index: number) => ({
+        key: `${row.id}:${index}`, receiptId: String(row.id), voucherNo: row.voucher_no, issueVoucherNo: row.issue_voucher_no,
+        fabricName: String(f.fabricName || f.rollName || ''), rollId: String(f.rollId || f.fabricId || ''),
+        receivedQty: Number(f.receivedQty), unit: String(f.receiveUnit || f.unit || 'Metre'),
+      })));
   },
 
   async getAll(): Promise<CuttingEntry[]> {

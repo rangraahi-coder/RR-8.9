@@ -950,7 +950,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                                           <th className="text-right px-3 py-2 font-600 text-danger font-body">Rejected</th>
                                           <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body">Recv Unit</th>
                                           <th className="text-right px-3 py-2 font-600 text-muted-foreground font-body">Balance</th>
-                                        </tr>
+                                        <th className="px-3 py-2">{handwork ? 'Handwork Price (₹)' : 'Embroidery Price (₹)'}</th></tr>
                                       </thead>
                                       <tbody>
                                         {v.fabricItems.map((f, i) => {
@@ -974,7 +974,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                                                 {unitDiffers && <span className="ml-1 text-xs text-primary">(≠ issue)</span>}
                                               </td>
                                               <td className="px-3 py-2 text-right font-body text-warning">{unitDiffers ? '—' : f.balanceQty}</td>
-                                            </tr>
+                                            <td className="px-3 py-2 text-right">{f.embroideryCharge == null ? '—' : `₹${Number(f.embroideryCharge).toFixed(2)}`}</td></tr>
                                           );
                                         })}
                                       </tbody>
@@ -1747,7 +1747,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                         <th className="text-right px-3 py-2 font-600 text-muted-foreground font-body">Rejected</th>
                         <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body">Rejection Reason</th>
                         <th className="text-left px-3 py-2 font-600 text-muted-foreground font-body">Unit</th>
-                      </tr>
+                      <th className="px-3 py-2">{handwork ? 'Handwork Price (₹)' : 'Embroidery Price (₹)'}</th></tr>
                     </thead>
                     <tbody>
                       {viewReceiveVoucher.fabricItems.map((f, i) => (
@@ -1758,7 +1758,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                           <td className="px-3 py-2 text-right font-body text-danger font-600">{(f as any).rejectedQty > 0 ? (f as any).rejectedQty : '—'}</td>
                           <td className="px-3 py-2 font-body text-muted-foreground">{(f as any).rejectionReason || '—'}</td>
                           <td className="px-3 py-2 font-body">{f.unit}</td>
-                        </tr>
+                        <td className="px-3 py-2 text-right">{f.embroideryCharge == null ? '—' : `₹${Number(f.embroideryCharge).toFixed(2)}`}</td></tr>
                       ))}
                     </tbody>
                   </table>

@@ -59,6 +59,8 @@ export interface EmbIssueVoucher {
 }
 
 export interface ReceiveFabricItem {
+  embroideryRate?: number; // charge per accepted receive unit
+  embroideryCharge?: number; // total charge, in rupees
   fabricId: string;
   fabricName: string;
   rollId: string;
@@ -704,23 +706,25 @@ export const embroideryVoucherService = {
       .select('*')
       .eq('job_card_ref', jobCardRef)
       .order('created_at', { ascending: false });
-    if (directError) { console.error('[embVoucher.getAllCuttingStockByJobCard] direct:', directError); }
+    if (directError) throw directError;
 
     // Secondary query: find cutting_stock items linked via receive_voucher_id
     // where the receive voucher's issue voucher has this job_card_ref
-    const { data: issueVouchers } = await supabase
+    const { data: issueVouchers, error: issueVouchersError } = await supabase
       .from('emb_issue_vouchers')
       .select('id')
       .eq('job_card_ref', jobCardRef);
+    if (issueVouchersError) throw issueVouchersError;
 
     let linkedItems: any[] = [];
     let receiveVouchersFull: any[] = [];
     if (issueVouchers && issueVouchers.length > 0) {
       const issueIds = issueVouchers.map((iv: any) => iv.id);
-      const { data: receiveVouchers } = await supabase
+      const { data: receiveVouchers, error: receiveVouchersError } = await supabase
         .from('emb_receive_vouchers')
         .select('*')
         .in('issue_voucher_id', issueIds);
+    if (receiveVouchersError) throw receiveVouchersError;
 
       receiveVouchersFull = receiveVouchers || [];
 
@@ -731,16 +735,17 @@ export const embroideryVoucherService = {
           .select('*')
           .in('receive_voucher_id', receiveIds)
           .order('created_at', { ascending: false });
-        if (linkedError) { console.error('[embVoucher.getAllCuttingStockByJobCard] linked:', linkedError); }
+        if (linkedError) throw linkedError;
         linkedItems = linked || [];
       }
     }
 
     // Also fetch receive vouchers directly linked to this job_card_ref
-    const { data: directReceiveVouchers } = await supabase
+    const { data: directReceiveVouchers, error: directReceiveVouchersError } = await supabase
       .from('emb_receive_vouchers')
       .select('*')
       .eq('job_card_ref', jobCardRef);
+    if (directReceiveVouchersError) throw directReceiveVouchersError;
     for (const rv of directReceiveVouchers || []) {
       if (!receiveVouchersFull.find((r: any) => r.id === rv.id)) {
         receiveVouchersFull.push(rv);
@@ -766,17 +771,19 @@ export const embroideryVoucherService = {
 
     // Fetch emb_cutting_entries to compute already-issued pieces from synthesized items
     // (for real cutting_stock rows, available_pieces is already correct in DB)
-    const { data: embCuttingRows } = await supabase
+    const { data: embCuttingRows, error: embCuttingRowsError } = await supabase
       .from('emb_cutting_entries')
       .select('components')
       .eq('job_card_ref', jobCardRef);
+    if (embCuttingRowsError) throw embCuttingRowsError;
 
     // Also fetch cutting_entries.emb_receive_items for this job card
     // (regular cutting entries that consumed embroidery-received stock)
-    const { data: regularCuttingRows } = await supabase
+    const { data: regularCuttingRows, error: regularCuttingRowsError } = await supabase
       .from('cutting_entries')
       .select('emb_receive_items')
       .eq('job_card_ref', jobCardRef);
+    if (regularCuttingRowsError) throw regularCuttingRowsError;
 
     // Build a map of receiveVoucherId+component -> total pieces already issued
     // Sources: emb_cutting_entries (legacy) + cutting_entries.emb_receive_items (current)
@@ -789,7 +796,7 @@ export const embroideryVoucherService = {
         // stockItemId for synthesized items is like "rv-{rvId}-{component}"
         const stockItemId: string = comp.stockItemId || '';
         if (stockItemId.startsWith('rv-')) {
-          const key = stockItemId.replace(/^rv-/, '').replace(/-([^-]+)$/, '::$1');
+          const key = `${stockItemId.slice(3, 39)}::${stockItemId.slice(40)}`;
           embCuttingIssuedMap[key] = (embCuttingIssuedMap[key] || 0) + (comp.piecesIssued || 0);
         }
       }
@@ -933,6 +940,14 @@ export const embroideryVoucherService = {
         if (comp.stockItemId === synthesizedId) {
           alreadyIssued += comp.piecesIssued || 0;
         }
+      }
+    }
+
+    const regular = await supabase.from('cutting_entries').select('emb_receive_items').eq('job_card_ref', jobCardRef);
+    if (regular.error) throw regular.error;
+    for (const entry of regular.data || []) {
+      for (const used of Array.isArray(entry.emb_receive_items) ? entry.emb_receive_items : []) {
+        if (used.cuttingStockId === synthesizedId) alreadyIssued += Number(used.piecesUsed || 0);
       }
     }
 
