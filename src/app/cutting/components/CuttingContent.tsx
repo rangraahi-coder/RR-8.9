@@ -53,6 +53,7 @@ interface RollRow {
 
 interface SubComponentRow {
   stitchingRate: string;
+  cuttingRate: string;
   id: string;
   component: string;
   customComponent: string;
@@ -89,7 +90,7 @@ function makeDefaultSubComponent(): SubComponentRow {
     unit: 'Metres',
     rolls: [makeDefaultRoll()],
     sizes: SIZE_OPTIONS.map((s) => ({ size: s, qty: '' })),
-    rejections: '', stitchingRate: '',
+    rejections: '', stitchingRate: '', cuttingRate: '',
   };
 }
 
@@ -498,7 +499,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: savedRolls[0]?.componentUnit || entry.unit || 'Metres',
         rolls: scRolls,
         sizes: sc.sizes.map((sz) => ({ size: sz.size, qty: String(sz.qty) })),
-        rejections: String(sc.rejections || ''), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
+        rejections: String(sc.rejections || ''), cuttingRate: sc.cuttingRate == null ? '' : String(sc.cuttingRate), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
       };
     });
     setSubComponents(scs.length > 0 ? scs : [makeDefaultSubComponent()]);
@@ -580,7 +581,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     setSaveError(null);
 
     // Required field validation (matches QC/Finishing pattern)
-    if (subComponents.some(sc=>!sc.stitchingRate.trim()||!Number.isFinite(Number(sc.stitchingRate))||Number(sc.stitchingRate)<=0)){setSaveError('Enter stitching rate (₹/piece, greater than zero) for every component.');return;}
+    if (subComponents.some(sc=>!sc.cuttingRate.trim()||!Number.isFinite(Number(sc.cuttingRate))||Number(sc.cuttingRate)<0)){setSaveError('Enter Cutting Price (₹ per net accepted piece, zero or greater) for every component. For older vouchers, allocate the earlier total to component rates before saving.');return;}
     if(new Set(subComponents.map(sc=>(sc.component==='Other'?sc.customComponent:sc.component).trim().toLowerCase())).size!==subComponents.length){setSaveError('Each component must appear once. Add its rolls within the same component.');return;}
     if (!form.date) { setSaveError('Date is required.'); return; }
     if (!form.jobCardRef) { setSaveError('Job Card is required.'); return; }
@@ -645,7 +646,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         fabricName: sc.fabricName || undefined,
         sizes,
         totalPieces: total,
-        rejections: rej, stitchingRate: Number(sc.stitchingRate),
+        rejections: rej, cuttingRate: Number(sc.cuttingRate), stitchingRate: sc.stitchingRate ? Number(sc.stitchingRate) : undefined,
         netPieces: total - rej,
       };
     });
@@ -698,7 +699,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         rollDetails: builtRollDetails,
         status: editingEntry.status,
         remarks: form.remarks || undefined,
-        cuttingPrice: parseFloat(form.cuttingPrice) || undefined,
+        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*Number(sc.cuttingRate)*100)/100,0)*100)/100,
         embReceiveItems: builtEmbReceiveItems,
       };
 
@@ -738,7 +739,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         rollDetails: builtRollDetails,
         status: 'completed',
         remarks: form.remarks || undefined,
-        cuttingPrice: parseFloat(form.cuttingPrice) || undefined,
+        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*Number(sc.cuttingRate)*100)/100,0)*100)/100,
         embReceiveItems: builtEmbReceiveItems,
       };
 
@@ -791,7 +792,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: 'Metres',
         rolls: [makeDefaultRoll()],
         sizes: sizeList.map((s) => ({ size: s, qty: jc.sizeRatios?.[s] != null ? String(jc.sizeRatios[s]) : '' })),
-        rejections: '', stitchingRate: '',
+        rejections: '', stitchingRate: '', cuttingRate: '',
       }];
       setSubComponents(newSubComponents);
     }
@@ -998,6 +999,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                       <span className="text-xs text-success font-600">Net: {sc.netPieces} pcs</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mb-2">{needsRollAssignment(entry)?'Roll assignment not recorded — assign components when editing.':`${componentRolls(entry,sc.component).length} rolls · ${componentRolls(entry,sc.component).map(r=>r.rollNo).join(', ')}`}</p>
+                                    <p className="text-xs mb-2">Cutting Price: {sc.cuttingRate == null ? 'Not recorded' : `₹${sc.cuttingRate}/net piece · Amount ₹${(Math.round(sc.netPieces*sc.cuttingRate*100)/100).toFixed(2)}`}</p>
                                     {sc.fabricName && (
                                       <p className="text-xs text-muted-foreground mb-2">Fabric: <span className="font-600 text-foreground">{sc.fabricName}</span></p>
                                     )}
@@ -1429,7 +1431,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                             </p>
                           )}
                         </div>
-                        <label className="flex flex-col gap-1 text-xs">Stitching ₹/piece *<input aria-label="Component stitching rate" required type="number" min="0.01" step="0.01" value={sc.stitchingRate} onChange={e=>updateSubComponent(sc.id, 'stitchingRate', e.target.value)} className="input-field w-28"/></label>
+                        <label className="flex flex-col gap-1 text-xs">Cutting Price ₹/net piece *<input aria-label="Component cutting rate" required type="number" min="0" step="0.01" value={sc.cuttingRate} onChange={e=>updateSubComponent(sc.id, 'cuttingRate', e.target.value)} className="input-field w-28"/><span>Amount ₹{(Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*(Number(sc.cuttingRate)||0)*100)/100).toFixed(2)}</span></label>
                         {subComponents.length > 1 && (
                           <button type="button" onClick={() => removeSubComponent(sc.id)} className="mt-5 p-1.5 rounded-lg hover:bg-danger/10 text-danger">
                             <Trash2 size={14} />
@@ -1689,19 +1691,10 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 <textarea rows={2} placeholder="Optional notes..." value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} className="input-field text-sm resize-none" />
               </div>
 
-              {/* Cutting Price */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-600 text-muted-foreground">Cutting Price (₹)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={form.cuttingPrice}
-                  onChange={(e) => setForm({ ...form, cuttingPrice: e.target.value })}
-                  className="input-field text-sm"
-                />
-                <p className="text-[11px] text-muted-foreground">Payment amount for this cutting master's work on this entry</p>
+              <div className="rounded-xl border p-4">
+                <p className="font-semibold">Total Cutting Amount: ₹{subComponents.reduce((sum,sc)=>sum+Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*(Number(sc.cuttingRate)||0)*100)/100,0).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Sum of each component's net accepted pieces × Cutting Price. Stitching prices are set in Job Card.</p>
+                {editingEntry && subComponents.some(sc=>sc.cuttingRate==='') && <p className="text-xs text-amber-700">Earlier voucher total: ₹{editingEntry.cuttingPrice??0}. Component rates were not recorded; enter their allocation before saving.</p>}
               </div>
 
               <section className="border border-border rounded-xl p-4 bg-muted/20"><h3 className="font-semibold text-sm">Cutting table average</h3><p className="text-xs text-muted-foreground mb-3">Consumed fabric ÷ pieces cut. Net average excludes rejected pieces. Each component keeps its own fabric unit.</p><div className="overflow-auto">{editingEntry&&needsRollAssignment(editingEntry)?<p className="text-amber-700">Component averages unavailable for this saved voucher: fabric rolls are not linked to individual components.</p>:<table className="w-full text-xs"><thead><tr className="text-left"><th>Component / Fabric</th><th>Consumed</th><th>Cut pieces</th><th>Net pieces</th><th>Table average</th><th>Net average</th></tr></thead><tbody>{subComponents.map(sc=>{const used=sc.rolls.reduce((n,r)=>n+(Number(r.fabricConsumedQty)||0),0);const cut=sc.sizes.reduce((n,r)=>n+(Number(r.qty)||0),0);const net=cut-(Number(sc.rejections)||0);return <tr key={sc.id} className="border-t"><td className="py-2">{sc.customComponent||sc.component||'Component'} · {sc.fabricName}</td><td>{used.toFixed(2)} {sc.unit}</td><td>{cut}</td><td>{net}</td><td>{cut>0?(used/cut).toFixed(3):'—'} {sc.unit}/piece</td><td>{net>0?(used/net).toFixed(3):'—'} {sc.unit}/net piece</td></tr>;})}</tbody></table>}</div></section>

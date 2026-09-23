@@ -1,4 +1,5 @@
 'use client';
+import {createClient} from '@/lib/supabase/client';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -78,6 +79,14 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     return jobCards.filter((jc) => jobCardNos.has(jc.jobCardNo));
   }, [allIssueVouchers, jobCards]);
 
+  async function loadIssueWithRates(id:string) {
+    const iv=await stitchingVoucherService.getIssueVoucherById(id);
+    if(!iv)return null;
+    const {data,error}=await createClient().rpc('erp_receive_stitch_rates',{p_issue_id:id});
+    if(error)throw error;
+    return {...iv,components:iv.components.map(ic=>({...ic,stitchingRate:data?.find((r:{id:string;rate:number|null})=>r.id===ic.id)?.rate??undefined}))};
+  }
+
   useEffect(() => {
     async function init() {
       const [nextNo, ops, ivs] = await Promise.all([
@@ -96,7 +105,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
         setOperatorName(editVoucher.operatorName);
         setRemarks(editVoucher.remarks || '');
 
-        const iv = await stitchingVoucherService.getIssueVoucherById(editVoucher.issueVoucherId);
+        const iv = await loadIssueWithRates(editVoucher.issueVoucherId);
         if (iv) {
           setSelectedJobCardNo(iv.jobCardRef);
           setSelectedIssueVoucher(iv);
@@ -122,7 +131,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
       }
       setLoading(false);
     }
-    init();
+    init().catch(e=>{setError(e?.message||'Stitching rates could not load');setLoading(false);});
   }, [editVoucher?.id]);
 
   function handleJobCardChange(val: string) {
@@ -138,7 +147,9 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     setSelectedIssueVoucherId(id);
     if (id) setFieldErrors((prev) => ({ ...prev, issueVoucher: '' }));
     if (!id) { setSelectedIssueVoucher(null); setRows([]); return; }
-    const iv = await stitchingVoucherService.getIssueVoucherById(id);
+    setRows([]);
+    let iv:StitchIssueVoucher|null;
+    try {iv=await loadIssueWithRates(id);}catch(e){setSelectedIssueVoucher(null);setError(e instanceof Error?e.message:'Stitching rates could not load');return;}
     setSelectedIssueVoucher(iv);
     if (iv) {
       // Auto-fill job card if not already set
@@ -195,6 +206,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
     if (!selectedIssueVoucherId) newErrors.issueVoucher = 'Please select an Issue Voucher.';
     if (!operatorId) newErrors.operator = 'Receive Operator is required.';
+    if(rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
     if (totalReceiving <= 0) newErrors.receiveQty = 'At least one component must have a receive quantity > 0.';
 
     if (Object.values(newErrors).some(Boolean)) {
@@ -206,6 +218,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     setFieldErrors({});
     if (!selectedIssueVoucherId) { setError('Please select an Issue Voucher.'); return; }
     if (!operatorId) { setError('Receive Operator is mandatory.'); return; }
+    if(rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
     if (totalReceiving <= 0) { setError('At least one component must have a receive quantity > 0.'); return; }
 
     // Validate over-receive
@@ -424,8 +437,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                               type="number"
                               min="0"
                               step="0.01"
-                              readOnly={r.rateFromCutting} value={r.stitchingChargePerPc || ''}
-                              title={r.rateFromCutting ? 'Rate from Cutting Issue' : 'Earlier issue: enter its agreed stitching rate'}
+                              readOnly value={r.stitchingChargePerPc || ''}
+                              title="Rate from Stitching Issue / Job Card; edit rates only in Job Card"
                               onChange={(e) => updateChargePerPc(r.issueComponentId, parseFloat(e.target.value) || 0)}
                               className="input-field text-sm tabular-nums w-24 text-right"
                               placeholder="0.00"

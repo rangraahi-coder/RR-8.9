@@ -1,4 +1,6 @@
 'use client';
+import JobStitchingRatesModal from './JobStitchingRatesModal';
+import {useAuth} from '@/contexts/AuthContext';
 import RecordDeleteDialog from '@/components/ui/RecordDeleteDialog';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { Plus, Search, Filter, Download, AlertTriangle, CheckCircle2, ChevronUp, ChevronDown, Eye, Edit3, Trash2, ClipboardList, X, Layers } from 'lucide-react';
@@ -36,6 +38,7 @@ export interface JobCard {
   createdDate: string;
   colors: string[];
   sizes: string[];
+  stitchingRates?: Record<string, number>;
   sizeRatios?: Record<string, number>; // size → qty from sales order paramSize
   salesOrderId?: string | null; // FK to sales_orders — enables automatic status reversal on delete/edit
   // Audit trail
@@ -54,6 +57,8 @@ interface JobCardContentProps {
 }
 
 export default function JobCardContent({ lang, searchQuery = '' }: JobCardContentProps) {
+  const {can}=useAuth();
+  const [rateCard,setRateCard]=useState<JobCard|null>(null);
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [blockedOnly, setBlockedOnly] = useState(false);
@@ -461,7 +466,7 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
                         />
                       </td>
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-150">
+                        <div className="flex items-center gap-1 transition-all duration-150">
                           <button
                             onClick={() => setDetailCard(jc)}
                             title={lang === 'hi' ? 'देखें' : 'View details'}
@@ -484,6 +489,7 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
                           >
                             <Edit3 size={14} />
                           </button>
+                          {can('jobs','edit') && <button className="text-xs text-primary px-2" title="Edit component Stitching Rates, including progressed Job Cards" onClick={()=>setRateCard(jc)}>Stitching Rates</button>}
                           <button
                             title={lang === 'hi' ? 'हटाएं — यह पूर्ववत नहीं होगा' : 'Delete — this cannot be undone'}
                             className="p-1.5 rounded-lg hover:bg-danger-bg text-muted-foreground hover:text-danger transition-all duration-150"
@@ -568,6 +574,7 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
         />
       )}
 
+      {rateCard && <JobStitchingRatesModal job={rateCard} onClose={()=>setRateCard(null)}/>}
       {/* Edit Modal */}
       {editCard && (
         <CreateJobCardModal

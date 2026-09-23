@@ -181,7 +181,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     e.preventDefault();
     const newErrors: Record<string, string> = {};
     if(!sourcesReady||!balancesReady){setError("Cutting source balances are not loaded. Re-select the Job Card and wait for loading to finish.");return;}
-    if(components.some(c=>!c.cuttingComponentId||!c.stitchingRate||c.stitchingRate<=0)){setError('Select a Cutting Issue with a stitching rate for every component.');return;}
+    if(components.some(c=>!c.cuttingComponentId||!c.stitchingRate||c.stitchingRate<=0)){setError('Set the component Stitching Price in Job Card and select its Cutting Issue source.');return;}
 
     if (!selectedJobCardNo) newErrors.jobCard = 'Job Card is required.';
     if (!operatorId) newErrors.operator = 'Operator is required.';
@@ -372,7 +372,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                       {fieldErrors[`component_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`component_${row.tempId}`]}</p>}
                     </div>
                     <div className="flex flex-col gap-1 w-28">
-                      <label className="text-xs font-600 text-muted-foreground">Cutting Issue / Rate *</label><SearchableSelect required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'}</option>)}</SearchableSelect><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
+                      <label className="text-xs font-600 text-muted-foreground">Cutting source / Job Card Stitching Price *</label><SearchableSelect required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'} · {s.rate_source==='job_card'?'Job Card':'Legacy cutting rate'}</option>)}</SearchableSelect><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
                       <SearchableSelect
                         value={row.size}
                         onChange={(e) => updateRow(row.tempId, 'size', e.target.value)}

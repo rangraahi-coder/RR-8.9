@@ -54,6 +54,7 @@ function fromInputDate(dateStr: string): string {
 
 export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }: CreateJobCardModalProps) {
   const isEditMode = !!editCard;
+  const [rateRows, setRateRows] = useState<{component:string;rate:string}[]>(Object.entries(editCard?.stitchingRates || {}).map(([component,rate])=>({component,rate:String(rate)})));
   const [step, setStep] = useState(1);
   const [selectedSizes, setSelectedSizes] = useState<string[]>(editCard?.sizes ?? []);
   const [selectedColors, setSelectedColors] = useState<string[]>(editCard?.colors ?? []);
@@ -351,6 +352,13 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
     setIsLoading(true);
     try {
 
+    const stitchingRates: Record<string,number> = {};
+    for (const row of rateRows) {
+      const component=row.component.trim();
+      if(!component || !row.rate.trim() || !Number.isFinite(Number(row.rate)) || Number(row.rate)<=0) throw new Error('Enter a component name and a positive Stitching Price for every rate row.');
+      if(Object.keys(stitchingRates).some(k=>k.toLowerCase()===component.toLowerCase())) throw new Error('Each component can have only one Stitching Price.');
+      stitchingRates[component]=Number(row.rate);
+    }
     // Validate: if size ratios are set, their total must match totalPieces
     if (Object.keys(sizeRatios).length > 0 && selectedSizes.length > 0) {
       const sizeRatioTotal = selectedSizes.reduce((sum, size) => {
@@ -385,6 +393,7 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
         poNo: data.poNo,
         totalPieces: Number(data.totalPieces),
         dueDate: fromInputDate(data.dueDate),
+        stitchingRates,
         colors: selectedColors,
         sizes: selectedSizes,
         sizeRatios: Object.keys(updatedSizeRatios).length > 0 ? updatedSizeRatios : editCard.sizeRatios,
@@ -422,6 +431,7 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
         dueDate: fromInputDate(data.dueDate),
         poNo: data.poNo,
         createdDate,
+        stitchingRates,
         colors: selectedColors,
         sizes: selectedSizes,
         sizeRatios: Object.keys(sizeRatios).length > 0 ? sizeRatios : undefined,
@@ -1018,6 +1028,20 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
                 )}
               </div>
             )}
+
+            {step === 2 && !isEditMode && <section className="mt-5 space-y-3 rounded-xl border p-4">
+              <h3 className="font-semibold">Component-wise Stitching Price (₹/piece)</h3>
+              <p className="text-xs text-muted-foreground">Use the same component names as Item Master / Cutting (for example Kurta, Pant, Dupatta). Stitching fetches these rates. Existing saved vouchers keep their agreed rates.</p>
+              {rateRows.map((row,i)=><div key={i} className="flex flex-wrap gap-2">
+                <input aria-label={`Stitching component ${i+1}`} list="job-stitch-components" className="input-field min-w-0 flex-1" placeholder="Component" value={row.component} onChange={e=>setRateRows(rows=>rows.map((r,j)=>i===j?{...r,component:e.target.value}:r))}/>
+                <input aria-label={`Stitching rate ${i+1}`} type="number" min="0.01" step="0.01" className="input-field w-28" placeholder="₹/piece" value={row.rate} onChange={e=>setRateRows(rows=>rows.map((r,j)=>i===j?{...r,rate:e.target.value}:r))}/>
+                <button type="button" className="text-danger text-xs" onClick={()=>setRateRows(rows=>rows.filter((_,j)=>j!==i))}>Remove</button>
+              </div>)}
+              <datalist id="job-stitch-components">{['Kurta','Pant','Dupatta','Top','Bottom','Shirt','Dress','Blouse'].map(name=><option key={name} value={name}/>)}</datalist>
+              <button type="button" className="btn-secondary" onClick={()=>setRateRows(rows=>[...rows,{component:'',rate:''}])}>+ Add component rate</button>
+              {!rateRows.length && <p className="text-xs text-amber-700">Rates can be set now. New cutting sources without an agreed Job Card rate cannot be issued for stitching.</p>}
+            </section>}
+            {step === 3 && !isEditMode && rateRows.length>0 && <section className="rounded-xl border p-3"><h3 className="font-semibold">Stitching Prices</h3>{rateRows.map((r,i)=><p key={i}>{r.component}: ₹{r.rate}/piece</p>)}</section>}
 
             {/* Step 3: Review */}
             {step === 3 && (

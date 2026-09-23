@@ -22,6 +22,7 @@ function rowToJobCard(row: any): JobCard {
     createdDate: row.created_date || '',
     colors: row.colors || [],
     sizes: row.sizes || [],
+    stitchingRates: row.stitching_rates || {},
     sizeRatios: row.size_ratios || undefined,
     salesOrderId: row.sales_order_id || null,
     createdBy: row.created_by || null,
@@ -51,6 +52,7 @@ function jobCardToRow(jc: Partial<JobCard>) {
     created_date: jc.createdDate || '',
     colors: jc.colors || [],
     sizes: jc.sizes || [],
+    stitching_rates: jc.stitchingRates || {},
     size_ratios: jc.sizeRatios || null,
     sales_order_id: jc.salesOrderId || null,
   };
@@ -87,8 +89,7 @@ export const jobCardService = {
       .single();
 
     if (error) {
-      console.error('[jobCardService.create] error:', error);
-      return null;
+      throw error;
     }
     // DB trigger automatically recalculates the sales order status
     if (!data?.id) return null;
@@ -99,7 +100,7 @@ export const jobCardService = {
     const supabase = createClient();
     const row: Record<string, any> = { ...jobCardToRow(jc) };
     // A stage-only edit must not overwrite the other job-card fields with defaults.
-    const fieldMap:Record<string,string>={job_card_no:'jobCardNo',style_en:'styleEn',style_hi:'styleHi',design_code:'designCode',party_name:'partyName',contractor:'contractor',stage:'stage',total_pieces:'totalPieces',completed_pieces:'completedPieces',is_blocked:'isBlocked',blockage_reason_en:'blockageReasonEn',blockage_reason_hi:'blockageReasonHi',blockage_days:'blockageDays',due_date:'dueDate',po_no:'poNo',created_date:'createdDate',colors:'colors',sizes:'sizes',size_ratios:'sizeRatios',sales_order_id:'salesOrderId'};
+    const fieldMap:Record<string,string>={job_card_no:'jobCardNo',style_en:'styleEn',style_hi:'styleHi',design_code:'designCode',party_name:'partyName',contractor:'contractor',stage:'stage',total_pieces:'totalPieces',completed_pieces:'completedPieces',is_blocked:'isBlocked',blockage_reason_en:'blockageReasonEn',blockage_reason_hi:'blockageReasonHi',blockage_days:'blockageDays',due_date:'dueDate',po_no:'poNo',created_date:'createdDate',colors:'colors',sizes:'sizes',stitching_rates:'stitchingRates',size_ratios:'sizeRatios',sales_order_id:'salesOrderId'};
     for(const [column,field]of Object.entries(fieldMap))if(!Object.prototype.hasOwnProperty.call(jc,field))delete row[column];
 
 
@@ -115,8 +116,7 @@ export const jobCardService = {
       .single();
 
     if (error) {
-      console.error('[jobCardService.update] error:', error);
-      return null;
+      throw error;
     }
     // DB trigger automatically recalculates the sales order status
     if (!data?.id) return null;
