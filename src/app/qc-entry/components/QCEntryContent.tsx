@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import VoucherDetails from '@/components/VoucherDetails';
@@ -537,7 +538,7 @@ export default function QCEntryContent() {
                   </td>
                 </tr>
               ) : (
-                filteredQCEntries.map((entry) => (
+                <VoucherReportRows rows={filteredQCEntries} jobs={jobCards} columns={11}>{(entry) => (
                   <React.Fragment key={entry.id}>
                     <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-3">
@@ -647,7 +648,7 @@ export default function QCEntryContent() {
                       </tr>
                     )}
                   </React.Fragment>
-                ))
+                )}</VoucherReportRows>
               )}
             </tbody>
           </table>

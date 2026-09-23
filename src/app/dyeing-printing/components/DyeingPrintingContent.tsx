@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import PrinterQuantityDetails from './PrinterQuantityDetails';
@@ -1233,7 +1234,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                         </td>
                       </tr>
                     ) : (
-                      filteredDyeingEntries.map((entry) => (
+                      <VoucherReportRows rows={filteredDyeingEntries} jobs={jobCards} columns={11}>{(entry) => (
                         <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                           <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="dyeing_processing_entries" recordId={entry.id} label={entry.entryNo}/></td>
                           <td className="px-4 py-3 text-xs text-muted-foreground">{entry.date}</td>
@@ -1286,7 +1287,7 @@ export default function DyeingProcessingContent({ lang = 'en' }: DyeingProcessin
                             </div>
                           </td>
                         </tr>
-                      ))
+                      )}</VoucherReportRows>
                     )}
                   </tbody>
                 </table>

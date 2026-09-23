@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import VoucherDetails from '@/components/VoucherDetails';
@@ -295,7 +296,7 @@ export default function FinishingEntryContent() {
                   </td>
                 </tr>
               ) : (
-                entries.map((entry) => (
+                <VoucherReportRows rows={entries} jobs={jobCards} columns={10}>{(entry) => (
                   <React.Fragment key={entry.id}>
                     <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-3">
@@ -378,7 +379,7 @@ export default function FinishingEntryContent() {
                       </tr>
                     )}
                   </React.Fragment>
-                ))
+                )}</VoucherReportRows>
               )}
             </tbody>
           </table>

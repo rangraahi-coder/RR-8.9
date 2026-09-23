@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import VoucherDetails from '@/components/VoucherDetails';
 import {erpErrorMessage} from '@/lib/erpError';
 
@@ -296,7 +297,7 @@ export default function ContractorFinishingContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredAssembly.map((v) => (
+                    {<VoucherReportRows rows={filteredAssembly} jobs={jobCards} columns={7}>{(v) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="py-2.5 px-3 font-600 text-primary font-body">{v.voucherNo}</td>
                         <td className="py-2.5 px-3 text-muted-foreground font-body">{v.voucherDate}</td>
@@ -329,7 +330,7 @@ export default function ContractorFinishingContent() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )}</VoucherReportRows>}
                   </tbody>
                 </table>
               </div>
@@ -377,7 +378,7 @@ export default function ContractorFinishingContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredIssue.map((v) => {
+                    {<VoucherReportRows rows={filteredIssue} jobs={jobCards} columns={10}>{(v) => {
                       const received = v.items.reduce((s, it) => s + it.receivedQty, 0);
                       const bal = v.totalIssued - received;
                       return (
@@ -412,7 +413,7 @@ export default function ContractorFinishingContent() {
                           </td>
                         </tr>
                       );
-                    })}
+                    }}</VoucherReportRows>}
                   </tbody>
                 </table>
               </div>
@@ -457,7 +458,7 @@ export default function ContractorFinishingContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredReceive.map((v: any) => (
+                    {<VoucherReportRows rows={filteredReceive} jobs={jobCards} sources={issueVouchers} columns={7}>{(v: any) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                         <td className="py-2.5 px-3 font-600 text-primary font-body">{v.voucherNo}</td>
                         <td className="py-2.5 px-3 text-muted-foreground font-body">{v.voucherDate}</td>
@@ -477,7 +478,7 @@ export default function ContractorFinishingContent() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                    )}</VoucherReportRows>}
                   </tbody>
                 </table>
               </div>

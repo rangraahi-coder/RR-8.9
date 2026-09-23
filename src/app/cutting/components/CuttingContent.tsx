@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import {componentRolls,needsRollAssignment} from '@/lib/cuttingRollComponents';
@@ -878,7 +879,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                   </td>
                 </tr>
               ) : (
-                filteredEntries.map((entry) => (
+                <VoucherReportRows rows={filteredEntries} jobs={jobCards} columns={14}>{(entry) => (
                   <React.Fragment key={entry.id}>
                     <tr className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                       <td className="px-3 py-3">
@@ -999,7 +1000,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                       </tr>
                     )}
                   </React.Fragment>
-                ))
+                )}</VoucherReportRows>
               )}
             </tbody>
           </table>

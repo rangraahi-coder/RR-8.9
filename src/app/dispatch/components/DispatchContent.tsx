@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import VoucherDetails from '@/components/VoucherDetails';
@@ -266,7 +267,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                   </td>
                 </tr>
               ) : (
-                entries.map((entry) => (
+                <VoucherReportRows rows={entries} jobs={jobCards} columns={9}>{(entry) => (
                   <tr key={entry.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 font-600 text-primary text-xs"><VoucherDetails table="dispatch_vouchers" recordId={entry.id} label={entry.dispatchNo}/></td>
                     <td className="px-4 py-3 text-xs text-muted-foreground">{entry.dispatchDate}</td>
@@ -288,7 +289,7 @@ export default function DispatchContent({ lang = 'en' }: DispatchContentProps) {
                       {entry.status!=='cancelled'&&can('dispatch','delete')&&<button className="block text-xs text-red-600 mt-2" onClick={async()=>{const reason=window.prompt('Reason for cancelling this dispatch:');if(!reason?.trim())return;try{await dispatchService.cancel(entry.id,reason);await loadData();}catch(e){toast.error(e instanceof Error?e.message:'Cancellation failed');}}}>Cancel dispatch</button>}
                     </td>
                   </tr>
-                ))
+                )}</VoucherReportRows>
               )}
             </tbody>
           </table>

@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import VoucherDetails from '@/components/VoucherDetails';
@@ -661,7 +662,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                         <p className="text-sm font-500">No vouchers match your filter</p>
                       </td>
                     </tr>
-                  ) : filteredIssueVouchers.map((v) => {
+                  ) : <VoucherReportRows rows={filteredIssueVouchers} jobs={jobCards} sources={issueVouchers} columns={9}>{(v) => {
                     const expanded = expandedRows.has(v.id);
                     return (
                       <React.Fragment key={v.id}>
@@ -821,7 +822,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                         )}
                       </React.Fragment>
                     );
-                  })}
+                  }}</VoucherReportRows>}
                 </tbody>
               </table>
               </div>
@@ -871,7 +872,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                         <p className="text-sm font-500">No vouchers match your filter</p>
                       </td>
                     </tr>
-                  ) : filteredReceiveVouchers.map((v) => {
+                  ) : <VoucherReportRows rows={filteredReceiveVouchers} jobs={jobCards} sources={issueVouchers} columns={8}>{(v) => {
                     const expanded = expandedRows.has(v.id);
                     return (
                       <React.Fragment key={v.id}>
@@ -1084,7 +1085,7 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
                         )}
                       </React.Fragment>
                     );
-                  })}
+                  }}</VoucherReportRows>}
                 </tbody>
               </table>
               </div>

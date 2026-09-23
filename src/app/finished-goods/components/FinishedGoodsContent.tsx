@@ -1,4 +1,5 @@
 'use client';
+import VoucherReportRows from '@/components/VoucherReportRows';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Package, RefreshCw, Info } from 'lucide-react';
@@ -131,7 +132,7 @@ export default function FinishedGoodsContent({ lang = 'en' }: FinishedGoodsConte
                   </td>
                 </tr>
               ) : (
-                items.map((item, idx) => (
+                <VoucherReportRows rows={items} columns={11}>{(item, idx) => (
                   <tr key={item.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
                     <td className="px-4 py-3 text-xs text-muted-foreground">{idx + 1}</td>
                     <td className="px-4 py-3 font-600 text-foreground">{item.item || item.styleName || '—'}</td>
@@ -149,7 +150,7 @@ export default function FinishedGoodsContent({ lang = 'en' }: FinishedGoodsConte
                       </span>
                     </td>
                   </tr>
-                ))
+                )}</VoucherReportRows>
               )}
             </tbody>
           </table>
