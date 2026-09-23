@@ -1,6 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { erpErrorMessage } from '@/lib/erpError';
+import ErrorReferenceLinks from '@/components/ErrorReferenceLinks';
 
 export interface DeleteRecordSummary { id: string; reference: string; details: string; }
 
@@ -33,7 +34,7 @@ export default function RecordDeleteDialog({ records, lang, onCancel, onConfirm 
       </ul>
       <label className="block text-sm" htmlFor="delete-confirmation">{lang === 'hi' ? 'पुष्टि के लिए DELETE लिखें' : 'Type DELETE to confirm'} ({records.length})</label>
       <input id="delete-confirmation" autoComplete="off" value={confirmation} disabled={busy} onChange={e => setConfirmation(e.target.value)} className="mt-2 w-full rounded-lg border border-border bg-background p-3" />
-      {error && <p role="alert" className="my-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 break-words">{error}</p>}
+      {error && <div role="alert" className="my-3 rounded-lg bg-red-50 p-3 text-sm text-red-700 break-words">{error}<ErrorReferenceLinks message={error}/></div>}
       <div className="mt-4 flex flex-wrap justify-end gap-3">
         <button type="button" disabled={busy} onClick={onCancel} className="btn-secondary disabled:opacity-50">{lang === 'hi' ? 'रद्द करें' : 'Cancel'}</button>
         <button type="button" disabled={busy || confirmation !== 'DELETE' || !records.length} onClick={() => void confirm()} className="rounded-lg bg-red-600 px-4 py-2 text-white disabled:opacity-50">{busy ? (lang === 'hi' ? 'हटाया जा रहा है…' : 'Deleting…') : (lang === 'hi' ? 'स्थायी रूप से हटाएं' : 'Delete permanently')}</button>

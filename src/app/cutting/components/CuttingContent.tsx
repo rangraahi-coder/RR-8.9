@@ -36,10 +36,13 @@ const REJECTION_REASONS = [
   'Other',
 ];
 
-const SUB_COMPONENT_OPTIONS = ['Kurta', 'Pant', 'Dupatta', 'Shirt', 'Salwar', 'Jacket', 'Blouse', 'Skirt', 'Top', 'Other'];
+const SUB_COMPONENT_OPTIONS = ['Kurta', 'Pant', 'Dupatta', 'Shirt', 'Salwar', 'Jacket', 'Blouse', 'Skirt', 'Top', 'Yoke', 'Border', 'Front Palla', 'Back Palla', 'Sleeve', 'Other'];
 const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', 'Free Size', 'KA'];
 
 interface RollRow {
+  cutParts?: { name: string; qty: string }[];
+  processReceiptId?: string;
+  processReceiptNo?: string;
   id: string;
   fabricRollId: string;
   rollNo: string;
@@ -416,9 +419,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const updateRoll = (scId: string, rollId: string, field: keyof RollRow, value: string) => {
     setSubComponents((prev) => prev.map((sc) =>
       sc.id === scId
-        ? { ...sc, rolls: sc.rolls.map((r) => r.id === rollId ? { ...r, [field]: value } : r) }
+        ? { ...sc, rolls: sc.rolls.map((r) => r.id === rollId ? { ...r, [field]: value, ...(field === 'fabricRollId' ? {processReceiptId:undefined,processReceiptNo:undefined} : {}) } : r) }
         : sc
     ));
+  };
+
+  const patchCutRoll = (scId: string, rollId: string, patch: Partial<RollRow>) => {
+    setSubComponents(prev => prev.map(sc => sc.id === scId ? { ...sc, rolls: sc.rolls.map(roll => roll.id === rollId ? { ...roll, ...patch } : roll) } : sc));
   };
 
   // Emb-received item selection helpers
@@ -478,7 +485,9 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       const savedRolls=componentRolls(entry,sc.component);
       const scRolls: RollRow[] = savedRolls.map((rd,idx)=>({
         id:`roll-edit-${idx}-${Date.now()}-${Math.random()}`,fabricRollId:rd.fabricRollId||'',rollNo:rd.rollNo||'',
-        fabricIssuedQty:String(rd.fabricIssuedQty),fabricConsumedQty:String(rd.fabricConsumedQty),wastageQty:String(rd.wastageQty||'')
+        fabricIssuedQty:String(rd.fabricIssuedQty),fabricConsumedQty:String(rd.fabricConsumedQty),wastageQty:String(rd.wastageQty||''),
+        cutParts:(rd.cutParts||[]).map(part=>({name:part.name,qty:String(part.qty)})),
+        processReceiptId:rd.processReceiptId,processReceiptNo:rd.processReceiptNo
       }));
 
       return {
@@ -583,6 +592,20 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       return;
     }
 
+    for (const sc of subComponents) for (const roll of sc.rolls) {
+      if (roll.processReceiptId && !(roll.cutParts || []).length) {
+        setSaveError('Define the cut parts (Yoke, Border, etc.) for the selected processing receipt.'); return;
+      }
+      if ((roll.cutParts || []).some(part => !part.name.trim() || !Number.isSafeInteger(Number(part.qty)) || Number(part.qty) <= 0)) {
+        setSaveError('Each cut part needs a name and a positive whole-number quantity.'); return;
+      }
+      if ((roll.cutParts || []).length && (!roll.fabricRollId || Number(roll.fabricConsumedQty) <= 0)) {
+        setSaveError('Select the source roll and enter consumed fabric for its cut parts.'); return;
+      }
+      const names=(roll.cutParts||[]).map(part=>part.name.trim().toLowerCase());
+      if(new Set(names).size!==names.length){setSaveError('Combine duplicate part names within the same roll.');return;}
+    }
+
     // Block save if any real-time quantity validation errors exist
     if (hasValidationErrors) {
       const firstError = Object.values(quantityValidationErrors)[0];
@@ -632,6 +655,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       sc.rolls.map((r, idx) => ({
         component: sc.component==='Other'?(sc.customComponent||'Other'):sc.component,
         componentFabricName: sc.fabricName, componentUnit:sc.unit,
+        cutParts:(r.cutParts||[]).map(part=>({name:part.name.trim(),qty:Number(part.qty)})),
+        processReceiptId:r.processReceiptId,processReceiptNo:r.processReceiptNo,
         rollNo: r.rollNo || `Roll ${idx + 1}`,
         fabricRollId: r.fabricRollId || '',
         fabricIssuedQty: parseFloat(r.fabricIssuedQty) || 0,
@@ -1100,6 +1125,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 </div>
               </div>
 
+              <datalist id="cut-part-names">{['Yoke','Border','Front Palla','Back Palla','Sleeve','Collar','Pocket','Cuff','Placket'].map(name=><option key={name} value={name}/>)}</datalist>
               {/* Job Card Info Panel */}
               {form.jobCardRef && form.jobCardRef !== '__create_new__' && (() => {
                 const jc = jobCards.find((j) => j.jobCardNo === form.jobCardRef);
@@ -1558,6 +1584,25 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                 </div>
                               </div>
 
+                              <section className="border-t border-border pt-3 space-y-3">
+                                <div className="flex flex-wrap justify-between items-center gap-2">
+                                  <h4 className="text-sm font-semibold">Cut parts from this roll</h4>
+                                  <button type="button" className="text-primary text-xs underline" onClick={()=>patchCutRoll(sc.id,roll.id,{cutParts:[...(roll.cutParts||[]),{name:'Yoke',qty:''}]})}>+ Add another part</button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">Define Yoke, Border, Front Palla or other parts for {sc.customComponent || sc.component}. Part counts are separate from the size-wise garment quantities below.</p>
+                                {roll.fabricRollId && (embFabricReferences.some(ref=>ref.rollId===roll.fabricRollId) || roll.processReceiptId) && <label className="block text-xs">Embroidery / Handwork receipt reference
+                                  <SearchableSelect className="input-field mt-1 text-sm" value={roll.processReceiptId||''} onChange={e=>{const ref=embFabricReferences.find(ref=>ref.receiptId===e.target.value&&ref.rollId===roll.fabricRollId);patchCutRoll(sc.id,roll.id,{processReceiptId:ref?.receiptId,processReceiptNo:ref?.voucherNo});}}>
+                                    <option value="">Select receipt / general stock</option>
+                                    {roll.processReceiptId && !embFabricReferences.some(ref=>ref.receiptId===roll.processReceiptId&&ref.rollId===roll.fabricRollId) && <option value={roll.processReceiptId}>{roll.processReceiptNo || 'Saved receipt reference'}</option>}
+                                    {embFabricReferences.filter(ref=>ref.rollId===roll.fabricRollId).filter((ref,index,all)=>all.findIndex(x=>x.receiptId===ref.receiptId)===index).map(ref=><option key={ref.receiptId} value={ref.receiptId}>{ref.voucherNo} · {ref.receivedQty} {ref.unit} received</option>)}
+                                  </SearchableSelect>
+                                </label>}
+                                {(roll.cutParts||[]).map((part,partIndex)=><div key={partIndex} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
+                                  <label className="text-xs">Part name<input aria-label={`Cut part ${partIndex+1} name`} list="cut-part-names" className="input-field text-sm mt-1" value={part.name} onChange={e=>patchCutRoll(sc.id,roll.id,{cutParts:roll.cutParts!.map((p,index)=>index===partIndex?{...p,name:e.target.value}:p)})}/></label>
+                                  <label className="text-xs">Pieces cut<input aria-label={`Cut part ${partIndex+1} quantity`} type="number" min="1" step="1" className="input-field text-sm mt-1" value={part.qty} onChange={e=>patchCutRoll(sc.id,roll.id,{cutParts:roll.cutParts!.map((p,index)=>index===partIndex?{...p,qty:e.target.value}:p)})}/></label>
+                                  <button type="button" className="text-danger text-xs py-2" onClick={()=>patchCutRoll(sc.id,roll.id,{cutParts:roll.cutParts!.filter((_,index)=>index!==partIndex)})}>Remove part</button>
+                                </div>)}
+                              </section>
                               {leftoverPreview > 0 && (
                                 <p className="text-xs text-warning font-500">Leftover: {leftoverPreview.toFixed(2)} {sc.unit}</p>
                               )}

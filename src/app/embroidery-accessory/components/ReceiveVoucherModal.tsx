@@ -251,7 +251,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
   const hasFabric = fabricItems.length > 0;
   const hasAccessory = accessoryItems.length > 0;
   const hasCutting = cuttingItems.length > 0;
-  const isCuttingIssue = selectedIssue?.issueType === 'cutting';
+  const isCuttingIssue = selectedIssue?.issueType === 'cutting' || selectedIssue?.issueType === 'part_component';
 
   const totalFabricIssued = fabricItems.reduce((s, f) => s + f.issuedQty, 0);
   const totalFabricReceiving = fabricItems.reduce((s, f) => s + (f.receivedQty || 0), 0);
@@ -267,6 +267,10 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
     setError(null);
 
     const newErrors: Record<string, string> = {};
+    if (isCuttingIssue && cuttingItems.some(c =>
+      (c.receiveUnit || c.unit) !== c.unit || !selectedIssue?.cuttingItems.some(source => source.component === c.component && source.unit === c.unit)
+    )) newErrors.receiveQty = 'Issued parts must be received with the same part name and unit. Review the linked Issue Voucher.';
+
     if (!selectedIssue && !editVoucher) newErrors.issueVoucher = 'Please select an Issue Voucher.';
 
     const anyFabricReceived = fabricItems.some((f) => f.receivedQty > 0);
@@ -660,7 +664,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-xs font-700 text-muted-foreground font-body uppercase tracking-wide flex items-center gap-1">
-                  <Scissors size={12} /> Embroidery-Received Components
+                  <Scissors size={12} /> {handwork ? 'Handwork' : 'Embroidery'}-Received Components
                   <span className="ml-1 px-1.5 py-0.5 bg-success/10 text-success rounded text-xs font-600">→ Accepted goes to Cutting Stock</span>
                 </label>
                 {!isCuttingIssue && (
@@ -737,6 +741,7 @@ export default function ReceiveVoucherModal({ issueVouchers, preSelectedIssueId,
                             <td className="px-3 py-2">
                               <SearchableSelect
                                 value={receiveUnit}
+                                disabled={isCuttingIssue}
                                 onChange={(e) => isCuttingIssue
                                   ? updateCuttingReceiveUnit(i, e.target.value)
                                   : updateManualCuttingItem(i, 'receiveUnit', e.target.value)

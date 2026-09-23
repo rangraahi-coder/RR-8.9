@@ -1,3 +1,4 @@
+import {errorRequestRecord} from './errorReferences';
 import {beginRequest} from './requestProgress';
 import {erpErrorMessage} from './erpError';
 // Preserve Supabase's response and transaction behavior; also report errors that
@@ -9,7 +10,7 @@ export async function erpFetch(input:RequestInfo|URL,init?:RequestInit):Promise<
  const tracked=url.includes('/rest/v1/')||url.includes('/storage/v1/object/');
  const finish=typeof window!=='undefined'&&tracked?beginRequest(!['GET','HEAD'].includes(method)&&!readRpc):()=>{};
  const path=typeof window!=='undefined'?window.location.pathname:undefined;
- const report=(error:unknown)=>{if(typeof window!=='undefined'&&tracked)window.dispatchEvent(new CustomEvent('erp-request-error',{detail:{message:erpErrorMessage(error),path}}));};
+ const report=(error:unknown)=>{if(typeof window!=='undefined'&&tracked)window.dispatchEvent(new CustomEvent('erp-request-error',{detail:{message:erpErrorMessage(error),path,record:errorRequestRecord(url)}}));};
  // Use the existing client-info header (no credentials or form contents).
  // Diagnostic only: this client-supplied value is never an authorization check.
  const deleteRequest = tracked && (method === 'DELETE' || /\/rpc\/erp_delete_sales_order(?:[?]|$)/.test(url));

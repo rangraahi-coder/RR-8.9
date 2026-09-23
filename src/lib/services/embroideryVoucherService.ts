@@ -1,6 +1,25 @@
 import { createClient } from '@/lib/supabase/client';
 import { fabricInventoryService } from '@/lib/services/fabricInventoryService';
 
+// A response must confirm exactly one deletion. Abort only the client wait;
+// a timeout cannot establish whether the server transaction committed.
+async function deleteConfirmedVoucher(table: 'emb_issue_vouchers' | 'emb_receive_vouchers', id: string): Promise<boolean> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const { error, count } = await createClient().from(table).delete({ count: 'exact' }).eq('id', id).abortSignal(controller.signal);
+    if (controller.signal.aborted) throw new Error('Delete confirmation timed out. Close this dialog and refresh the voucher list to check whether it was deleted before retrying.');
+    if (error) throw error;
+    if (count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Close this dialog and refresh the voucher list before retrying.');
+    return true;
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('Delete confirmation timed out. Close this dialog and refresh the voucher list to check whether it was deleted before retrying.');
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface IssueFabricItem {
@@ -448,8 +467,7 @@ export const embroideryVoucherService = {
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
-    const {error, count}=await createClient().from('emb_issue_vouchers').delete({count:'exact'}).eq('id',id);
-    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
+    return deleteConfirmedVoucher('emb_issue_vouchers', id);
   },
 
   async getNextIssueVoucherNo(handwork=false): Promise<string> {
@@ -613,8 +631,7 @@ export const embroideryVoucherService = {
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
-    const {error, count}=await createClient().from('emb_receive_vouchers').delete({count:'exact'}).eq('id',id);
-    if (!error && count !== 1) throw new Error('Delete was not confirmed. The entry may have changed or access may be restricted. Refresh and check the voucher.');if(error)throw new Error(error.message);return true;
+    return deleteConfirmedVoucher('emb_receive_vouchers', id);
   },
 
   async getNextReceiveVoucherNo(handwork=false): Promise<string> {

@@ -3,6 +3,8 @@ import VoucherReportRows from '@/components/VoucherReportRows';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import VoucherDetails from '@/components/VoucherDetails';
+import ErrorReferenceLinks from '@/components/ErrorReferenceLinks';
+import { erpErrorMessage } from '@/lib/erpError';
 import React, { useState, useCallback, useEffect } from 'react';
 import { Plus, X, ChevronDown, ChevronRight, Trash2, Pencil, CheckCircle, Scissors, Package, Sparkles, MoreHorizontal, Layers, ArrowUpFromLine, ArrowDownToLine, Eye, Search } from 'lucide-react';
 import {
@@ -168,10 +170,14 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
   // Issue / Receive voucher view/delete state
   const [viewIssueVoucher, setViewIssueVoucher] = useState<EmbIssueVoucher | null>(null);
   const [deleteIssueTarget, setDeleteIssueTarget] = useState<EmbIssueVoucher | null>(null);
+  const [deleteIssueError, setDeleteIssueError] = useState('');
+  const [deleteReceiveError, setDeleteReceiveError] = useState('');
+  useEffect(() => setDeleteIssueError(''), [deleteIssueTarget?.id]);
   const [deletingIssue, setDeletingIssue] = useState(false);
   const [editIssueVoucher, setEditIssueVoucher] = useState<EmbIssueVoucher | null>(null);
   const [viewReceiveVoucher, setViewReceiveVoucher] = useState<EmbReceiveVoucher | null>(null);
   const [deleteReceiveTarget, setDeleteReceiveTarget] = useState<EmbReceiveVoucher | null>(null);
+  useEffect(() => setDeleteReceiveError(''), [deleteReceiveTarget?.id]);
   const [deletingReceive, setDeletingReceive] = useState(false);
   const [editReceiveVoucher, setEditReceiveVoucher] = useState<EmbReceiveVoucher | null>(null);
 
@@ -458,28 +464,40 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
   }
 
   async function handleDeleteIssueVoucher() {
-    if (!deleteIssueTarget) return;
+    if (!deleteIssueTarget || deletingIssue) return;
     setDeletingIssue(true);
-    const ok = await embroideryVoucherService.deleteIssueVoucher(deleteIssueTarget.id);
-    setDeletingIssue(false);
-    if (ok) {
+    setDeleteIssueError('');
+    try {
+      const ok = await embroideryVoucherService.deleteIssueVoucher(deleteIssueTarget.id);
+      if (!ok) throw new Error('Delete was not confirmed. Refresh the voucher list before retrying.');
       setDeleteIssueTarget(null);
       setSuccessMsg('Issue Voucher deleted successfully.');
       setTimeout(() => setSuccessMsg(null), 3000);
-      loadVouchers();
+      void loadVouchers();
+      void loadFabricsAndAccounts();
+    } catch (error) {
+      setDeleteIssueError(erpErrorMessage(error));
+    } finally {
+      setDeletingIssue(false);
     }
   }
 
   async function handleDeleteReceiveVoucher() {
-    if (!deleteReceiveTarget) return;
+    if (!deleteReceiveTarget || deletingReceive) return;
     setDeletingReceive(true);
-    const ok = await embroideryVoucherService.deleteReceiveVoucher(deleteReceiveTarget.id);
-    setDeletingReceive(false);
-    if (ok) {
+    setDeleteReceiveError('');
+    try {
+      const ok = await embroideryVoucherService.deleteReceiveVoucher(deleteReceiveTarget.id);
+      if (!ok) throw new Error('Delete was not confirmed. Refresh the voucher list before retrying.');
       setDeleteReceiveTarget(null);
       setSuccessMsg('Receive Voucher deleted successfully.');
       setTimeout(() => setSuccessMsg(null), 3000);
-      loadVouchers();
+      void loadVouchers();
+      void loadFabricsAndAccounts();
+    } catch (error) {
+      setDeleteReceiveError(erpErrorMessage(error));
+    } finally {
+      setDeletingReceive(false);
     }
   }
 
@@ -1686,8 +1704,9 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
             <p className="text-sm text-muted-foreground font-body mb-5">
               Are you sure you want to delete Issue Voucher <span className="font-600 text-foreground">{deleteIssueTarget.voucherNo}</span>? This cannot be undone.
             </p>
+            {deleteIssueError && <div role="alert" className="mb-4 text-sm text-red-700 break-words">{deleteIssueError}<ErrorReferenceLinks message={deleteIssueError} record={{table:'emb_issue_vouchers',id:deleteIssueTarget.id,label:deleteIssueTarget.voucherNo}}/></div>}
             <div className="flex items-center justify-end gap-3">
-              <button onClick={() => setDeleteIssueTarget(null)} className="px-4 py-2 text-sm font-600 text-muted-foreground hover:text-foreground font-body transition-colors">Cancel</button>
+              <button disabled={deletingIssue} onClick={() => setDeleteIssueTarget(null)} className="px-4 py-2 text-sm font-600 text-muted-foreground hover:text-foreground font-body transition-colors">Cancel</button>
               <button onClick={handleDeleteIssueVoucher} disabled={deletingIssue} className="px-4 py-2 bg-danger text-white rounded-xl text-sm font-600 font-body hover:bg-danger/90 transition-colors disabled:opacity-60">
                 {deletingIssue ? 'Deleting…' : 'Delete'}
               </button>
@@ -1841,8 +1860,9 @@ export default function EmbroideryContent({handwork=false}:{handwork?:boolean}) 
             <p className="text-sm text-muted-foreground font-body mb-5">
               Are you sure you want to delete Receive Voucher <span className="font-600 text-foreground">{deleteReceiveTarget.voucherNo}</span>? This cannot be undone.
             </p>
+            {deleteReceiveError && <div role="alert" className="mb-4 text-sm text-red-700 break-words">{deleteReceiveError}<ErrorReferenceLinks message={deleteReceiveError} record={{table:'emb_receive_vouchers',id:deleteReceiveTarget.id,label:deleteReceiveTarget.voucherNo}}/></div>}
             <div className="flex items-center justify-end gap-3">
-              <button onClick={() => setDeleteReceiveTarget(null)} className="px-4 py-2 text-sm font-600 text-muted-foreground hover:text-foreground font-body transition-colors">Cancel</button>
+              <button disabled={deletingReceive} onClick={() => setDeleteReceiveTarget(null)} className="px-4 py-2 text-sm font-600 text-muted-foreground hover:text-foreground font-body transition-colors">Cancel</button>
               <button onClick={handleDeleteReceiveVoucher} disabled={deletingReceive} className="px-4 py-2 bg-danger text-white rounded-xl text-sm font-600 font-body hover:bg-danger/90 transition-colors disabled:opacity-60">
                 {deletingReceive ? 'Deleting…' : 'Delete'}
               </button>
