@@ -1,4 +1,5 @@
 'use client';
+import {notifyDataChanged,listenForOtherTabs} from '@/lib/dataInvalidation';
 import React, {
   createContext,
   useContext,
@@ -473,6 +474,21 @@ function RealtimeDataInner({ children }: { children: React.ReactNode }) {
     const timer=setInterval(refresh,30000);window.addEventListener('focus',refresh);window.addEventListener('online',refresh);window.addEventListener('erp-data-changed',refresh);
     return()=>{clearInterval(timer);window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);window.removeEventListener('erp-data-changed',refresh);};
   }, [refreshAll,sessionStatus,isAdmin,accessLoading]);
+
+  // One common invalidation signal also reaches dashboard/report subscribers.
+  // Supabase permissions/publication control which committed changes are visible.
+  useEffect(()=>{
+    if(sessionStatus!=='signed-in'||accessLoading)return;
+    const stopTabs=listenForOtherTabs();
+    const client=createClient();
+    const channel=client.channel('erp_shared_changes_'+crypto.randomUUID())
+      .on('postgres_changes',{event:'*',schema:'public'},payload=>{
+        if(!['erp_activity_log','erp_voucher_links','stitch_audit_trail'].includes(payload.table))notifyDataChanged();
+      }).subscribe();
+    const visible=()=>{if(document.visibilityState==='visible')notifyDataChanged();};
+    document.addEventListener('visibilitychange',visible);
+    return()=>{stopTabs();document.removeEventListener('visibilitychange',visible);void client.removeChannel(channel);};
+  },[sessionStatus,accessLoading]);
 
   // ── Real-time subscriptions ───────────────────────────────────────────────
 

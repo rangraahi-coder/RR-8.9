@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useState,useRef} from 'react';
 import ReceiptJobLink from './ReceiptJobLink';
 import {createPortal} from 'react-dom';
 import {Eye,X,ArrowLeft} from 'lucide-react';
@@ -17,7 +17,9 @@ function Value({value,priceLabel,cutting=false}:{value:unknown;priceLabel?:strin
 }
 export function VoucherDetailPanel({table,recordId,onNavigate}:{table:string;recordId:string;onNavigate?:(ref:Ref)=>void}){
  const [data,setData]=useState<Detail|null>(null),[error,setError]=useState(''),[loading,setLoading]=useState(true),[retry,setRetry]=useState(0);
- useEffect(()=>{let current=true;setLoading(true);setError('');setData(null);void (async()=>{try{const result=await supabase.rpc('erp_voucher_detail',{p_table:table,p_record_id:recordId});if(result.error)throw result.error;if(current)setData(result.data);}catch(e){if(current)setError(erpErrorMessage(e));}finally{if(current)setLoading(false);}})();return()=>{current=false};},[table,recordId,retry]);
+ const loadedRecord=useRef('');
+ useEffect(()=>{const refresh=()=>setRetry(x=>x+1);window.addEventListener('erp-data-changed',refresh);return()=>window.removeEventListener('erp-data-changed',refresh);},[]);
+ useEffect(()=>{let current=true;const identity=table+':'+recordId;if(loadedRecord.current!==identity){setLoading(true);setData(null);loadedRecord.current=identity;}setError('');void (async()=>{try{const result=await supabase.rpc('erp_voucher_detail',{p_table:table,p_record_id:recordId});if(result.error)throw result.error;if(current)setData(result.data);}catch(e){if(current)setError(erpErrorMessage(e));}finally{if(current)setLoading(false);}})();return()=>{current=false};},[table,recordId,retry]);
  if(loading)return <p role="status" className="p-4">Loading voucher details… / विवरण लोड हो रहा है</p>;
  if(error)return <div role="alert" className="p-4 text-red-700">{error}<button type="button" onClick={()=>setRetry(x=>x+1)} className="underline ml-3">Retry</button></div>;
  if(!data)return null;
