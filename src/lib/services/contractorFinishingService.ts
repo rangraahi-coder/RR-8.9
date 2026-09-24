@@ -397,7 +397,7 @@ export const contractorFinishingService = {
       .eq('contractor_name', contractorName)
       .eq('job_card_ref', jobCardRef);
 
-    if (error) { console.error('[getPendingItems]', error); return []; }
+    if(error)throw error;
 
     const pending: PendingContractorItem[] = [];
     for (const v of data || []) {
@@ -434,7 +434,7 @@ export const contractorFinishingService = {
       .select('job_card_ref, contractor_issue_items(issued_qty, received_qty)')
       .eq('contractor_name', contractorName);
 
-    if (error) { console.error('[getJobCardsWithPendingItems]', error); return []; }
+    if(error)throw error;
 
     const jobCardsWithPending = new Set<string>();
     for (const v of data || []) {

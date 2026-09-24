@@ -230,12 +230,13 @@ export default function ContractorFinishingContent() {
 
       {/* Tabs */}
       <div className="bg-white border border-border rounded-2xl overflow-hidden">
-        <div className="flex border-b border-border">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap border-b border-border" role="tablist" aria-label="Contractor workflow">
           {tabs.filter(tab=>tab.key==='assembly'?(can('assembly')||can('conversion')):can('contractor')).map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`px-6 py-3 text-sm font-600 transition-colors font-body ${
+              role="tab" aria-selected={activeTab===tab.key}
+              className={`min-w-0 px-4 py-3 text-sm font-600 transition-colors font-body ${
                 activeTab === tab.key
                   ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
@@ -258,7 +259,7 @@ export default function ContractorFinishingContent() {
               <Layers size={14} className="text-primary mt-0.5 shrink-0" />
               <p className="text-xs text-primary/80 leading-relaxed font-body">
                 <strong>Component Assembly</strong> combines finished sub-components (e.g. Kurta + Pant + Dupatta) into a final Ready Item.
-                Each assembled set is recorded in <strong>Finished Goods</strong>.
+                After assembly, record <a className="underline" href="/finishing-entry">Final Stock Receive</a> to move it into <strong>Ready Goods</strong>.
               </p>
             </div>
 

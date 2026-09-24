@@ -1,13 +1,13 @@
 'use client';
 import AppLayout from '@/components/AppLayout';
-import FinishingEntryContent from './components/FinishingEntryContent';
+import FinalStockReceiveContent from './components/FinalStockReceiveContent';
 
 export default function FinishingEntryPage() {
   return (
     <AppLayout
-      pageTitle="Finishing Entry"
-      pageTitleHi="फिनिशिंग प्रविष्टि"
-      render={() => <FinishingEntryContent />}
+      pageTitle="Final Stock Receive"
+      pageTitleHi="फाइनल स्टॉक प्राप्ति"
+      render={() => <FinalStockReceiveContent />}
     />
   );
 }

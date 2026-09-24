@@ -1,7 +1,8 @@
 'use client';
+import {createClient} from '@/lib/supabase/client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
   contractorFinishingService,
@@ -25,6 +26,9 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
   const [jobCardRef, setJobCardRef] = useState('');
   const [remarks, setRemarks] = useState('');
   const [accountNames, setAccountNames] = useState<string[]>([]);
+  const inFlight=useRef(false);
+  const [itemLabels,setItemLabels]=useState<Record<string,string>>({});
+  const [selectedItem,setSelectedItem]=useState('');
   const [jobCardOptions, setJobCardOptions] = useState<string[]>([]);
   const [pendingItems, setPendingItems] = useState<PendingContractorItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,33 +55,39 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
       setAccountNames([...new Set(accounts.map((a) => a.name))].sort());
       setLoading(false);
     }
-    init();
+    void init().catch(e=>{setError(e.message);setLoading(false);});
   }, [editVoucher?.id]);
 
   // When contractor changes, load their job cards from issue vouchers
   useEffect(() => {
     if (!contractorName) { setJobCardOptions([]); setJobCardRef(''); setPendingItems([]); return; }
+    let active=true;
+    setJobCardOptions([]);setPendingItems([]);setSelectedItem('');if(!editVoucher)setJobCardRef('');
     async function loadJobCards() {
       const jcs = await contractorFinishingService.getJobCardsWithPendingItems(contractorName);
+      const {data,error}=await createClient().from('job_cards').select('job_card_no,style_en,party_name').in('job_card_no',jcs);
+      if(error)throw error;if(!active)return;
+      setItemLabels(Object.fromEntries(jcs.map(ref=>[ref,(data||[]).find(j=>j.job_card_no===ref)?.style_en||('Item unavailable · '+ref)])));
       setJobCardOptions(jcs);
-      if (!editVoucher) {
-        setJobCardRef('');
-        setPendingItems([]);
-      }
+      if(editVoucher){const j=(data||[]).find(j=>j.job_card_no===editVoucher.jobCardRef);setSelectedItem(j?.style_en||'Unnamed item');}
     }
-    loadJobCards();
+    void loadJobCards().catch(e=>{if(active)setError(e.message);});
+    return()=>{active=false;};
   }, [contractorName, editVoucher?.id]);
 
   // When job card changes, load pending items
   useEffect(() => {
     if (!contractorName || !jobCardRef) { setPendingItems([]); return; }
+    let active=true;
+    setPendingItems([]);setLoadingItems(true);
     async function loadPending() {
-      setLoadingItems(true);
-      const items = await contractorFinishingService.getPendingItemsByContractorAndJobCard(contractorName, jobCardRef);
-      setPendingItems(items);
-      setLoadingItems(false);
+      try{
+        const items = await contractorFinishingService.getPendingItemsByContractorAndJobCard(contractorName, jobCardRef);
+        if(active)setPendingItems(items);
+      }catch(e){if(active)setError((e as Error).message);}
+      finally{if(active)setLoadingItems(false);}
     }
-    loadPending();
+    void loadPending();return()=>{active=false;};
   }, [contractorName, jobCardRef]);
 
   function updateReceivedToday(issueItemId: string, value: number) {
@@ -107,10 +117,11 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
   const totalReceivedToday = pendingItems.reduce((s, it) => s + (it.receivedToday || 0), 0);
 
   async function handleSave() {
+    if(inFlight.current)return;
     setError(null);
     const newErrors: Record<string, string> = {};
     if (!contractorName) newErrors.contractor = 'Please select a contractor.';
-    if (!jobCardRef) newErrors.jobCard = 'Please select a job card.';
+    if (!jobCardRef) newErrors.jobCard = 'Please select an item.';
     if (totalReceivedToday === 0) newErrors.receiveQty = 'Enter received quantity for at least one item.';
 
     if (Object.values(newErrors).some(Boolean)) {
@@ -125,7 +136,8 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
       return;
     }
 
-    setSaving(true);
+    inFlight.current=true;setSaving(true);
+    try {
     const result = await contractorFinishingService.createReceiveVoucher(
       { voucherNo, voucherDate, contractorName, jobCardRef, remarks: remarks.trim() || undefined },
       pendingItems,
@@ -134,6 +146,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
     setSaving(false);
     if (!result) { setError('Failed to save. Please try again.'); return; }
     onSaved();
+    }catch(e){setError((e as Error).message);}finally{inFlight.current=false;setSaving(false);}
   }
 
   if (loading) {
@@ -167,7 +180,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
           )}
 
           {/* Voucher Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Voucher No</label>
               <input value={voucherNo} readOnly className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-muted/30 font-body" />
@@ -184,7 +197,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
           </div>
 
           {/* Contractor & Job Card */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Contractor <span className="text-danger">*</span></label>
               <div className="relative">
@@ -201,39 +214,27 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
                     <option key={name} value={name}>{name}</option>
                   ))}
                 </SearchableSelect>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                
               </div>
               {fieldErrors.contractor && <p className="text-xs text-danger mt-0.5">{fieldErrors.contractor}</p>}
             </div>
             <div>
-              <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Job Card <span className="text-danger">*</span></label>
-              {jobCardOptions.length > 0 ? (
-                <div className="relative">
-                  <SearchableSelect
-                    value={jobCardRef}
-                    onChange={(e) => {
-                      setJobCardRef(e.target.value);
-                      if (e.target.value) setFieldErrors((prev) => ({ ...prev, jobCard: '' }));
-                    }}
-                    className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body appearance-none pr-8 ${fieldErrors.jobCard ? 'border-danger ring-1 ring-danger/30' : 'border-border'}`}
-                  >
-                    <option value="">Select Job Card</option>
-                    {jobCardOptions.map((jc) => <option key={jc} value={jc}>{jc}</option>)}
-                  </SearchableSelect>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                </div>
-              ) : (
-                <input
-                  value={jobCardRef}
-                  onChange={(e) => {
-                    setJobCardRef(e.target.value);
-                    if (e.target.value.trim()) setFieldErrors((prev) => ({ ...prev, jobCard: '' }));
-                  }}
-                  placeholder={contractorName ? 'No issued job cards found' : 'Select contractor first'}
-                  disabled={!contractorName}
-                  className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body disabled:opacity-50 disabled:cursor-not-allowed ${fieldErrors.jobCard ? 'border-danger ring-1 ring-danger/30' : 'border-border'}`}
-                />
-              )}
+              <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Item Name <span className="text-danger">*</span></label>
+              <SearchableSelect value={selectedItem} disabled={!contractorName} onChange={e=>{
+                const item=e.target.value;setSelectedItem(item);setPendingItems([]);
+                const matches=jobCardOptions.filter(j=>itemLabels[j]===item);
+                setJobCardRef(matches.length===1?matches[0]:'');
+              }} className="input-field w-full">
+                <option value="">Select Item</option>
+                {Array.from(new Set(jobCardOptions.map(j=>itemLabels[j]||'Unnamed item'))).sort().map(item=><option key={item} value={item}>{item}</option>)}
+              </SearchableSelect>
+              <label className="block text-xs mt-3 mb-1">Job Card Number</label>
+              {jobCardOptions.filter(j=>itemLabels[j]===selectedItem).length===1 ?
+                <input readOnly value={jobCardRef} className="input-field w-full bg-muted/30" aria-label="Auto-filled Job Card"/> :
+                <SearchableSelect value={jobCardRef} disabled={!selectedItem} onChange={e=>setJobCardRef(e.target.value)} className="input-field w-full">
+                  <option value="">Select Job Card</option>
+                  {jobCardOptions.filter(j=>itemLabels[j]===selectedItem).map(j=><option key={j} value={j}>{j}</option>)}
+                </SearchableSelect>}
               {fieldErrors.jobCard && <p className="text-xs text-danger mt-0.5">{fieldErrors.jobCard}</p>}
             </div>
           </div>
@@ -252,8 +253,8 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
                   No pending items found for this contractor and job card.
                 </div>
               ) : !loadingItems && (
-                <div className="border border-border rounded-xl overflow-hidden">
-                  <table className="w-full text-sm">
+                <div className="border border-border rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm">
                     <thead className="bg-muted/40">
                       <tr>
                         <th className="text-left py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Item</th>
@@ -366,7 +367,9 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between p-5 border-t border-border flex-shrink-0">
+        <div className="p-4 border-t border-border flex-shrink-0 space-y-3">
+          {error&&<p role="alert" className="text-danger text-sm">{error}</p>}
+          {jobCardRef&&<p className="text-xs">Linked Job Card: {jobCardRef}</p>}
           <p className="text-sm text-muted-foreground font-body">
             Received Today: <span className="font-700 text-foreground">{totalReceivedToday} pcs</span>
           </p>
@@ -374,7 +377,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
             <button onClick={onClose} className="px-5 py-2 border border-border rounded-xl text-sm font-600 font-body hover:bg-muted transition-colors">Cancel</button>
             <button
               onClick={handleSave}
-              disabled={saving || hasRowErrors}
+              disabled={saving || loadingItems}
               className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-600 font-body hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving...' : editVoucher ? 'Update Receive' : 'Save Receive'}

@@ -3,7 +3,7 @@ export const MODULES = [
  ['sales','Sales Orders','/sales-orders'],['jobs','Job Cards','/job-card-management'],['grey','Grey Fabric','/grey-fabric'],
  ['dyeing','Dyeing / Printing Issue','/dyeing-printing'],['receive','Fabric Receive','/fabric-inventory'],['fabric','Fabric Inventory','/fabric-inventory'],['cutting','Cutting','/cutting'],
  ['embroidery','Embroidery','/embroidery-accessory'],['handwork','Handwork','/handwork'],['stitching','Stitching','/stitching'],
- ['qc','QC','/qc-entry'],['contractor','Contractor Finishing','/contractor-finishing'],['assembly','Item Assembly','/contractor-finishing'],['conversion','New Item from Pending Components','/contractor-finishing'],['finishing','Finishing','/finishing-entry'],
+ ['qc','QC','/qc-entry'],['contractor','Contractor Finishing','/contractor-finishing'],['assembly','Item Assembly','/contractor-finishing'],['conversion','New Item from Pending Components','/contractor-finishing'],['finishing','Final Stock Receive','/finishing-entry'],
  ['ready','Ready Items','/finished-goods'],['dispatch','Dispatch','/dispatch'],['ledger','Printer Ledger','/printer-ledger'],['audit','Audit Trail','/audit'],
 ] as const;
 export type Action = 'view'|'create'|'edit'|'delete';

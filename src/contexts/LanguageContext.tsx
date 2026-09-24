@@ -26,7 +26,7 @@ const translations: Record<string, Record<Language, string>> = {
   'nav.stitching': { en: 'Stitching', hi: 'सिलाई' },
   'nav.qc': { en: 'QC', hi: 'गुणवत्ता जाँच' },
   'nav.contractorfinishing': { en: 'Contractor Finishing', hi: 'ठेकेदार फिनिशिंग' },
-  'nav.finishing': { en: 'Finishing Entry', hi: 'फिनिशिंग प्रविष्टि' },
+  'nav.finishing': { en: 'Final Stock Receive', hi: 'फाइनल स्टॉक प्राप्ति' },
   'nav.finishedgoods': { en: 'Finished Goods', hi: 'तैयार माल' },
   'nav.dispatch': { en: 'Dispatch', hi: 'प्रेषण' },
   'nav.accounts_group': { en: 'Accounts', hi: 'लेखा' },

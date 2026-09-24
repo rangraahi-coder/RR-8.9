@@ -233,7 +233,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
         </div>
 
         <div className="p-5 space-y-5 flex-1">
-          {composition.length > 0 && <p className="text-sm text-muted-foreground">Required per set: {composition.map(c => `${c.component} × ${c.qtyPerSet}`).join(', ')}. Only complete sets become ready stock.</p>}
+          {composition.length > 0 && <p className="text-sm text-muted-foreground">Required per set: {composition.map(c => `${c.component} × ${c.qtyPerSet}`).join(', ')}. Complete sets become pending for Final Stock Receive.</p>}
           {composition.length > 0 && stockGroups.map(g => <button type="button" key={`${g.size}|${g.colour}`} className="mr-2 px-3 py-2 text-xs rounded-xl border border-primary/30 text-primary" onClick={() => fillCompleteSets(g.size,g.colour)}>Fill complete sets — {[g.size,g.colour].filter(Boolean).join(' / ') || 'Unspecified size/colour'}</button>)}
           <p className="text-xs text-muted-foreground">Only the entered quantities are consumed. Surplus components remain available for the next assembly.</p>
           {/* Voucher Header */}
@@ -292,7 +292,7 @@ export default function ComponentAssemblyModal({ onClose, onSaved }: Props) {
               className={`w-full px-3 py-2 text-sm border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 font-body ${fieldErrors.finalItem ? 'border-danger' : 'border-border'}`}
             />
             {fieldErrors.finalItem && <p className="text-xs text-danger mt-1 font-body">{fieldErrors.finalItem}</p>}
-            <p className="text-xs text-muted-foreground mt-1 font-body">This will be the name of the assembled Ready Item in Finished Goods.</p>
+            <p className="text-xs text-muted-foreground mt-1 font-body">This name will appear in Ready Goods after Final Stock Receive.</p>
           </div>
 
           {/* Sub-Components Table */}
