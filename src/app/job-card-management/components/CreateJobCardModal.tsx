@@ -211,14 +211,8 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
       const allOrders = await salesOrderService.getAll();
       const fullOrder = allOrders.find((o: SalesOrder) => o.id === so.id);
       if (fullOrder) {
-        // Auto-fill due date from sales order date (DD-MM-YYYY → YYYY-MM-DD)
-        if (fullOrder.date) {
-          const dateParts = fullOrder.date.split('-');
-          if (dateParts.length === 3) {
-            const inputDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`;
-            setValue('dueDate', inputDate);
-          }
-        }
+        // Delivery deadline is distinct from the PO date.
+        setValue('dueDate', fullOrder.dueDate || '');
         // Build size ratios from items
         const ratios: Record<string, number> = {};
         const detectedSizes: string[] = [];
@@ -908,9 +902,11 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
                     </label>
                     <input
                       type="date"
-                      {...register('dueDate', { required: 'Due date required' })}
+                      {...register('dueDate', { required: 'Due date required; set the deadline in the linked Sales Order' })}
+                      readOnly={!!selectedSalesOrder || !!editCard?.salesOrderId}
                       className="input-field"
                     />
+                    {(selectedSalesOrder||editCard?.salesOrderId)&&<p className="text-xs text-muted-foreground mt-1">Deadline comes from the linked Sales Order. Use Sales Orders → Edit Due Date to change it.</p>}
                     {errors.dueDate && <p className="text-xs text-danger mt-1 font-500">{errors.dueDate.message}</p>}
                   </div>
                 </div>

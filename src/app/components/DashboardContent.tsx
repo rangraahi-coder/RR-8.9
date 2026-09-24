@@ -1,4 +1,5 @@
 'use client';
+import {isoDate} from '@/lib/dueDates';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import Link from 'next/link';
 import VoucherDetails from '@/components/VoucherDetails';
@@ -73,7 +74,7 @@ export default function DashboardContent({lang='en'}:{lang?:'en'|'hi'}){
  const priority=accessProfile?.is_owner?['jobs','ready','dispatch','stitch_pending','receive_pending','contractor_pending']:(priorities[username]||['jobs','ready','dispatch']);
  const featured=priority.map(key=>metrics.find(m=>m.key===key)).filter((m):m is Metric=>!!m);
  const failed=metrics.filter(m=>m.error),today=new Date().toLocaleDateString('en-CA');
- const overdue=jobs.filter(j=>j.due_date&&String(j.due_date).slice(0,10)<today&&!['dispatched','completed','cancelled'].includes(j.stage));
+ const overdue=jobs.filter(j=>j.due_date&&isoDate(String(j.due_date))&&isoDate(String(j.due_date))<today&&!['dispatched','completed','cancelled'].includes(j.stage));
  const blocked=jobs.filter(j=>j.is_blocked);
  const labels:Record<string,string>={jobs:'जॉब कार्ड',pieces:'कुल पीस',sales:'सेल्स ऑर्डर',components:'तैयार कटिंग सब-कंपोनेंट्स (नेट)',ready:'रेडी आइटम',dispatch:'डिस्पैच',cutting:'कटिंग',stitching:'सिलाई रिसीव',qc:'QC पास',embroidery:'एम्ब्रॉयडरी',handwork:'हैंडवर्क',contractor:'कॉन्ट्रैक्टर फिनिशिंग रिसीव',finishing:'फिनिशिंग',dyeing:'डाइंग / प्रिंटिंग',fabric:'फैब्रिक इन्वेंटरी'};
  return <div className="space-y-6"><div className="flex items-center justify-between"><div><h1 className="text-xl font-700">ERP Dashboard</h1><p className="text-sm text-muted-foreground">{loading?(lang==='hi'?'रिफ्रेश हो रहा है…':'Refreshing…'):failed.length?(lang==='hi'?'कुछ डेटा उपलब्ध नहीं है':'Some data unavailable'):`${lang==='hi'?'अपडेट':'Updated'} ${lastLoaded}`}</p></div><button className="btn-secondary" onClick={()=>void load()} disabled={loading} aria-label="Refresh dashboard"><RefreshCw size={18} className={loading?'animate-spin':''}/></button></div>

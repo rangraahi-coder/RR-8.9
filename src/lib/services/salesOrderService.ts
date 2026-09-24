@@ -36,6 +36,7 @@ function rowToOrder(row: any, items: SalesOrderItem[] = []): SalesOrder {
   return {
     id: row.id,
     date: displayDate,
+    dueDate: row.due_date || '', dueDays: row.due_days ?? null, dueRevision: Number(row.due_revision || 0),
     vchNo: row.vch_no,
     partyName: row.party_name,
     partyType: row.party_type as 'external' | 'self',
@@ -101,8 +102,8 @@ export const salesOrderService = {
 
       for (const item of order.items) { const error=sizeBreakupError(item.paramSize,item.qty); if(error)throw new Error(error); }
       const totals=salesTotals(order.items,order.gstPercent??0);
-      const {data:orderRow,error}=await supabase.rpc('save_original_sales_order',{
-        p_id:null,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,created_by:username||null,updated_by:username||null},
+      const {data:orderRow,error}=await supabase.rpc('erp_save_sales_order_with_due',{
+        p_id:null,p_header:{order_date:isoDate,due_date:order.dueDate||null,due_revision:order.dueRevision??0,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,created_by:username||null,updated_by:username||null},
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;
@@ -167,8 +168,8 @@ export const salesOrderService = {
       }
       for (const item of order.items) { const error=sizeBreakupError(item.paramSize,item.qty); if(error)throw new Error(error); }
       const totals=salesTotals(order.items,order.gstPercent??0);
-      const {data:orderRow,error}=await supabase.rpc('save_original_sales_order',{
-        p_id:id,p_header:{order_date:isoDate,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,updated_by:username||null},
+      const {data:orderRow,error}=await supabase.rpc('erp_save_sales_order_with_due',{
+        p_id:id,p_header:{order_date:isoDate,due_date:order.dueDate||null,due_revision:order.dueRevision??0,vch_no:order.vchNo,party_name:order.partyName,party_type:order.partyType,total_qty:order.totalQty,total_amount:totals.totalAmount,subtotal:totals.subtotal,gst_percent:order.gstPercent??0,gst_amount:totals.gstAmount,job_card_no:order.jobCardNo,status:order.status,updated_by:username||null},
         p_lines:order.items.map(item=>({item_name:item.itemName,param_size:item.paramSize,param_colour:item.paramColour||'',qty:item.qty,unit:item.unit,price:item.price,amount:item.amount}))
       });
       if(error)throw error;

@@ -1,4 +1,6 @@
 'use client';
+import DueDateFields from '@/components/DueDateFields';
+import {daysUntilDue} from '@/lib/dueDates';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import {salesTotals,sizeBreakupError} from '@/lib/services/orderCalculations';
@@ -75,6 +77,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
   }
 
   const [date, setDate] = useState(isEdit ? toInputDate(editOrder!.date) : todayStr);
+  const [dueDate,setDueDate]=useState(editOrder?.dueDate||'');
   const [vchNo, setVchNo] = useState(isEdit ? editOrder!.vchNo : '');
   const [partyName, setPartyName] = useState(isEdit ? editOrder!.partyName : '');
   const [partyType, setPartyType] = useState<'external' | 'self'>(isEdit ? editOrder!.partyType : 'external');
@@ -219,6 +222,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
 
   const validate = (): boolean => {
     const errs: Record<string, string> = {};
+    if(daysUntilDue(date,dueDate)==='') errs.dueDate='Enter Due Days or a Due Date on/after PO date';
     if (!date.trim()) errs.date = lang === 'hi' ? 'तारीख आवश्यक है' : 'Date is required';
     if (!vchNo.trim()) errs.vchNo = lang === 'hi' ? 'वाउचर नं आवश्यक है' : 'Voucher No is required';
     if (!partyName.trim()) errs.partyName = lang === 'hi' ? 'पार्टी नाम आवश्यक है' : 'Party name is required';
@@ -264,7 +268,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
       const {subtotal,gstAmount,totalAmount}=salesTotals(parsedItems,Number(gstPercent));
 
       const orderPayload = {
-        date,
+        date, dueDate, dueRevision: editOrder?.dueRevision ?? 0,
         vchNo: vchNo.trim(),
         partyName: partyName.trim(),
         partyType,
@@ -356,6 +360,7 @@ export default function NewSalesOrderModal({ lang, onClose, onSaved, editOrder }
               {errors.date && <p className="text-xs text-red-500 mt-1">{errors.date}</p>}
             </div>
 
+            <div className="sm:col-span-2"><DueDateFields date={date} dueDate={dueDate} onChange={setDueDate}/>{errors.dueDate&&<p className="text-xs text-red-500">{errors.dueDate}</p>}</div>
             {/* Voucher No */}
             <div>
               <label className="block text-xs font-600 text-foreground mb-1.5">

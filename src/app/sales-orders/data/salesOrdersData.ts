@@ -14,6 +14,9 @@ export interface SalesOrderItem {
 export interface SalesOrder {
   id: string;
   date: string;           // DD-MM-YYYY
+  dueDate?: string;
+  dueDays?: number | null;
+  dueRevision?: number;
   vchNo: string;
   partyName: string;
   partyType: 'external' | 'self'; // self = Rangraahi Creations own brand

@@ -1,4 +1,6 @@
 'use client';
+import SalesDueDateModal from './SalesDueDateModal';
+import {useAuth} from '@/contexts/AuthContext';
 import RecordDeleteDialog from '@/components/ui/RecordDeleteDialog';
 import VoucherDetails from '@/components/VoucherDetails';
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
@@ -50,6 +52,8 @@ function getStatusLabel(status: string | undefined, lang: 'en' | 'hi'): { label:
 }
 
 export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
+  const {can}=useAuth();
+  const [dueOrder,setDueOrder]=useState<SalesOrder|null>(null);
   const [search, setSearch] = useState('');
   const [partyFilter, setPartyFilter] = useState<'all' | 'external' | 'self'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_production' | 'completed'>('all');
@@ -356,7 +360,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                       }`}
                     >
                       <td className="px-4 py-3 text-xs text-muted-foreground font-500 whitespace-nowrap">
-                        {order.date}
+                        {order.date}<span className="block text-[11px] text-muted-foreground">Due: {order.dueDate||'Not set'}{order.dueDays!=null?` · ${order.dueDays} days`: ''}</span>
                       </td>
                       <td className="px-4 py-3">
                         <VoucherDetails table="sales_orders" recordId={order.id} label={order.vchNo}/>
@@ -417,7 +421,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-center gap-1">
-                          <VoucherDetails table="sales_orders" recordId={order.id}/>
+                          <VoucherDetails table="sales_orders" recordId={order.id}/>{can('sales','edit')&&<button type="button" className="text-xs text-primary underline" onClick={()=>setDueOrder(order)}>Edit Due Date</button>}
                           <button
                             onClick={() => setEditOrder(order)}
                             className="p-1.5 rounded-lg hover:bg-blue-50 text-muted-foreground hover:text-blue-600 transition-all"
@@ -494,6 +498,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
         />
       )}
 
+      {dueOrder&&<SalesDueDateModal order={dueOrder} onClose={()=>setDueOrder(null)} onSaved={()=>{setDueOrder(null);void loadOrders();}}/>}
       {/* Edit Sales Order Modal */}
       {editOrder && (
         <NewSalesOrderModal
@@ -538,7 +543,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">{lang === 'hi' ? 'तारीख' : 'Date'}</p>
-                  <p className="text-sm font-600 text-foreground">{selectedOrder.date}</p>
+                  <p className="text-sm font-600 text-foreground">{selectedOrder.date}</p><p className="text-xs mt-1">Due: {selectedOrder.dueDate||'Not set'}{selectedOrder.dueDays!=null?` · ${selectedOrder.dueDays} days`: ''}</p>
                 </div>
                 <div className="bg-muted/50 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground mb-1">{lang === 'hi' ? 'वाउचर नं' : 'Voucher No'}</p>
