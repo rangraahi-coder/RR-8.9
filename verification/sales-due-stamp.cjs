@@ -20,6 +20,12 @@ await db.query("INSERT INTO job_cards VALUES('20000000-0000-0000-0000-0000000000
 assert.equal((await db.query('SELECT due_date FROM job_cards')).rows[0].due_date,'04/10/2026');
 await db.query("INSERT INTO job_cards VALUES('20000000-0000-0000-0000-000000000002',null,'JC1','24/09/2026',10,true)");
 await db.query('UPDATE sales_orders SET locked=true WHERE id=$1',[id]);
+await db.exec(`ALTER TABLE job_cards ADD COLUMN updated_at timestamptz;ALTER TABLE job_cards ADD COLUMN updated_by text;
+CREATE FUNCTION test_stamp() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN NEW.updated_at=clock_timestamp();NEW.updated_by='Operator';RETURN NEW;END $$;
+CREATE TRIGGER erp_actor_stamp BEFORE UPDATE ON job_cards FOR EACH ROW EXECUTE FUNCTION test_stamp();`);
+await assert.rejects(()=>db.query("SELECT erp_set_sales_due($1,'2026-10-10',$2)",[id,result.due_revision]),/settled locked/);
+assert.equal((await db.query('SELECT due_date FROM job_cards')).rows[0].due_date,'04/10/2026');
+const patch=fs.readFileSync('02-SALES-DUE-STAMP-FIX.sql','utf8');await db.exec(patch);await db.exec(patch);
 result=(await db.query("SELECT erp_set_sales_due($1,'2026-10-10',$2) r",[id,result.due_revision])).rows[0].r;
 assert.equal(result.due_days,16);assert.equal((await db.query('SELECT due_date FROM job_cards')).rows[0].due_date,'10/10/2026');
 await assert.rejects(()=>db.query("SELECT erp_set_sales_due($1,'2026-10-11',0)",[id]),/changed/);
@@ -33,8 +39,8 @@ await db.exec('UPDATE permissions SET allowed=false');await assert.rejects(()=>d
 assert.equal((await db.query('SELECT count(*)::int n FROM sales_order_items')).rows[0].n,1);
 await db.exec(`UPDATE permissions SET allowed=true;
 INSERT INTO sales_orders(id,order_date,vch_no,job_card_no,locked) VALUES('10000000-0000-0000-0000-000000000003','2026-09-01','OLD-SO','OLD-JC',true);
-INSERT INTO job_cards VALUES('20000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000003','OLD-JC','01/09/2026',50,true);
+INSERT INTO job_cards(id,sales_order_id,job_card_no,due_date,total_pieces,locked) VALUES('20000000-0000-0000-0000-000000000003','10000000-0000-0000-0000-000000000003','OLD-JC','01/09/2026',50,true);
 SELECT erp_set_sales_due('10000000-0000-0000-0000-000000000003','2026-10-01',0);`);
 assert.equal((await db.query("SELECT due_date FROM job_cards WHERE job_card_no='OLD-JC'")).rows[0].due_date,'01/10/2026');
-console.log('PASS due calculations, leap days, atomic save, linked locked-job sync, due-only locked-order edits, permissions, stale edits, negative days and unchanged quantities/lines');
+console.log('PASS reproduced audit-stamp lock failure before patch and resolved after patch; due calculations, leap days, atomic save, linked locked-job sync, due-only locked-order edits, permissions, stale edits, negative days and unchanged quantities/lines');
 }finally{await db.close()}})().catch(e=>{console.error(e);process.exitCode=1});

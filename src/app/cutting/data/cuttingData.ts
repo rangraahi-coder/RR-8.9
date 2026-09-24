@@ -5,7 +5,9 @@ export interface SubComponentSizeDetail {
 
 export interface SubComponentCutDetail {
   stitchingRate?: number; // Legacy stitching snapshot; new rates belong to Job Card.
-  cuttingRate?: number; // INR per net accepted piece
+  cuttingRate?: number; // INR per selected charge unit
+  cuttingRateBasis?: 'piece' | 'metre';
+  cuttingChargeQty?: number;
   component: string; // e.g. Kurta, Pant, Dupatta
   fabricName?: string; // per-component fabric (optional, falls back to entry-level fabricName)
   sizes: SubComponentSizeDetail[];

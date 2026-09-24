@@ -1,0 +1,9 @@
+Local verification:
+- TypeScript check
+- Next.js production build
+- cutting-save-sizes.cjs: single-roll Border inference, Job Card sizes, server errors and saving reset
+- cutting-parts-regression.cjs: part/receipt references preserved without quantity inflation
+- cutting-price-basis.cjs: PostgreSQL metre/piece arithmetic, invalid quantities/totals rejection, legacy totals and idempotent migration
+- cutting-price-payload.cjs: metre rate basis/quantity preserved on create/edit
+No live database changes or deployment were performed.
+- sales-due-stamp.cjs reproduces the audit-stamp failure before patch; verifies due-only sync after patch, blocked quantity edits, permission and revision checks.

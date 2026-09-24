@@ -54,6 +54,7 @@ interface RollRow {
 interface SubComponentRow {
   stitchingRate: string;
   cuttingRate: string;
+  cuttingRateBasis?: 'piece' | 'metre';
   id: string;
   component: string;
   customComponent: string;
@@ -81,7 +82,7 @@ function makeDefaultRoll(): RollRow {
   };
 }
 
-function makeDefaultSubComponent(): SubComponentRow {
+function makeDefaultSubComponent(sizes: string[] = SIZE_OPTIONS): SubComponentRow {
   return {
     id: `sc-${Date.now()}-${Math.random()}`,
     component: 'Kurta',
@@ -89,9 +90,30 @@ function makeDefaultSubComponent(): SubComponentRow {
     fabricName: '',
     unit: 'Metres',
     rolls: [makeDefaultRoll()],
-    sizes: SIZE_OPTIONS.map((s) => ({ size: s, qty: '' })),
-    rejections: '', stitchingRate: '', cuttingRate: '',
+    sizes: sizes.map((s) => ({ size: s, qty: '' })),
+    rejections: '', stitchingRate: '', cuttingRate: '', cuttingRateBasis: 'piece',
   };
+}
+
+function cuttingChargeQuantity(sc: SubComponentRow): number {
+  return sc.cuttingRateBasis==='metre'
+    ? sc.rolls.reduce((sum,r)=>sum+(Number(r.fabricConsumedQty)||0),0)
+    : Math.max(0,sc.sizes.reduce((sum,s)=>sum+(Number(s.qty)||0),0)-(Number(sc.rejections)||0));
+}
+function cuttingAmount(sc: SubComponentRow): number {
+  return Math.round(cuttingChargeQuantity(sc)*(Number(sc.cuttingRate)||0)*100)/100;
+}
+
+function resolvedCutParts(sc: SubComponentRow, roll: RollRow): {name:string;qty:string}[] {
+  if (roll.cutParts?.length) return roll.cutParts;
+  const name=(sc.component==='Other'?sc.customComponent:sc.component).trim();
+  const partNames=['yoke','border','front palla','back palla','sleeve'];
+  const quantity=sc.sizes.reduce((sum,s)=>sum+Number(s.qty||0),0);
+  // One roll making one explicitly named part is already fully defined by size quantities.
+  // Multiple rolls still require per-roll allocation; garment components require named parts.
+  if(roll.processReceiptId && sc.rolls.length===1 && partNames.includes(name.toLowerCase()) && Number.isSafeInteger(quantity) && quantity>0)
+    return [{name,qty:String(quantity)}];
+  return [];
 }
 
 export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
@@ -107,6 +129,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const [rollAssignment,setRollAssignment]=useState<CuttingEntry|null>(null);
   const [rollOwners,setRollOwners]=useState<string[]>([]);
   const [saveError, setSaveError] = useState<string | null>(null);
+  useEffect(() => { if(saveError) { const box=document.getElementById('cutting-save-feedback'); box?.scrollIntoView({block:'nearest'}); box?.focus({preventScroll:true}); } }, [saveError]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -378,13 +401,18 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   };
 
   // Sub-component helpers
-  const addSubComponent = () => setSubComponents((prev) => [...prev, makeDefaultSubComponent()]);
+  const newComponentForJob = () => {
+    const job = jobCards.find(j => j.jobCardRef === form.jobCardRef);
+    const sizes = job?.sizes?.length ? job.sizes : subComponents[0]?.sizes.map(s => s.size);
+    return makeDefaultSubComponent(sizes?.length ? [...new Set(sizes)] : SIZE_OPTIONS);
+  };
+  const addSubComponent = () => setSubComponents((prev) => [...prev, newComponentForJob()]);
   const selectReceivedFabric = (ref: typeof embFabricReferences[number]) => {
     const item = fabricItems.find(r => r.id === ref.rollId);
     if (!item || fabricLoadError) return;
     setSubComponents(prev => {
       if (prev.some(sc => sc.rolls.some(r => r.fabricRollId === item.id))) return prev;
-      const next = makeDefaultSubComponent();
+      const next = newComponentForJob();
       next.component = 'Other'; next.customComponent = '';
       next.fabricName = item.fabricName; next.unit = item.unit;
       next.rolls = [{...makeDefaultRoll(), fabricRollId:item.id, rollNo:item.rollNo || '',
@@ -515,7 +543,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: savedRolls[0]?.componentUnit || entry.unit || 'Metres',
         rolls: scRolls,
         sizes: sc.sizes.map((sz) => ({ size: sz.size, qty: String(sz.qty) })),
-        rejections: String(sc.rejections || ''), cuttingRate: sc.cuttingRate == null ? '' : String(sc.cuttingRate), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
+        rejections: String(sc.rejections || ''), cuttingRateBasis: sc.cuttingRateBasis || 'piece', cuttingRate: sc.cuttingRate == null ? '' : String(sc.cuttingRate), stitchingRate: sc.stitchingRate == null ? '' : String(sc.stitchingRate),
       };
     });
     setSubComponents(scs.length > 0 ? scs : [makeDefaultSubComponent()]);
@@ -597,8 +625,11 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     setSaveError(null);
 
     // Required field validation (matches QC/Finishing pattern)
-    if (subComponents.some(sc=>!sc.cuttingRate.trim()||!Number.isFinite(Number(sc.cuttingRate))||Number(sc.cuttingRate)<0)){setSaveError('Enter Cutting Price (₹ per net accepted piece, zero or greater) for every component. For older vouchers, allocate the earlier total to component rates before saving.');return;}
+    if(subComponents.some(sc=>sc.cuttingRateBasis==='metre' && !['m','metre','metres','meter','meters'].includes(sc.unit.trim().toLowerCase()))){setSaveError('Per metre pricing requires fabric measured in metres. Check the component fabric unit.');return;}
+    if (subComponents.some(sc=>!sc.cuttingRate.trim()||!Number.isFinite(Number(sc.cuttingRate))||Number(sc.cuttingRate)<0)){setSaveError('Enter Cutting Price (zero or greater, using the selected price basis) for every component. For older vouchers, allocate the earlier total to component rates before saving.');return;}
     if(new Set(subComponents.map(sc=>(sc.component==='Other'?sc.customComponent:sc.component).trim().toLowerCase())).size!==subComponents.length){setSaveError('Each component must appear once. Add its rolls within the same component.');return;}
+    if (!form.styleName) { setSaveError('Style Name is required. Select the Job Card item.'); return; }
+    if (!form.cuttingMaster) { setSaveError('Cutting Master is required. Select the cutting master above.'); return; }
     if (!form.date) { setSaveError('Date is required.'); return; }
     if (!form.jobCardRef) { setSaveError('Job Card is required.'); return; }
     if (subComponents.some((sc) => {
@@ -610,16 +641,17 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     }
 
     for (const sc of subComponents) for (const roll of sc.rolls) {
-      if (roll.processReceiptId && !(roll.cutParts || []).length) {
-        setSaveError('Define the cut parts (Yoke, Border, etc.) for the selected processing receipt.'); return;
+      const parts=resolvedCutParts(sc,roll);
+      if (roll.processReceiptId && !parts.length) {
+        setSaveError(`${sc.component === 'Other' ? sc.customComponent : sc.component} · ${roll.processReceiptNo || 'Processing receipt'}: open “Cut parts from this roll”, click “Add another part”, and enter its name and quantity (for example Border — 500). Size-wise quantity alone does not define the roll’s cut parts.`); return;
       }
-      if ((roll.cutParts || []).some(part => !part.name.trim() || !Number.isSafeInteger(Number(part.qty)) || Number(part.qty) <= 0)) {
+      if (parts.some(part => !part.name.trim() || !Number.isSafeInteger(Number(part.qty)) || Number(part.qty) <= 0)) {
         setSaveError('Each cut part needs a name and a positive whole-number quantity.'); return;
       }
-      if ((roll.cutParts || []).length && (!roll.fabricRollId || Number(roll.fabricConsumedQty) <= 0)) {
+      if (parts.length && (!roll.fabricRollId || Number(roll.fabricConsumedQty) <= 0)) {
         setSaveError('Select the source roll and enter consumed fabric for its cut parts.'); return;
       }
-      const names=(roll.cutParts||[]).map(part=>part.name.trim().toLowerCase());
+      const names=parts.map(part=>part.name.trim().toLowerCase());
       if(new Set(names).size!==names.length){setSaveError('Combine duplicate part names within the same roll.');return;}
     }
 
@@ -662,7 +694,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         fabricName: sc.fabricName || undefined,
         sizes,
         totalPieces: total,
-        rejections: rej, cuttingRate: Number(sc.cuttingRate), stitchingRate: sc.stitchingRate ? Number(sc.stitchingRate) : undefined,
+        rejections: rej, cuttingRate: Number(sc.cuttingRate), cuttingRateBasis: sc.cuttingRateBasis || 'piece', cuttingChargeQty: cuttingChargeQuantity(sc), stitchingRate: sc.stitchingRate ? Number(sc.stitchingRate) : undefined,
         netPieces: total - rej,
       };
     });
@@ -672,7 +704,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       sc.rolls.map((r, idx) => ({
         component: sc.component==='Other'?(sc.customComponent||'Other'):sc.component,
         componentFabricName: sc.fabricName, componentUnit:sc.unit,
-        cutParts:(r.cutParts||[]).map(part=>({name:part.name.trim(),qty:Number(part.qty)})),
+        cutParts:resolvedCutParts(sc,r).map(part=>({name:part.name.trim(),qty:Number(part.qty)})),
         processReceiptId:r.processReceiptId,processReceiptNo:r.processReceiptNo,
         rollNo: r.rollNo || `Roll ${idx + 1}`,
         fabricRollId: r.fabricRollId || '',
@@ -715,7 +747,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         rollDetails: builtRollDetails,
         status: editingEntry.status,
         remarks: form.remarks || undefined,
-        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*Number(sc.cuttingRate)*100)/100,0)*100)/100,
+        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + cuttingAmount(sc),0)*100)/100,
         embReceiveItems: builtEmbReceiveItems,
       };
 
@@ -755,7 +787,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         rollDetails: builtRollDetails,
         status: 'completed',
         remarks: form.remarks || undefined,
-        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*Number(sc.cuttingRate)*100)/100,0)*100)/100,
+        cuttingPrice: Math.round(subComponents.reduce((sum, sc) => sum + cuttingAmount(sc),0)*100)/100,
         embReceiveItems: builtEmbReceiveItems,
       };
 
@@ -808,7 +840,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
         unit: 'Metres',
         rolls: [makeDefaultRoll()],
         sizes: sizeList.map((s) => ({ size: s, qty: jc.sizeRatios?.[s] != null ? String(jc.sizeRatios[s]) : '' })),
-        rejections: '', stitchingRate: '', cuttingRate: '',
+        rejections: '', stitchingRate: '', cuttingRate: '', cuttingRateBasis: 'piece',
       }];
       setSubComponents(newSubComponents);
     }
@@ -1015,7 +1047,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                       <span className="text-xs text-success font-600">Net: {sc.netPieces} pcs</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground mb-2">{needsRollAssignment(entry)?'Roll assignment not recorded — assign components when editing.':`${componentRolls(entry,sc.component).length} rolls · ${componentRolls(entry,sc.component).map(r=>r.rollNo).join(', ')}`}</p>
-                                    <p className="text-xs mb-2">Cutting Price: {sc.cuttingRate == null ? 'Not recorded' : `₹${sc.cuttingRate}/net piece · Amount ₹${(Math.round(sc.netPieces*sc.cuttingRate*100)/100).toFixed(2)}`}</p>
+                                    <p className="text-xs mb-2">Cutting Price: {sc.cuttingRate == null ? 'Not recorded' : `₹${sc.cuttingRate}/${sc.cuttingRateBasis==='metre'?'metre':'net piece'} · Qty ${sc.cuttingChargeQty??sc.netPieces} · Amount ₹${(Math.round((sc.cuttingChargeQty??sc.netPieces)*sc.cuttingRate*100)/100).toFixed(2)}`}</p>
                                     {sc.fabricName && (
                                       <p className="text-xs text-muted-foreground mb-2">Fabric: <span className="font-600 text-foreground">{sc.fabricName}</span></p>
                                     )}
@@ -1116,7 +1148,10 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
               </h2>
               <button disabled={saving} aria-label="Close cutting entry" onClick={() => { if (saveInFlight.current) return; setShowModal(false); resetForm(); }} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+            <form onSubmit={handleSubmit} onInvalidCapture={(event) => {
+              const field=event.target as HTMLInputElement;
+              setSaveError(`${field.getAttribute('aria-label') || field.name || 'Required / invalid field'}: ${field.validationMessage || 'Please check the highlighted field above.'}`);
+            }} className="p-6 flex flex-col gap-5">
 
               {/* Save Error */}
               {saveError && (
@@ -1454,7 +1489,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                             </p>
                           )}
                         </div>
-                        <label className="flex flex-col gap-1 text-xs">Cutting Price ₹/net piece *<input aria-label="Component cutting rate" required type="number" min="0" step="0.01" value={sc.cuttingRate} onChange={e=>updateSubComponent(sc.id, 'cuttingRate', e.target.value)} className="input-field w-28"/><span>Amount ₹{(Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*(Number(sc.cuttingRate)||0)*100)/100).toFixed(2)}</span></label>
+                        <label className="flex flex-col gap-1 text-xs">Price basis<SearchableSelect aria-label="Cutting price basis" value={sc.cuttingRateBasis||'piece'} onChange={e=>updateSubComponent(sc.id,'cuttingRateBasis',e.target.value)} className="input-field"><option value="piece">Per piece (net accepted)</option><option value="metre">Per metre (fabric consumed)</option></SearchableSelect>Cutting Price ₹/{sc.cuttingRateBasis==='metre'?'metre':'net piece'} *<input aria-label="Component cutting rate" required type="number" min="0" step="0.01" value={sc.cuttingRate} onChange={e=>updateSubComponent(sc.id, 'cuttingRate', e.target.value)} className="input-field w-28"/><span>Charge qty: {cuttingChargeQuantity(sc)} {sc.cuttingRateBasis==='metre'?'metres':'pieces'} · Amount ₹{cuttingAmount(sc).toFixed(2)}</span></label>
                         {subComponents.length > 1 && (
                           <button type="button" onClick={() => removeSubComponent(sc.id)} className="mt-5 p-1.5 rounded-lg hover:bg-danger/10 text-danger">
                             <Trash2 size={14} />
@@ -1622,6 +1657,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                                     {embFabricReferences.filter(ref=>ref.rollId===roll.fabricRollId).filter((ref,index,all)=>all.findIndex(x=>x.receiptId===ref.receiptId)===index).map(ref=><option key={ref.receiptId} value={ref.receiptId}>{ref.voucherNo} · {ref.receivedQty} {ref.unit} received</option>)}
                                   </SearchableSelect>
                                 </label>}
+                                {!roll.cutParts?.length && resolvedCutParts(sc,roll).length>0 && <p className="text-xs text-green-700">Part output from size-wise quantities: {resolvedCutParts(sc,roll).map(p=>`${p.name} — ${p.qty} pieces`).join(', ')}. No separate part entry needed for this single roll.</p>}
                                 {(roll.cutParts||[]).map((part,partIndex)=><div key={partIndex} className="grid grid-cols-1 sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
                                   <label className="text-xs">Part name<input aria-label={`Cut part ${partIndex+1} name`} list="cut-part-names" className="input-field text-sm mt-1" value={part.name} onChange={e=>patchCutRoll(sc.id,roll.id,{cutParts:roll.cutParts!.map((p,index)=>index===partIndex?{...p,name:e.target.value}:p)})}/></label>
                                   <label className="text-xs">Pieces cut<input aria-label={`Cut part ${partIndex+1} quantity`} type="number" min="1" step="1" className="input-field text-sm mt-1" value={part.qty} onChange={e=>patchCutRoll(sc.id,roll.id,{cutParts:roll.cutParts!.map((p,index)=>index===partIndex?{...p,qty:e.target.value}:p)})}/></label>
@@ -1715,8 +1751,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
               </div>
 
               <div className="rounded-xl border p-4">
-                <p className="font-semibold">Total Cutting Amount: ₹{subComponents.reduce((sum,sc)=>sum+Math.round(Math.max(0,sc.sizes.reduce((n,s)=>n+(Number(s.qty)||0),0)-(Number(sc.rejections)||0))*(Number(sc.cuttingRate)||0)*100)/100,0).toFixed(2)}</p>
-                <p className="text-xs text-muted-foreground">Sum of each component's net accepted pieces × Cutting Price. Stitching prices are set in Job Card.</p>
+                <p className="font-semibold">Total Cutting Amount: ₹{subComponents.reduce((sum,sc)=>sum+cuttingAmount(sc),0).toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground">Sum of each component’s selected charge quantity × Cutting Price. Per metre uses consumed fabric metres; per piece uses net accepted pieces. Stitching prices are set in Job Card.</p>
                 {editingEntry && subComponents.some(sc=>sc.cuttingRate==='') && <p className="text-xs text-amber-700">Earlier voucher total: ₹{editingEntry.cuttingPrice??0}. Component rates were not recorded; enter their allocation before saving.</p>}
               </div>
 
@@ -1736,12 +1772,13 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
                 </div>
               )}
 
+              {saveError && <div role="alert" tabIndex={-1} id="cutting-save-feedback" className="border border-danger/30 bg-danger/10 text-danger rounded-lg p-3 text-sm whitespace-pre-wrap">{saveError}</div>}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => { setShowModal(false); resetForm(); }} className="btn-secondary flex-1" disabled={saving}>Cancel</button>
                 <button
                   type="submit"
                   className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={saving || hasValidationErrors}
+                  disabled={saving}
                   title={hasValidationErrors ? 'Fix quantity validation errors before saving' : undefined}
                 >
                   {saving ? (
