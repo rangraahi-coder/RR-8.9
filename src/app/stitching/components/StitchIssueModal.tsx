@@ -1,4 +1,5 @@
 'use client';
+import {erpErrorMessage} from '@/lib/erpError';
 import SearchableSelect from '@/components/SearchableSelect';
 
 import { cuttingSourceBalance } from '@/lib/voucherSourceBalance';
@@ -61,9 +62,18 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   const [operators, setOperators] = useState<StitchOperator[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const saveInFlight=useRef(false);
+  const [committedId,setCommittedId]=useState('');
+  const [slowSave,setSlowSave]=useState(false);
+  const feedbackRef=useRef<HTMLDivElement>(null);
+  const [feedbackAttempt,setFeedbackAttempt]=useState(0);
+  function showError(message:string){setError(message);setFeedbackAttempt(n=>n+1);}
+  useEffect(()=>{if(error){feedbackRef.current?.scrollIntoView({block:'nearest'});feedbackRef.current?.focus({preventScroll:true});}},[error,feedbackAttempt]);
+  useEffect(()=>{if(!saving){setSlowSave(false);return;}const timer=setTimeout(()=>setSlowSave(true),15000);return()=>clearTimeout(timer);},[saving]);
+
   const [sourcesReady,setSourcesReady]=useState(false);
   const [balancesReady,setBalancesReady]=useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   // True Quantity: component+size-wise cutting quantities (source of truth)
   const [cuttingQtyMap, setCuttingQtyMap] = useState<{ component: string; size: string; netPieces: number }[]>([]);
@@ -82,12 +92,15 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     const request = ++sourceRequest.current;
     setSourcesReady(false); setRateSources([]);
     if (!jobCardNo) { setCuttingQtyMap([]); return; }
+    try {
     const {data:sources,error:sourceError}=await createClient().rpc('erp_stitch_rate_sources',{p_job:jobCardNo});
     if (request !== sourceRequest.current) return;
-    if(sourceError){setError(sourceError.message);setRateSources([]);}else {setRateSources(sources||[]);setSourcesReady(true);}
+    if(sourceError){showError(sourceError.message);setRateSources([]);}else {setRateSources(sources||[]);setSourcesReady(true);
+      setComponents(prev=>prev.map(c=>{const source=(sources||[]).find((r:any)=>r.id===c.cuttingComponentId);return {...c,stitchingRate:source?.stitching_rate==null?undefined:Number(source.stitching_rate)};}));}
     const data = await cuttingService.getCuttingQtyByComponentSize(jobCardNo);
     if (request !== sourceRequest.current) return;
     setCuttingQtyMap(data);
+    } catch(err){if(request===sourceRequest.current){setSourcesReady(false);showError(erpErrorMessage(err));}}
   }
 
   // Fetch already-issued quantities for the selected job card
@@ -101,7 +114,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     if (request !== issuedRequest.current) return;
     setIssuedQtyMap(data);
     setBalancesReady(true);
-    } catch (err) { if(request===issuedRequest.current) { setRateSources([]); setError(err instanceof Error ? err.message : "Could not load source balance"); } }
+    } catch (err) { if(request===issuedRequest.current) { setRateSources([]); showError(err instanceof Error ? err.message : "Could not load source balance"); } }
   }
 
   useEffect(() => {
@@ -141,11 +154,11 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
       }
       setLoading(false);
     }
-    init();
+    void init().catch(err=>{showError(erpErrorMessage(err));setLoading(false);});
   }, [editVoucher?.id]);
 
   function handleJobCardChange(val: string) {
-    setSelectedJobCardNo(val);setRateSources([]);setComponents([makeRow()]);
+    setSelectedJobCardNo(val);setRateSources([]);setComponents([makeRow()]);setError(null);setFieldErrors({});
     const jc = jobCards.find((j) => j.jobCardNo === val);
     setJobCardInfo(jc || null);
     if (val) setFieldErrors((prev) => ({ ...prev, jobCard: '' }));
@@ -166,7 +179,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     setComponents((prev) => prev.map((r) => {
       if (r.tempId !== tempId) return r;
       const updated = { ...r, [field]: value };
-      if(field==='component'){const sources=rateSources.filter(s=>s.component===value);updated.cuttingComponentId=sources.length===1?sources[0].id:undefined;updated.stitchingRate=sources.length===1?Number(sources[0].stitching_rate):undefined;}
+      if(field==='component'){const sources=rateSources.filter(s=>s.component===value);updated.cuttingComponentId=sources.length===1?sources[0].id:undefined;updated.stitchingRate=sources.length===1&&sources[0].stitching_rate!=null?Number(sources[0].stitching_rate):undefined;}
       if(field==='cuttingComponentId'){const source=rateSources.find(s=>s.id===value);updated.stitchingRate=source?.stitching_rate==null?undefined:Number(source.stitching_rate);}
       if (field === 'component' && value) {
         setFieldErrors((prev2) => ({ ...prev2, [`component_${tempId}`]: '' }));
@@ -179,15 +192,20 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if(saveInFlight.current||committedId)return;
+    if(!voucherDate){showError('Select the voucher date.');return;}
+    if(!selectedJobCardNo){showError('Select a Job Card.');return;}
+    if(!operatorId){showError('Select an Issue Operator.');return;}
     const newErrors: Record<string, string> = {};
-    if(!sourcesReady||!balancesReady){setError("Cutting source balances are not loaded. Re-select the Job Card and wait for loading to finish.");return;}
-    if(components.some(c=>!c.cuttingComponentId||!c.stitchingRate||c.stitchingRate<=0)){setError('Set the component Stitching Price in Job Card and select its Cutting Issue source.');return;}
+    if(!sourcesReady||!balancesReady){showError("Cutting source balances are not loaded. Re-select the Job Card and wait for loading to finish.");return;}
+    if(components.some(c=>!c.cuttingComponentId)){showError('Select a Cutting Issue source for every component.');return;}
+    if(components.some(c=>!Number.isFinite(c.stitchingRate)||!c.stitchingRate||c.stitchingRate<=0)){showError('Stitching Price is missing or zero. Open the selected Job Card, set its component Stitching Price, then Refresh balances & rates here. Your quantities will be preserved.');return;}
 
     if (!selectedJobCardNo) newErrors.jobCard = 'Job Card is required.';
     if (!operatorId) newErrors.operator = 'Operator is required.';
     components.forEach((c) => {
       if (!c.component) newErrors[`component_${c.tempId}`] = 'Select a component.';
-      if (c.issuedQty <= 0) newErrors[`qty_${c.tempId}`] = 'Qty must be > 0.';
+      if (!Number.isSafeInteger(c.issuedQty) || c.issuedQty <= 0) newErrors[`qty_${c.tempId}`] = 'Qty must be > 0.';
       // Check against remaining issuable qty
       if (c.component && c.issuedQty > 0) {
         const remaining = getRemainingQty(c.component, c.size, c.cuttingComponentId);
@@ -210,17 +228,18 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
     }
     if (Object.values(newErrors).some(Boolean)) {
       setFieldErrors(newErrors);
-      setError('Issue qty exceeds available balance. Please correct the highlighted fields.');
+      showError(Object.values(newErrors).filter(Boolean).join(' '));
       return;
     }
 
     setFieldErrors({});
-    if (!selectedJobCardNo) { setError('Please select a Job Card.'); return; }
-    if (!operatorId) { setError('Operator is mandatory for Issue voucher.'); return; }
+    if (!selectedJobCardNo) { showError('Please select a Job Card.'); return; }
+    if (!operatorId) { showError('Operator is mandatory for Issue voucher.'); return; }
     if (components.some((c) => !c.component || c.issuedQty <= 0)) {
-      setError('All components must have a name and quantity > 0.');
+      showError('All components must have a name and quantity > 0.');
       return;
     }
+    saveInFlight.current=true;
     setSaving(true);
     setError(null);
     try {
@@ -258,9 +277,15 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
         result = await stitchingVoucherService.createIssueVoucher(voucherData, compData, username);
       }
 
-      if (!result) { setError('Failed to save voucher. Please try again.'); return; }
+      if (!result) { showError('Failed to save voucher. Please try again.'); return; }
+      setCommittedId(result.id);
       onSaved();
+    } catch(err) {
+      const saved=(err as {committedId?:string}).committedId;
+      if(saved)setCommittedId(saved);
+      showError(erpErrorMessage(err));
     } finally {
+      saveInFlight.current=false;
       setSaving(false);
     }
   }
@@ -281,11 +306,11 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
             <h2 className="text-base font-700 text-foreground">{editVoucher ? 'Edit Issue Voucher' : 'New Stitching Issue'}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">Issue material component-wise from Job Card</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
+          <button disabled={saving} onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
-          {error && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{error}</div>}
+        <form onSubmit={handleSubmit} onInvalidCapture={e=>{const field=e.target as HTMLInputElement;showError(field.validationMessage||'Check the required fields and quantity limits.');}} className="p-6 flex flex-col gap-5">
+          
 
           {/* Voucher Header */}
           <div className="grid grid-cols-2 gap-4">
@@ -362,7 +387,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
               const isExceeded = row.issuedQty > remaining;
               return (
                 <div key={row.tempId} className={`border rounded-xl p-4 flex flex-col gap-3 bg-muted/20 ${(fieldErrors[`component_${row.tempId}`] || fieldErrors[`qty_${row.tempId}`]) ? 'border-danger' : 'border-border'}`}>
-                  <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="flex flex-col gap-1 flex-1">
                       <label className="text-xs font-600 text-muted-foreground">Component *</label>
                       <SearchableSelect value={row.component} onChange={(e) => updateRow(row.tempId, 'component', e.target.value)} className={`input-field text-sm ${fieldErrors[`component_${row.tempId}`] ? 'border-danger' : ''}`}>
@@ -371,8 +396,8 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                       </SearchableSelect>
                       {fieldErrors[`component_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`component_${row.tempId}`]}</p>}
                     </div>
-                    <div className="flex flex-col gap-1 w-28">
-                      <label className="text-xs font-600 text-muted-foreground">Cutting source / Job Card Stitching Price *</label><SearchableSelect required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'} · {s.rate_source==='job_card'?'Job Card':'Legacy cutting rate'}</option>)}</SearchableSelect><p className="text-xs">₹{row.stitchingRate??'—'}/piece · Amount ₹{((row.stitchingRate||0)*row.issuedQty).toFixed(2)}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
+                    <div className="flex flex-col gap-1 min-w-0">
+                      <label className="text-xs font-600 text-muted-foreground">Cutting source / Job Card Stitching Price *</label><SearchableSelect required className="input-field" value={row.cuttingComponentId||''} onChange={e=>updateRow(row.tempId,'cuttingComponentId',e.target.value)}><option value="">Select source</option>{rateSources.filter(s=>s.component===row.component).map(s=><option key={s.id} value={s.id}>{s.entry_no} · ₹{s.stitching_rate??'Missing rate'} · {s.rate_source==='job_card'?'Job Card':'Legacy cutting rate'}</option>)}</SearchableSelect><p className={row.stitchingRate && row.stitchingRate>0?'text-xs':'text-xs text-danger'}>{row.stitchingRate && row.stitchingRate>0 ? `₹${row.stitchingRate}/piece · Amount ₹${(row.stitchingRate*row.issuedQty).toFixed(2)}` : 'Stitching Price missing — set it in Job Card.'}</p><label className="text-xs font-600 text-muted-foreground">Size</label>
                       <SearchableSelect
                         value={row.size}
                         onChange={(e) => updateRow(row.tempId, 'size', e.target.value)}
@@ -400,7 +425,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                         })()}
                       </SearchableSelect>
                     </div>
-                    <div className="flex flex-col gap-1 w-28">
+                    <div className="flex flex-col gap-1 min-w-0">
                       <label className="text-xs font-600 text-muted-foreground">
                         Issue Qty *
                         {row.component && getRemainingQty(row.component, row.size, row.cuttingComponentId) !== Infinity && (() => {
@@ -412,7 +437,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                           const displayLeft = Math.max(0, totalRemaining - (row.issuedQty || 0) - otherRowsQty);
                           return (
                             <span className={`ml-1 text-[10px] font-500 ${displayLeft === 0 ? 'text-danger' : 'text-primary'}`}>
-                              / {displayLeft} left
+                              / Available {Math.max(0,totalRemaining-otherRowsQty)} · After this entry: {displayLeft}
                             </span>
                           );
                         })()}
@@ -436,7 +461,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                       )}
                       {fieldErrors[`qty_${row.tempId}`] && <p className="text-xs text-danger mt-0.5">{fieldErrors[`qty_${row.tempId}`]}</p>}
                     </div>
-                    <div className="flex flex-col gap-1 w-20">
+                    <div className="flex flex-col gap-1 min-w-0">
                       <label className="text-xs font-600 text-muted-foreground">Unit</label>
                       <SearchableSelect value={row.unit} onChange={(e) => updateRow(row.tempId, 'unit', e.target.value)} className="input-field text-sm">
                         <option>Pcs</option><option>Metres</option><option>Set</option>
@@ -470,9 +495,18 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
             <textarea rows={2} value={remarks} onChange={(e) => setRemarks(e.target.value)} className="input-field text-sm resize-none" placeholder="Optional notes..." />
           </div>
 
+          <div ref={feedbackRef} tabIndex={-1} role={error?'alert':'status'} className="text-sm">
+            {error&&<div className="text-danger bg-danger-bg border border-danger-border rounded-lg p-3 whitespace-pre-wrap">{error}</div>}
+            {selectedJobCardNo&&<div className="flex flex-wrap gap-3 mt-2">
+              <a href="/job-card-management" target="_blank" rel="noopener noreferrer" className="text-primary underline">Open Job Cards · {selectedJobCardNo}</a>
+              <button type="button" disabled={saving||!!committedId} className="text-primary underline" onClick={async()=>{await Promise.all([fetchCuttingQty(selectedJobCardNo),fetchIssuedQty(selectedJobCardNo)]);}}>Refresh balances &amp; rates</button>
+            </div>}
+            {slowSave&&<p className="text-amber-700 mt-2">Waiting for database confirmation. Do not submit this voucher again or in another tab.</p>}
+            {!!committedId&&<p className="mt-2">Voucher saved. Close this form and check {voucherNo}; do not create it again.</p>}
+          </div>
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">
+            <button type="button" disabled={saving} onClick={onClose} className="btn-secondary flex-1">Cancel</button>
+            <button type="submit" disabled={saving||!!committedId} className="btn-primary flex-1">
               {saving ? 'Saving...' : editVoucher ? 'Update Issue Voucher' : 'Save Issue Voucher'}
             </button>
           </div>

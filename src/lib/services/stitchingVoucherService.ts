@@ -350,7 +350,14 @@ export const stitchingVoucherService = {
         updated_by: username || null,
       },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
-    return stitchingVoucherService.getIssueVoucherById(data.id);
+    if(!data?.id)throw new Error('Database did not return a voucher confirmation. Check the voucher list before retrying.');
+    try {
+      const saved=await stitchingVoucherService.getIssueVoucherById(data.id);
+      if(!saved)throw new Error('Could not reload saved voucher');
+      return saved;
+    }catch{
+      throw Object.assign(new Error('Voucher saved, but its details could not reload. Close this form and check the voucher list; do not create it again.'),{committedId:data.id});
+    }
   },
 
   async updateIssueVoucher(
@@ -370,7 +377,14 @@ export const stitchingVoucherService = {
         updated_at: new Date().toISOString(),
       },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
-    return stitchingVoucherService.getIssueVoucherById(data.id);
+    if(!data?.id)throw new Error('Database did not return a voucher confirmation. Check the voucher list before retrying.');
+    try {
+      const saved=await stitchingVoucherService.getIssueVoucherById(data.id);
+      if(!saved)throw new Error('Could not reload saved voucher');
+      return saved;
+    }catch{
+      throw Object.assign(new Error('Voucher saved, but its details could not reload. Close this form and check the voucher list; do not create it again.'),{committedId:data.id});
+    }
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
