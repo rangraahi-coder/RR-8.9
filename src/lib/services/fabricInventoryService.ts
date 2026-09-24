@@ -129,6 +129,20 @@ export const fabricInventoryService = {
     }
   },
 
+  async getForCutting(): Promise<FabricStockItem[]> {
+    const supabase = createClient();
+    const rows: FabricStockItem[] = [];
+    // Page by stable identity: a large inventory must not hide later rolls.
+    for (let offset = 0; ; offset += 500) {
+      const { data, error } = await supabase.from('fabric_inventory').select('*')
+        .eq('inventory_stage', 'finished').order('id').range(offset, offset + 499);
+      if (error) throw error;
+      rows.push(...(data || []).map(rowToFabric));
+      if (!data || data.length < 500) break;
+    }
+    return rows.sort((a,b) => a.fabricName.localeCompare(b.fabricName));
+  },
+
   /**
    * Post a processed-fabric receipt to finished inventory.
    * Idempotent: one source receipt → one inventory row (enforced by DB unique index).

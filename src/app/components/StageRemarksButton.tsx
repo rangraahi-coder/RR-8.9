@@ -1,0 +1,10 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {collectStageRemarks} from '@/lib/stageRemarks';
+type Row=Record<string,any>;
+export default function StageRemarksButton({title,rows,error,loadHistory}:{title:string;rows:Row[];error?:string;loadHistory?:()=>Promise<Row[]>}){
+ const [open,setOpen]=useState(false),[history,setHistory]=useState<Row[]>([]),[failure,setFailure]=useState(''),[loading,setLoading]=useState(false);
+ useEffect(()=>{if(!open||!loadHistory)return;let alive=true;setLoading(true);setFailure('');setHistory([]);loadHistory().then(data=>{if(alive)setHistory(data);}).catch(e=>{if(alive)setFailure(e.message||'Remarks history could not be loaded.');}).finally(()=>{if(alive)setLoading(false);});return()=>{alive=false;};},[open,loadHistory]);
+ const entries=collectStageRemarks([...rows,...history]);
+ return <><button type="button" className="text-[11px] text-primary underline px-2 py-1" onClick={()=>setOpen(true)}>View Remarks</button>{open&&<div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center p-3 text-left" onClick={()=>setOpen(false)}><section role="dialog" aria-modal="true" aria-label={`${title} remarks`} className="bg-white rounded-xl p-4 w-full max-w-xl max-h-[80vh] overflow-auto" onClick={e=>e.stopPropagation()}><button autoFocus type="button" className="btn-secondary float-right" onClick={()=>setOpen(false)}>Close</button><h3 className="font-semibold pr-20">{title} · Remarks</h3>{(error||failure)&&<p role="alert" className="text-red-600 text-sm my-3">{error||failure}</p>}{loading&&<p role="status">Loading remarks history…</p>}{!loading&&!entries.length&&!error&&!failure&&<p className="text-sm my-4">No remarks recorded for this step.</p>}{entries.map((r,i)=><article key={i} className="border rounded-lg p-3 mt-3 text-sm"><p className="font-semibold">{r.source}</p><p className="text-xs text-muted-foreground">{r.path}{r.actor?` · ${r.actor}`:''}{r.date?` · ${r.date}`:''}</p><p className="whitespace-pre-wrap break-words mt-2">{r.text}</p></article>)}</section></div>}</>;
+}

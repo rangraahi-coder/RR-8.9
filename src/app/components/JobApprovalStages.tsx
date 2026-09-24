@@ -1,8 +1,9 @@
 'use client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import {useEffect,useState,useRef} from 'react';
+import {useEffect,useState,useRef,useCallback} from 'react';
 import Link from 'next/link';
+import StageRemarksButton from './StageRemarksButton';
 import {componentApprovalStatus} from '@/lib/componentApprovalStatus';
 import {createClient} from '@/lib/supabase/client';
 import {useAuth} from '@/contexts/AuthContext';
@@ -10,6 +11,16 @@ type Row=Record<string,any>;
 const labels:Record<string,string>={not_ordered:'Not yet ordered',pending:'Pending / In progress',not_approved:'Not yet approved',approved:'Approved'};
 const threadLabels:Record<string,string>={not_ordered:'Not yet ordered',pending:'Ordered / Pending',not_approved:'Awaiting receipt',approved:'Received'};
 const groups=[{key:'pattern',name:'Pattern',keys:['pattern']},{key:'fabric',name:'Fabric Approval',keys:['matching','printing','dyeing']},{key:'bulk',name:'Bulk Production Approval',keys:['bulk']},{key:'pp',name:'PP',keys:['pp']}];
+function ApprovalRemarks({job,group,rows,error,threadOnly}:{job:Row;group:typeof groups[number];rows:Row[];error?:string;threadOnly:boolean}){
+ const keys=group.keys.join(',');
+ const loadHistory=useCallback(async()=>{
+  const funcs=threadOnly?['erp_job_approval_audit']:['erp_component_approval_audit','erp_job_approval_audit'];
+  const results=await Promise.all(funcs.map(f=>createClient().rpc(f,{p_job:job.id})));
+  const failure=results.find(r=>r.error)?.error;if(failure)throw failure;
+  return results.flatMap(r=>r.data||[]).filter((r:Row)=>keys.split(',').includes(r.stage));
+ },[job.id,keys,threadOnly]);
+ return <StageRemarksButton title={`${job.job_card_no} · ${group.name}`} rows={rows} error={error} loadHistory={loadHistory}/>;
+}
 export default function JobApprovalStages({job,report,error,onSaved,threadOnly=false}:{threadOnly?:boolean;job:Row;report?:Row;error?:string;onSaved:()=>void}){
  const {can}=useAuth();const [open,setOpen]=useState<string|null>(null),[draft,setDraft]=useState<Record<string,Row>>({}),[history,setHistory]=useState<Row[]>([]),[historyError,setHistoryError]=useState(''),[saving,setSaving]=useState(false),[failure,setFailure]=useState('');
  const saveLock=useRef(false);const [notice,setNotice]=useState('');
@@ -32,8 +43,8 @@ export default function JobApprovalStages({job,report,error,onSaved,threadOnly=f
 
  const group=shownGroups.find(g=>g.key===open);
  return <>
- {!threadOnly&&<Link href={`/production-batch/${job.id}`} className="min-w-[125px] flex-1 p-2 text-center rounded-lg hover:bg-slate-50"><span className="block mx-auto w-6 h-6 rounded-full border-2 border-green-600 bg-green-500">✓</span><span className="block text-xs font-semibold mt-2">Job Card</span><span className="block text-[11px]">Created</span></Link>}
- {shownGroups.map(g=>{const expected=threadOnly?g.keys:components.flatMap(c=>g.keys.map(k=>c.id+':'+k));const source=threadOnly?approvals:componentApprovals;const {done,partial,active}=componentApprovalStatus(expected,source.map((a:Row)=>({key:threadOnly?a.stage:a.component_id+':'+a.stage,status:a.status})));return <button key={g.key} onClick={()=>begin(g.key)} className="min-w-[125px] flex-1 p-2 text-center rounded-lg hover:bg-slate-50"><span className={`block mx-auto w-6 h-6 rounded-full border-2 ${error?'border-slate-400':done?'bg-green-500 border-green-600':(threadOnly?active:partial)?'bg-orange-400 border-orange-500':'border-slate-300'}`}>{done&&!error?'✓':''}</span><span className="block text-xs font-semibold mt-2">{g.name}</span><span className="block text-[11px]">{error?'Unavailable':done?(threadOnly?'Received':'Approved'):g.key==='fabric'&&(report?.fabric||[]).length?'Received · approval pending':!threadOnly&&!components.length?report?.component_link_error?'Item link needs review':'Components not configured':partial?'Partial':active?(threadOnly?'Ordered / Pending':'Pending approval'):'Not yet ordered'}</span></button>})}
+ {!threadOnly&&<div className="min-w-[125px] flex-1 text-center"><Link href={`/production-batch/${job.id}`} className="min-w-[125px] flex-1 p-2 text-center rounded-lg hover:bg-slate-50"><span className="block mx-auto w-6 h-6 rounded-full border-2 border-green-600 bg-green-500">✓</span><span className="block text-xs font-semibold mt-2">Job Card</span><span className="block text-[11px]">Created</span></Link><StageRemarksButton title={`${job.job_card_no} · Job Card`} rows={[job]}/></div>}
+ {shownGroups.map(g=>{const expected=threadOnly?g.keys:components.flatMap(c=>g.keys.map(k=>c.id+':'+k));const source=threadOnly?approvals:componentApprovals;const {done,partial,active}=componentApprovalStatus(expected,source.map((a:Row)=>({key:threadOnly?a.stage:a.component_id+':'+a.stage,status:a.status})));return <div key={g.key} className="min-w-[125px] flex-1 text-center"><button onClick={()=>begin(g.key)} className="min-w-[125px] flex-1 p-2 text-center rounded-lg hover:bg-slate-50"><span className={`block mx-auto w-6 h-6 rounded-full border-2 ${error?'border-slate-400':done?'bg-green-500 border-green-600':(threadOnly?active:partial)?'bg-orange-400 border-orange-500':'border-slate-300'}`}>{done&&!error?'✓':''}</span><span className="block text-xs font-semibold mt-2">{g.name}</span><span className="block text-[11px]">{error?'Unavailable':done?(threadOnly?'Received':'Approved'):g.key==='fabric'&&(report?.fabric||[]).length?'Received · approval pending':!threadOnly&&!components.length?report?.component_link_error?'Item link needs review':'Components not configured':partial?'Partial':active?(threadOnly?'Ordered / Pending':'Pending approval'):'Not yet ordered'}</span></button><ApprovalRemarks job={job} group={g} rows={[...source,...(!threadOnly?approvals:[])].filter((a:Row)=>g.keys.includes(a.stage)).map((a:Row)=>({...a,component_name:a.component_name||components.find(c=>c.id===a.component_id)?.name}))} error={error} threadOnly={threadOnly}/></div>})}
  {group&&<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3" onClick={()=>!saving&&setOpen(null)}><section role="dialog" aria-modal="true" aria-label={group.name} className="bg-white rounded-xl p-5 w-full max-w-2xl max-h-[85vh] overflow-auto" onClick={e=>e.stopPropagation()}><button className="float-right btn-secondary" disabled={saving} onClick={()=>setOpen(null)}>Close</button><h2 className="font-semibold">{job.job_card_no} · {group.name}</h2>{error?<p role="alert" className="text-red-600 my-4">Reporting unavailable: {error}</p>:<>
  {group.key==='fabric'&&<div className="border rounded-lg p-3 my-4"><h3 className="font-semibold">Linked fabric receipts</h3>{!(report?.fabric||[]).length?<p>No receipt linked to this Job Card. Receive or link the fabric entry to this Job Card in Fabric Inventory.</p>:(report?.fabric||[]).map((r:Row)=><p key={r.id} className="text-sm my-2">{r.receipt_no} · {r.processed_fabric_name||r.fabric_name} · {r.processing_type||'Process not specified'}: {r.received_qty==null?'Received — shared receipt; allocation quantity needs verification':`${r.received_qty} ${r.unit||''} received`}</p>)}<p className="text-xs mt-2 text-slate-600">Receipt and approval are separate. A complete/partial delivery cannot be certified until a Job Card fabric requirement is recorded. Only explicitly linked receipts are shown.</p></div>}
  {!can('jobs','edit')&&<p role="status" className="my-3 p-3 rounded-lg bg-amber-50 text-amber-900 text-sm">आपके user को Job Cards में Edit permission नहीं है। Status बदलने के लिए Owner से Users &amp; Access में यह अधिकार दिलवाएँ।</p>}

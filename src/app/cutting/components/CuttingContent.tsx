@@ -131,6 +131,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   const [deleting, setDeleting] = useState(false);
 
   // Fabric names from fabric inventory (Supabase)
+  const [fabricLoadError, setFabricLoadError] = useState('');
   const [fabricStock, setFabricItems] = useState<FabricStockItem[]>([]);
   // Editing can reuse only this voucher's existing consumption, not another voucher's.
   const editCredits = new Map<string,number>();
@@ -187,18 +188,18 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   });
 
   useEffect(() => {
-    fabricInventoryService.getAll().then((items) => {
+    fabricInventoryService.getForCutting().then((items) => {
       const available = items;
-      setFabricItems(available);
-    }).catch(() => {
-      setFabricItems([]);
+      setFabricItems(available); setFabricLoadError('');
+    }).catch((e) => {
+      setFabricLoadError(e.message || 'Fabric inventory could not be loaded.');
     });
   }, []);
 
   useRealtimeTable('fabric_inventory', () => {
-    return fabricInventoryService.getAll().then((items) => {
-      setFabricItems(items);
-    }).catch(() => {});
+    return fabricInventoryService.getForCutting().then((items) => {
+      setFabricItems(items); setFabricLoadError('');
+    }).catch(e => setFabricLoadError(e.message || 'Fabric inventory could not be refreshed.'));
   });
 
   const loadCuttingMasters = useCallback(async () => {
@@ -378,6 +379,21 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
 
   // Sub-component helpers
   const addSubComponent = () => setSubComponents((prev) => [...prev, makeDefaultSubComponent()]);
+  const selectReceivedFabric = (ref: typeof embFabricReferences[number]) => {
+    const item = fabricItems.find(r => r.id === ref.rollId);
+    if (!item || fabricLoadError) return;
+    setSubComponents(prev => {
+      if (prev.some(sc => sc.rolls.some(r => r.fabricRollId === item.id))) return prev;
+      const next = makeDefaultSubComponent();
+      next.component = 'Other'; next.customComponent = '';
+      next.fabricName = item.fabricName; next.unit = item.unit;
+      next.rolls = [{...makeDefaultRoll(), fabricRollId:item.id, rollNo:item.rollNo || '',
+        processReceiptId:ref.receiptId, processReceiptNo:ref.voucherNo}];
+      const empty=prev.findIndex(sc=>!sc.fabricName&&!sc.customComponent&&!sc.cuttingRate&&!sc.stitchingRate&&!sc.rejections&&sc.sizes.every(sz=>!sz.qty)&&sc.rolls.every(r=>!r.fabricRollId&&!r.fabricIssuedQty&&!r.fabricConsumedQty&&!r.wastageQty&&!r.cutParts?.length));
+      return empty>=0?prev.map((sc,i)=>i===empty?next:sc):[...prev, next];
+    });
+    requestAnimationFrame(() => document.getElementById('cutting-components')?.scrollIntoView({block:'start',behavior:'smooth'}));
+  };
   const removeSubComponent = (id: string) => setSubComponents((prev) => prev.filter((sc) => sc.id !== id));
 
   const updateSubComponent = (id: string, field: keyof SubComponentRow, value: string) => {
@@ -536,7 +552,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
             };
           });
           setSelectedEmbItems(preSelected);
-        }).catch(() => {});
+        }).catch(e => setFabricLoadError(e.message || 'Fabric inventory could not be refreshed.'));
       }
     } else {
       setEmbPendingItems([]);
@@ -565,7 +581,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
     if (ok) {
       setEntries((prev) => prev.filter((e) => e.id !== deleteTarget.id));
       setSuccessMsg(`Entry ${deleteTarget.entryNo} deleted successfully.`);
-      setFabricItems(await fabricInventoryService.getAll());
+      setFabricItems(await fabricInventoryService.getForCutting());
       window.dispatchEvent(new Event('erp-data-changed'));
       setTimeout(() => setSuccessMsg(null), 4000);
     } else {
@@ -711,7 +727,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       }
       setEntries((prev) => prev.map((e) => e.id === editingEntry.id ? saved : e));
       setShowModal(false);
-      void fabricInventoryService.getAll().then(setFabricItems);
+      void fabricInventoryService.getForCutting().then(setFabricItems);
       window.dispatchEvent(new Event('erp-data-changed'));
       resetForm();
       setSaving(false);
@@ -751,7 +767,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
       }
       setEntries((prev) => [saved, ...prev]);
       setShowModal(false);
-      void fabricInventoryService.getAll().then(setFabricItems);
+      void fabricInventoryService.getForCutting().then(setFabricItems);
       window.dispatchEvent(new Event('erp-data-changed'));
       resetForm();
       setSaving(false);
@@ -1148,11 +1164,18 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
               {embLoadError && <p role="alert" className="text-danger text-sm">{embLoadError}</p>}
           {embFabricReferences.length > 0 && (
             <div className="border border-border rounded-xl p-4 space-y-2">
-              <h3 className="font-semibold">Embroidery / Handwork fabric receipt references</h3>
-              <p className="text-xs text-muted-foreground">Select the matching Fabric Inventory roll below. Receipt quantities are references, not an additional available stock balance.</p>
+              <h3 className="font-semibold">Embroidery / Handwork received fabric</h3>
+              <p className="text-xs text-muted-foreground">Use for Cutting adds the matching roll below. Choose the output component / part and enter the actual fabric consumed. Available balance is shared with Fabric Inventory; receipt quantity is not added again.</p>
+              {fabricLoadError && <p role="alert" className="text-red-600">{fabricLoadError}</p>}
               {embFabricReferences.map(f => <div key={f.key} className="text-sm break-words">
                 <VoucherDetails table="emb_receive_vouchers" recordId={f.receiptId} label={f.voucherNo}/> · {f.issueVoucherNo} · {f.fabricName} · Received {f.receivedQty} {f.unit}
                 <span className="block text-xs text-muted-foreground">Inventory reference: {f.rollId}</span>
+                {(() => {const stock=fabricStock.find(r=>r.id===f.rollId);const available=fabricItems.find(r=>r.id===f.rollId);const selected=subComponents.some(sc=>sc.rolls.some(r=>r.fabricRollId===f.rollId));return <div className="mt-2">
+                  <p className="text-xs">{fabricLoadError?'Stock unavailable':stock?`Current roll balance: ${stock.stockQty} ${stock.unit}`:'Linked roll is not in the accessible finished inventory. Review the source roll.'}</p>
+                  <button type="button" className="btn-secondary text-xs mt-1" disabled={!available||selected||!!fabricLoadError} onClick={()=>selectReceivedFabric(f)}>{selected?'Roll already selected':'Use for Cutting'}</button>
+                  <VoucherDetails table="fabric_inventory" recordId={f.rollId} label="View inventory roll"/>
+                  {stock&&!available&&<p className="text-xs text-amber-700">No available balance on this roll. Review its issues and receipts before using it again.</p>}
+                </div>;})()}
               </div>)}
             </div>
           )}
@@ -1379,7 +1402,7 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
               {/* Sub-Component Section — each has its own Fabric, Unit, and Rolls */}
               <div className="flex flex-col gap-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-700 text-foreground">Sub-Component &amp; Size-wise Cutting *</p>
+                  <p id="cutting-components" className="text-xs font-700 text-foreground">Sub-Component &amp; Size-wise Cutting *</p>
                   <button type="button" onClick={addSubComponent} className="flex items-center gap-1 text-xs text-primary font-600 hover:underline">
                     <Plus size={12} /> Add Component
                   </button>
