@@ -483,7 +483,7 @@ export const contractorFinishingService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('stitch_receive_vouchers').select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, total_pieces_received, stitch_receive_components(*)').order('created_at', { ascending: false });
-    if (error) { console.error('[getStitchReceiveRefs]', error); return []; }
+    if (error) throw new Error('Could not load stitching receipts: '+error.message);
 
     // Load size references in batches, not one request per dropdown option.
     const componentIds = [...new Set((data || []).flatMap((row: any) =>

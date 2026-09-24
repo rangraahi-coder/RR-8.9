@@ -2,7 +2,9 @@ import { createClient } from '@/lib/supabase/client';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export interface OperatorDocument { type: string; name: string; path: string; }
 export interface StitchOperator {
+  documents?: OperatorDocument[];
   id: string;
   operatorCode: string;
   operatorName: string;
@@ -106,6 +108,7 @@ function rowToOperator(row: any): StitchOperator {
   return {
     id: row.id,
     operatorCode: row.operator_code,
+    documents: row.documents || [],
     operatorName: row.operator_name,
     department: row.department || 'Stitching',
     process: row.process || undefined,
@@ -252,6 +255,7 @@ export const stitchingVoucherService = {
       .from('stitch_operators')
       .insert({
         operator_code: op.operatorCode,
+        documents: op.documents,
         operator_name: op.operatorName,
         department: op.department,
         process: op.process || null,
@@ -262,7 +266,7 @@ export const stitchingVoucherService = {
       })
       .select()
       .single();
-    if (error) { console.error('[createOperator]', error); return null; }
+    if (error) throw new Error(error.message);
     return rowToOperator(data);
   },
 
@@ -272,6 +276,7 @@ export const stitchingVoucherService = {
       .from('stitch_operators')
       .update({
         operator_code: op.operatorCode,
+        documents: op.documents,
         operator_name: op.operatorName,
         department: op.department,
         process: op.process || null,
@@ -283,7 +288,7 @@ export const stitchingVoucherService = {
       .eq('id', id)
       .select()
       .single();
-    if (error) { console.error('[updateOperator]', error); return null; }
+    if (error) throw new Error(error.message);
     return rowToOperator(data);
   },
 

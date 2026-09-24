@@ -117,11 +117,11 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
   const totalReceivedToday = pendingItems.reduce((s, it) => s + (it.receivedToday || 0), 0);
 
   async function handleSave() {
-    if(inFlight.current)return;
+    if(inFlight.current||loadingItems)return;
     setError(null);
     const newErrors: Record<string, string> = {};
     if (!contractorName) newErrors.contractor = 'Please select a contractor.';
-    if (!jobCardRef) newErrors.jobCard = 'Please select an item.';
+    if (!selectedItem||!jobCardRef||itemLabels[jobCardRef]!==selectedItem) newErrors.jobCard = 'Select one Item and its Job Card. Use a separate voucher for a different Item.';
     if (totalReceivedToday === 0) newErrors.receiveQty = 'Enter received quantity for at least one item.';
 
     if (Object.values(newErrors).some(Boolean)) {
@@ -164,7 +164,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
         <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
           <div>
             <h2 className="text-lg font-700 font-display">{editVoucher ? 'Edit Contractor Receive' : 'Daily Contractor Receive'}</h2>
-            <p className="text-sm text-muted-foreground font-body">{editVoucher ? 'Update received quantities' : 'Record goods received from contractor today'}</p>
+            <p className="text-sm text-muted-foreground font-body">{editVoucher ? 'Update received quantities' : 'One Item per receive voucher; multiple components allowed. Another Item requires a separate voucher.'}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
             <X size={18} />
@@ -220,7 +220,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Item Name <span className="text-danger">*</span></label>
-              <SearchableSelect value={selectedItem} disabled={!contractorName} onChange={e=>{
+              <SearchableSelect value={selectedItem} disabled={!contractorName||saving} onChange={e=>{
                 const item=e.target.value;setSelectedItem(item);setPendingItems([]);
                 const matches=jobCardOptions.filter(j=>itemLabels[j]===item);
                 setJobCardRef(matches.length===1?matches[0]:'');
@@ -231,7 +231,7 @@ export default function ContractorReceiveModal({ onClose, onSaved, editVoucher }
               <label className="block text-xs mt-3 mb-1">Job Card Number</label>
               {jobCardOptions.filter(j=>itemLabels[j]===selectedItem).length===1 ?
                 <input readOnly value={jobCardRef} className="input-field w-full bg-muted/30" aria-label="Auto-filled Job Card"/> :
-                <SearchableSelect value={jobCardRef} disabled={!selectedItem} onChange={e=>setJobCardRef(e.target.value)} className="input-field w-full">
+                <SearchableSelect value={jobCardRef} disabled={!selectedItem||saving} onChange={e=>{setPendingItems([]);setJobCardRef(e.target.value);}} className="input-field w-full">
                   <option value="">Select Job Card</option>
                   {jobCardOptions.filter(j=>itemLabels[j]===selectedItem).map(j=><option key={j} value={j}>{j}</option>)}
                 </SearchableSelect>}

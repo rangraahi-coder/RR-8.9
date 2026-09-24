@@ -1,7 +1,7 @@
 'use client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, RefreshCw, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 import {
   contractorFinishingService,
@@ -49,6 +49,9 @@ function compKey(component: string, size: string, colour: string): string {
 
 export default function ContractorIssueModal({ jobCards, editVoucher, onClose, onSaved }: Props) {
   const { username } = useAuth();
+  const inFlight=useRef(false);
+  const [selectedItem,setSelectedItem]=useState('');
+  const [selectedComponents,setSelectedComponents]=useState<string[]>([]);
 
   const [voucherNo, setVoucherNo] = useState('');
   const [voucherDate, setVoucherDate] = useState(new Date().toISOString().split('T')[0]);
@@ -75,6 +78,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [differencePrompt,setDifferencePrompt]=useState<string|null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Init
@@ -96,6 +100,8 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
         setContractorName(editVoucher.contractorName);
         setProcess(editVoucher.process);
         setRemarks(editVoucher.remarks || '');
+        const editJob=refs.find(r=>r.id===editVoucher.stitchReceiveVoucherId)?.jobCardRef||editVoucher.jobCardRef||'';
+        setSelectedItem(jobCards.find(j=>j.jobCardNo===editJob)?.styleEn||refs.find(r=>r.jobCardRef===editJob)?.styleName||('Item unavailable · '+editJob));
         setSelectedJobCard(refs.find(ref => ref.id === editVoucher.stitchReceiveVoucherId)?.jobCardRef || editVoucher.jobCardRef || '');
         setSelectedStitchRefId(editVoucher.stitchReceiveVoucherId || '');
       } else {
@@ -103,7 +109,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
       }
       setLoading(false);
     }
-    init();
+    void init().catch(e=>{setError(e.message);setLoading(false);});
   }, [editVoucher?.id]);
 
   // When stitch receive ref changes, load full details with size breakdown
@@ -111,6 +117,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     if (!selectedStitchRefId) {
       setSelectedStitchRef(null);
       setIssueRows([]);
+      setSelectedComponents([]);
       setAlreadyIssuedMap({});
       setLoadingRef(false);
       return;
@@ -192,8 +199,12 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           }
         }
 
+        const combined=new Map<string,IssueRow>();
+        for(const row of rows){const key=compKey(row.component,row.size,row.colour);const old=combined.get(key);if(old){old.stitchReceivedQty+=row.stitchReceivedQty;old.pendingQty=Math.max(0,old.stitchReceivedQty-old.alreadyIssuedQty);}else combined.set(key,{...row,tempId:key});}
+        rows.splice(0,rows.length,...combined.values());
+        setSelectedComponents(editVoucher&&ref.id===editVoucher.stitchReceiveVoucherId?[...new Set(editVoucher.items.map(i=>i.item))]:[]);
         // If editing, restore previously entered qty
-        if (editVoucher) {
+        if (editVoucher&&ref.id===editVoucher.stitchReceiveVoucherId) {
           const editMap: Record<string, number> = {};
           for (const it of editVoucher.items) {
             editMap[compKey(it.item, it.size, it.colour)] = it.issuedQty;
@@ -228,9 +239,8 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
   const rowErrors = useMemo(() => {
     const errors: Record<string, string> = {};
     for (const row of issueRows) {
-      if ((row.issuedQty || 0) <= 0) continue;
-      if (row.issuedQty > row.pendingQty) {
-        errors[row.tempId] = `Qty (${row.issuedQty}) exceeds pending qty (${row.pendingQty}). Stitch received: ${row.stitchReceivedQty}, already issued: ${row.alreadyIssuedQty}.`;
+      if (!Number.isFinite(row.issuedQty)||!Number.isInteger(row.issuedQty)||row.issuedQty<0) {
+        errors[row.tempId] = 'Enter a non-negative whole-piece quantity.';
       }
     }
     return errors;
@@ -240,9 +250,24 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
   const totalIssuedQty = issueRows.reduce((s, r) => s + (r.issuedQty || 0), 0);
   const allRowsFullyIssued = issueRows.length > 0 && issueRows.every((r) => r.pendingQty === 0);
 
-  async function handleSave() {
+  const jobOptions=Array.from(new Set([...jobCards.map(j=>j.jobCardNo),...stitchRefs.map(r=>r.jobCardRef)].filter(Boolean))).map(ref=>{
+    const job=jobCards.find(j=>j.jobCardNo===ref);const source=stitchRefs.find(r=>r.jobCardRef===ref);
+    return {ref,item:job?.styleEn||source?.styleName||('Item unavailable · '+ref),party:job?.partyName||source?.partyName||''};
+  });
+  const matchingJobs=jobOptions.filter(j=>j.item===selectedItem);
+  function clearSource(){setSelectedStitchRefId('');setSelectedStitchRef(null);setIssueRows([]);setSelectedComponents([]);setAlreadyIssuedMap({});setFieldErrors({});setError(null);}
+  function toggleComponent(name:string){
+    setSelectedComponents(prev=>prev.includes(name)?prev.filter(c=>c!==name):[...prev,name]);
+    setIssueRows(prev=>prev.map(r=>r.component===name?{...r,issuedQty:selectedComponents.includes(name)?0:r.pendingQty}:r));
+  }
+
+  async function handleSave(confirmedDifference=false) {
+    if(inFlight.current||loadingRef)return;
     setError(null);
     const newErrors: Record<string, string> = {};
+    if (!selectedItem) newErrors.item='Please select an Item.';
+    if (!matchingJobs.some(j=>j.ref===selectedJobCard)) newErrors.jobCard='Select a Job Card belonging to this Item.';
+    if (!voucherDate) newErrors.date='Please enter a date.';
     if (!selectedJobCard) newErrors.jobCard = 'Please select a Job Card.';
     if (selectedStitchRef && selectedStitchRef.jobCardRef !== selectedJobCard) newErrors.jobCard = 'The receiving voucher does not belong to this Job Card. Select it again.';
     if (!selectedStitchRefId || !selectedStitchRef) newErrors.stitchRef = 'Please select a Stitching Receive Reference.';
@@ -257,19 +282,25 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     setFieldErrors({});
 
     if (hasRowErrors) {
-      setError('Please fix quantity errors before saving. Issue qty cannot exceed pending qty.');
+      setError('Please enter valid whole-piece quantities before saving.');
       return;
     }
 
-    const activeRows = issueRows.filter((r) => (r.issuedQty || 0) > 0);
+    const selectedRows=issueRows.filter(r=>selectedComponents.includes(r.component));
+    const differences=selectedRows.filter(r=>r.issuedQty!==r.pendingQty);
+    const differenceSummary=differences.map(r=>`${r.component} ${r.size||''}: Stitching received ${r.stitchReceivedQty}, already issued ${r.alreadyIssuedQty}, available ${r.pendingQty}, this issue ${r.issuedQty}, difference ${r.issuedQty-r.pendingQty>0?'+':''}${r.issuedQty-r.pendingQty} pcs`).join('\n');
+    if(differences.length&&!confirmedDifference){setDifferencePrompt(differenceSummary);return;}
+    setDifferencePrompt(null);
+    const activeRows = selectedRows.filter((r) => (r.issuedQty || 0) > 0);
 
-    setSaving(true);
+    inFlight.current=true;setSaving(true);
+    try {
     const voucherPayload = {
       voucherNo,
       voucherDate,
       jobCardId: selectedStitchRef!.jobCardId,
       jobCardRef: selectedStitchRef!.jobCardRef,
-      styleNo: selectedStitchRef!.styleName || '',
+      styleNo: selectedItem,
       item: activeRows.map((r) => r.component).join(', '),
       colour: activeRows.map((r) => r.colour).filter(Boolean).join(', '),
       size: activeRows.map((r) => r.size).filter(Boolean).join(', '),
@@ -278,7 +309,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
       totalIssued: totalIssuedQty,
       stitchReceiveRef: selectedStitchRef!.voucherNo,
       stitchReceiveVoucherId: selectedStitchRef!.id,
-      remarks: remarks.trim() || undefined,
+      remarks: [remarks.trim(),differenceSummary?'Quantity difference confirmed at issue:\n'+differenceSummary:''].filter(Boolean).join('\n\n') || undefined,
       createdBy: editVoucher?.createdBy,
     };
 
@@ -298,6 +329,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     setSaving(false);
     if (!result) { setError('Failed to save. Please try again.'); return; }
     onSaved();
+    }catch(e){setError((e as Error).message||'Could not save issue voucher.');}finally{inFlight.current=false;setSaving(false);}
   }
 
   if (loading) {
@@ -315,7 +347,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
         <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
           <div>
             <h2 className="text-lg font-700 font-display">{editVoucher ? 'Edit Contractor Issue' : 'Contractor Issue'}</h2>
-            <p className="text-sm text-muted-foreground font-body">Issue goods to contractor — linked to Stitching Receive</p>
+            <p className="text-sm text-muted-foreground font-body">One Item → Job Card → Components → Issue quantities</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
             <X size={18} />
@@ -331,7 +363,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           )}
 
           {/* Voucher Info */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Voucher No</label>
               <input value={voucherNo} readOnly className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-muted/30 font-body" />
@@ -347,32 +379,26 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-600" htmlFor="contractor-job-card">Job Card <span className="text-danger">*</span></label>
-            <SearchableSelect id="contractor-job-card" value={selectedJobCard} disabled={saving}
-              onChange={(e) => {
-                setSelectedJobCard(e.target.value);
-                setSelectedStitchRefId('');
-                setSelectedStitchRef(null);
-                setIssueRows([]);
-                setAlreadyIssuedMap({});
-                setFieldErrors({});
-                setError(null);
-              }}
-              className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-white">
-              <option value="">— Select Job Card —</option>
-              {Array.from(new Set([...jobCards.map(job => job.jobCardNo), ...stitchRefs.map(ref => ref.jobCardRef), selectedJobCard].filter(Boolean))).sort().map(ref => {
-                const job = jobCards.find(job => job.jobCardNo === ref);
-                return <option key={ref} value={ref}>{ref}{job?.styleEn ? ` | ${job.styleEn}` : ''}{job?.partyName ? ` | ${job.partyName}` : ''}</option>;
-              })}
-            </SearchableSelect>
-            {fieldErrors.jobCard && <p className="text-xs text-danger">{fieldErrors.jobCard}</p>}
+          <div className="space-y-3 border rounded-xl p-4">
+            <label className="block text-sm font-semibold" htmlFor="contractor-item">Item Name *</label>
+            <SearchableSelect id="contractor-item" value={selectedItem} disabled={saving} onChange={e=>{
+              const item=e.target.value;setSelectedItem(item);clearSource();
+              const matching=jobOptions.filter(j=>j.item===item);setSelectedJobCard(matching.length===1?matching[0].ref:'');
+            }} className="input-field w-full"><option value="">— Select Item —</option>{[...new Set(jobOptions.map(j=>j.item))].sort().map(item=><option key={item} value={item}>{item}</option>)}</SearchableSelect>
+            <p className="text-xs text-muted-foreground">One item per voucher. Select its components below; use a separate voucher for another item.</p>
+            {fieldErrors.item&&<p className="text-xs text-danger">{fieldErrors.item}</p>}
+            <label className="block text-sm font-semibold" htmlFor="contractor-job-card">Job Card Number *</label>
+            {matchingJobs.length===1?<input id="contractor-job-card" readOnly value={selectedJobCard} className="input-field w-full bg-muted/30"/>:
+            <SearchableSelect id="contractor-job-card" value={selectedJobCard} disabled={!selectedItem||saving} onChange={e=>{setSelectedJobCard(e.target.value);clearSource();}} className="input-field w-full">
+              <option value="">— Select Job Card —</option>{matchingJobs.map(j=><option key={j.ref} value={j.ref}>{j.ref}{j.party?` | ${j.party}`:''}</option>)}
+            </SearchableSelect>}
+            {fieldErrors.jobCard&&<p className="text-xs text-danger">{fieldErrors.jobCard}</p>}
           </div>
           {/* Stitching Receive Reference — PRIMARY SELECTION */}
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 space-y-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-              <span className="text-xs font-700 text-blue-700 font-body uppercase tracking-wide">Step 1 — Select Stitching Receive Reference</span>
+              <span className="text-xs font-700 text-blue-700 font-body uppercase tracking-wide">Select source receipt for this Item / Job Card</span>
             </div>
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">
@@ -383,6 +409,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                   disabled={!selectedJobCard || saving}
                   value={selectedStitchRefId}
                   onChange={(e) => {
+                    setIssueRows([]);setSelectedComponents([]);setSelectedStitchRef(null);
                     setSelectedStitchRefId(e.target.value);
                     if (e.target.value) setFieldErrors((prev) => ({ ...prev, stitchRef: '' }));
                   }}
@@ -415,7 +442,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
 
             {/* Auto-filled info from selected stitch ref */}
             {selectedStitchRef && (
-              <div className="grid grid-cols-3 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                 <div className="bg-white rounded-lg px-3 py-2 border border-blue-100">
                   <p className="text-xs text-muted-foreground font-body">Job Card</p>
                   <p className="text-sm font-700 font-body text-foreground">{selectedStitchRef.jobCardRef}</p>
@@ -433,7 +460,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           </div>
 
           {/* Contractor & Process */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">
                 Contractor <span className="text-danger">*</span>
@@ -475,7 +502,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-xs font-700 text-green-700 font-body uppercase tracking-wide">Step 2 — Enter Issue Qty per Component</span>
+                <span className="text-xs font-700 text-green-700 font-body uppercase tracking-wide">Components for {selectedItem}</span>
                 {loadingRef && <RefreshCw size={13} className="animate-spin text-muted-foreground ml-1" />}
               </div>
 
@@ -485,21 +512,23 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                 </div>
               )}
 
-              {!loadingRef && issueRows.length > 0 && (
-                <div className="border border-border rounded-xl overflow-hidden">
-                  <table className="w-full text-sm">
+              <p className="text-xs text-muted-foreground mb-3">Quantity starts from the selected stitching receipt minus earlier contractor issues. You can edit it; differences require confirmation and are recorded in voucher remarks.</p>
+              {!loadingRef&&issueRows.length>0&&<fieldset className="border rounded-xl p-3 mb-3"><legend className="text-sm font-semibold">Select components to issue</legend><div className="flex flex-wrap gap-3">{[...new Set(issueRows.map(r=>r.component))].map(name=><label key={name} className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={saving} checked={selectedComponents.includes(name)} onChange={()=>toggleComponent(name)}/>{name}</label>)}</div></fieldset>}
+              {!loadingRef && issueRows.length > 0 && selectedComponents.length>0 && (
+                <div className="border border-border rounded-xl overflow-x-auto">
+                  <table className="w-full text-sm min-w-[650px]">
                     <thead className="bg-muted/40">
                       <tr>
                         <th className="text-left py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Component</th>
                         <th className="text-left py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Size</th>
                         <th className="text-right py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Stitch Rcvd</th>
                         <th className="text-right py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Already Issued</th>
-                        <th className="text-right py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Pending</th>
+                        <th className="text-right py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Available from receipt</th>
                         <th className="text-right py-2.5 px-3 text-xs font-600 text-primary font-body">Issue Qty</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {issueRows.map((row) => {
+                      {issueRows.filter(row=>selectedComponents.includes(row.component)).map((row) => {
                         const rowErr = rowErrors[row.tempId];
                         const isFullyIssued = row.pendingQty === 0;
                         return (
@@ -535,18 +564,18 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                                 <input
                                   type="number"
                                   min={0}
-                                  max={row.pendingQty}
                                   value={row.issuedQty || ''}
                                   onChange={(e) => {
                                     updateIssuedQty(row.tempId, Number(e.target.value));
                                     if (fieldErrors.qty) setFieldErrors((prev) => ({ ...prev, qty: '' }));
                                   }}
-                                  disabled={isFullyIssued}
+                                  disabled={saving}
                                   className={`w-24 ml-auto block px-2 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 text-right font-700 font-body disabled:opacity-50 disabled:cursor-not-allowed ${
                                     rowErr ? 'border-danger ring-1 ring-danger/30' : 'border-primary/40'
                                   }`}
                                   placeholder="0"
                                 />
+                                {row.issuedQty!==row.pendingQty&&<p className="text-xs text-amber-700 text-right mt-1">{Math.abs(row.issuedQty-row.pendingQty)} pcs {row.issuedQty>row.pendingQty?'more':'less'} than available</p>}
                               </td>
                             </tr>
                             {rowErr && (
@@ -567,13 +596,13 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                       <tr>
                         <td colSpan={2} className="py-2.5 px-3 text-xs font-600 text-muted-foreground font-body">Total</td>
                         <td className="py-2.5 px-3 text-right text-sm font-700 text-success font-body">
-                          {issueRows.reduce((s, r) => s + r.stitchReceivedQty, 0)}
+                          {issueRows.filter(r=>selectedComponents.includes(r.component)).reduce((s, r) => s + r.stitchReceivedQty, 0)}
                         </td>
                         <td className="py-2.5 px-3 text-right text-sm font-700 text-warning font-body">
-                          {issueRows.reduce((s, r) => s + r.alreadyIssuedQty, 0)}
+                          {issueRows.filter(r=>selectedComponents.includes(r.component)).reduce((s, r) => s + r.alreadyIssuedQty, 0)}
                         </td>
                         <td className="py-2.5 px-3 text-right text-sm font-700 font-body">
-                          {issueRows.reduce((s, r) => s + r.pendingQty, 0)}
+                          {issueRows.filter(r=>selectedComponents.includes(r.component)).reduce((s, r) => s + r.pendingQty, 0)}
                         </td>
                         <td className="py-2.5 px-3 text-right text-sm font-700 text-primary font-body">
                           {totalIssuedQty}
@@ -591,7 +620,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           {allRowsFullyIssued && !loadingRef && (
             <div className="flex items-start gap-2 bg-warning/10 border border-warning/30 text-warning-foreground text-sm px-4 py-3 rounded-xl font-body">
               <AlertCircle size={15} className="mt-0.5 flex-shrink-0 text-warning" />
-              <span className="text-warning font-600">This voucher has already been fully issued. No pending quantity remains — issuing again is not allowed.</span>
+              <span className="text-warning font-600">The recorded receipt balance is zero. Any additional quantity is a difference and will require confirmation.</span>
             </div>
           )}
 
@@ -608,8 +637,9 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           </div>
         </div>
 
+        {error&&<p role="alert" className="px-5 py-2 text-sm text-danger">{error} {Object.values(fieldErrors).filter(Boolean).join(' ')}</p>}
         {/* Footer */}
-        <div className="flex items-center justify-between p-5 border-t border-border flex-shrink-0">
+        <div className="flex flex-wrap gap-3 items-center justify-between p-5 border-t border-border flex-shrink-0">
           <div className="text-sm text-muted-foreground font-body">
             Total Issued: <span className="font-700 text-foreground">{totalIssuedQty} pcs</span>
             {selectedStitchRef && (
@@ -626,8 +656,8 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
               Cancel
             </button>
             <button
-              onClick={handleSave}
-              disabled={saving || loadingRef || !selectedStitchRef || issueRows.length === 0 || hasRowErrors || allRowsFullyIssued}
+              onClick={()=>void handleSave()}
+              disabled={saving || loadingRef}
               className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-600 font-body hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving...' : editVoucher ? 'Update Issue' : 'Save Issue'}
@@ -635,6 +665,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           </div>
         </div>
       </div>
+      {differencePrompt!==null&&<div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4"><section role="alertdialog" aria-modal="true" aria-labelledby="quantity-difference-title" className="bg-white rounded-xl p-5 w-full max-w-lg max-h-[80vh] overflow-y-auto"><h3 id="quantity-difference-title" className="font-semibold text-lg">Quantity difference</h3><p className="text-sm my-3">Issue quantity is less or more than the available Stitching Receive quantity.</p><pre className="whitespace-pre-wrap font-sans text-sm rounded-lg bg-amber-50 p-3">{differencePrompt}</pre><p className="text-sm my-3">Do you still want to proceed?</p><div className="flex gap-3"><button autoFocus type="button" className="btn-secondary flex-1" onClick={()=>setDifferencePrompt(null)}>Cancel — edit quantity</button><button type="button" disabled={saving} className="btn-primary flex-1" onClick={()=>void handleSave(true)}>Yes, proceed</button></div></section></div>}
     </div>
   );
 }

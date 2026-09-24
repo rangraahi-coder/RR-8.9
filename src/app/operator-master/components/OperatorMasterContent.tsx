@@ -1,16 +1,19 @@
 'use client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Plus, User, Pencil, Trash2, CheckCircle, XCircle, Search, Eye } from 'lucide-react';
-import { stitchingVoucherService, StitchOperator } from '@/lib/services/stitchingVoucherService';
+import { stitchingVoucherService, StitchOperator, OperatorDocument } from '@/lib/services/stitchingVoucherService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRealtimeTable } from '@/lib/hooks/useRealtimeTable';
+
+import { createClient } from '@/lib/supabase/client';
 
 const DEPARTMENTS = ['Stitching', 'Cutting', 'Embroidery', 'Finishing', 'QC', 'Packing', 'Other'];
 const PROCESSES = ['Main Stitching', 'Overlocking', 'Button Stitching', 'Finishing', 'Checking', 'Packing', 'Other'];
 
 interface OperatorForm {
+  documents: OperatorDocument[];
   operatorCode: string;
   operatorName: string;
   department: string;
@@ -20,6 +23,7 @@ interface OperatorForm {
 }
 
 const EMPTY_FORM: OperatorForm = {
+  documents: [],
   operatorCode: '',
   operatorName: '',
   department: 'Stitching',
@@ -29,6 +33,9 @@ const EMPTY_FORM: OperatorForm = {
 };
 
 export default function OperatorMasterContent() {
+  const busy = useRef(false);
+  const [uploading,setUploading]=useState(false);
+  const [documentType,setDocumentType]=useState('Aadhaar');
   const { username } = useAuth();
   const [operators, setOperators] = useState<StitchOperator[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +83,7 @@ export default function OperatorMasterContent() {
   function openEdit(op: StitchOperator) {
     setEditingOp(op);
     setForm({
+      documents: op.documents || [],
       operatorCode: op.operatorCode,
       operatorName: op.operatorName,
       department: op.department,
@@ -89,15 +97,19 @@ export default function OperatorMasterContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.operatorCode.trim() || !form.operatorName.trim()) {
-      setError('Operator Code and Name are required.');
+    if (busy.current || uploading) return;
+    if (!form.operatorName.trim()) {
+      setError('Operator Name is required.');
       return;
     }
+    if (!form.documents.some(d=>d.type==='Aadhaar') && !window.confirm(form.documents.length ? 'Aadhaar is not attached. Do you still want to save?' : 'Aadhaar and documents are not attached. Do you still want to save?')) return;
+    busy.current=true;
     setSaving(true);
     setError(null);
     try {
       if (editingOp) {
         const updated = await stitchingVoucherService.updateOperator(editingOp.id, {
+          documents: form.documents,
           operatorCode: form.operatorCode.trim(),
           operatorName: form.operatorName.trim(),
           department: form.department,
@@ -108,6 +120,7 @@ export default function OperatorMasterContent() {
         if (!updated) { setError('Failed to update operator.'); return; }
       } else {
         const created = await stitchingVoucherService.createOperator({
+          documents: form.documents,
           operatorCode: form.operatorCode.trim(),
           operatorName: form.operatorName.trim(),
           department: form.department,
@@ -119,9 +132,16 @@ export default function OperatorMasterContent() {
       }
       setShowModal(false);
       await loadOperators();
-    } finally {
+    } catch (e) { setError((e as Error).message || 'Could not save operator.'); } finally {
+      busy.current=false;
       setSaving(false);
     }
+  }
+
+  async function openDocument(d: OperatorDocument) {
+    const {data,error}=await createClient().storage.from('operator-documents').createSignedUrl(d.path,60);
+    if(error){window.alert(error.message);return;}
+    window.open(data.signedUrl,'_blank','noopener,noreferrer');
   }
 
   async function handleDelete() {
@@ -261,12 +281,12 @@ export default function OperatorMasterContent() {
               <h2 className="text-base font-700 text-foreground">{editingOp ? 'Edit Operator' : 'Add Operator'}</h2>
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
             </div>
-            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+            <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
               {error && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{error}</div>}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Operator Code *</label>
-                  <input type="text" required value={form.operatorCode} onChange={(e) => setForm({ ...form, operatorCode: e.target.value })} className="input-field text-sm" placeholder="OP-001" />
+                  <input type="text" readOnly value={editingOp ? form.operatorCode : 'Automatic on save (OP-27 onward)'} className="input-field text-sm" />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-600 text-muted-foreground">Operator Name *</label>
@@ -303,9 +323,19 @@ export default function OperatorMasterContent() {
                 <label className="text-xs font-600 text-muted-foreground">Remarks</label>
                 <textarea rows={2} value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} className="input-field text-sm resize-none" placeholder="Optional notes..." />
               </div>
+              <section className="border rounded-lg p-3 space-y-2"><label className="text-sm font-semibold">Attach Documents</label>
+                <SearchableSelect value={documentType} onChange={e=>setDocumentType(e.target.value)} className="input-field">{['Aadhaar','Other ID Proof','Bank Proof','PAN Card','Photo','Other'].map(t=><option key={t}>{t}</option>)}</SearchableSelect>
+                <input aria-label="Attach documents" type="file" multiple accept="application/pdf,image/jpeg,image/png,image/webp" disabled={saving||uploading} onChange={async e=>{
+                  const files=Array.from(e.target.files||[]);e.target.value='';setUploading(true);setError(null);
+                  try {const db=createClient();const {data,error}=await db.auth.getUser();if(error||!data.user)throw Error('Please sign in again.');
+                    for(const file of files){if(file.size>10485760)throw Error('Each document must be 10 MB or smaller.');const path=data.user.id+'/'+crypto.randomUUID();const result=await db.storage.from('operator-documents').upload(path,file,{contentType:file.type});if(result.error)throw result.error;setForm(f=>({...f,documents:[...f.documents,{type:documentType,name:file.name,path}]}));}
+                  }catch(err){setError((err as Error).message);}finally{setUploading(false);}
+                }}/>{uploading&&<p>Uploading documents…</p>}
+                {form.documents.map(d=><div key={d.path} className="flex gap-2 text-xs"><button type="button" className="text-primary underline" onClick={()=>openDocument(d)}>{d.type}: {d.name}</button><button type="button" disabled={saving} onClick={()=>setForm(f=>({...f,documents:f.documents.filter(x=>x.path!==d.path)}))}>Remove attachment</button></div>)}
+              </section>
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary flex-1">Cancel</button>
-                <button type="submit" disabled={saving} className="btn-primary flex-1">{saving ? 'Saving...' : editingOp ? 'Update' : 'Add Operator'}</button>
+                <button type="submit" disabled={saving||uploading} className="btn-primary flex-1">{saving ? 'Saving...' : editingOp ? 'Update' : 'Add Operator'}</button>
               </div>
             </form>
           </div>
@@ -320,7 +350,7 @@ export default function OperatorMasterContent() {
               <h2 className="text-base font-700 text-foreground">Operator Details</h2>
               <button onClick={() => setViewTarget(null)} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
             </div>
-            <div className="p-6 flex flex-col gap-4">
+            <div className="p-6 flex flex-col gap-4 max-h-[80vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-600 text-muted-foreground">Operator Code</span>
@@ -353,6 +383,7 @@ export default function OperatorMasterContent() {
                   </span>
                 )}
               </div>
+              <section><h3 className="text-sm font-semibold">Attached Documents</h3>{(viewTarget.documents||[]).map(d=><button key={d.path} className="block text-primary underline text-xs my-2" onClick={()=>openDocument(d)}>{d.type}: {d.name} · View / Download</button>)}{!viewTarget.documents?.length&&<p className="text-xs">No documents attached.</p>}</section>
               {viewTarget.remarks && (
                 <div className="flex flex-col gap-1">
                   <span className="text-xs font-600 text-muted-foreground">Remarks</span>
