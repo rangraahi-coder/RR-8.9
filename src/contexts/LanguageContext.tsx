@@ -29,6 +29,7 @@ const translations: Record<string, Record<Language, string>> = {
   'nav.finishing': { en: 'Final Stock Receive', hi: 'फाइनल स्टॉक प्राप्ति' },
   'nav.finishedgoods': { en: 'Finished Goods', hi: 'तैयार माल' },
   'nav.dispatch': { en: 'Dispatch', hi: 'प्रेषण' },
+  'nav.work_accounts': { en: 'Production Accounts', hi: 'उत्पादन लेखा' },
   'nav.accounts_group': { en: 'Accounts', hi: 'लेखा' },
   'nav.ledger': { en: 'Ledger', hi: 'खाता बही' },
   'nav.printerledger': { en: 'Printer Ledger', hi: 'प्रिंटर खाता' },

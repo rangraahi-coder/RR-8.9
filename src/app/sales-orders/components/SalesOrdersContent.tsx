@@ -55,6 +55,7 @@ export default function SalesOrdersContent({ lang }: SalesOrdersContentProps) {
   const {can}=useAuth();
   const [dueOrder,setDueOrder]=useState<SalesOrder|null>(null);
   const [search, setSearch] = useState('');
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get('search'); if(q) setSearch(q); }, []);
   const [partyFilter, setPartyFilter] = useState<'all' | 'external' | 'self'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'in_production' | 'completed'>('all');
   const [sortField, setSortField] = useState<SortField>('date');

@@ -1,4 +1,5 @@
 export const MODULES = [
+ ['work_accounts','Production Accounts','/production-accounts'],
  ['items','Item Master','/item-master'],['accounts','Account Master','/account-master'],['operators','Operator Master','/operator-master'],
  ['sales','Sales Orders','/sales-orders'],['jobs','Job Cards','/job-card-management'],['grey','Grey Fabric','/grey-fabric'],
  ['dyeing','Dyeing / Printing Issue','/dyeing-printing'],['receive','Fabric Receive','/fabric-inventory'],['fabric','Fabric Inventory','/fabric-inventory'],['cutting','Cutting','/cutting'],

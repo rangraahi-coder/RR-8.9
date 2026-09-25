@@ -1,11 +1,15 @@
 type Row=Record<string,any>;
+function problem(row:Row,message:string,path:string,module:string,search:string){
+ row.problem=message;row.problems??=[];const href=path+'?search='+encodeURIComponent(search);
+ if(!row.problems.some((p:Row)=>p.message===message&&p.href===href))row.problems.push({message,href,module});
+}
 const norm=(v:unknown)=>String(v??'').trim().toLowerCase();
 // Group size lines by order/item/colour. Never allocate the same Job Card across different items or colours.
 export function automaticOrderOverview(snapshots:Row[]):Row[]{
  const output:Row[]=[];
  for(const snapshot of snapshots){
   const {order,lines,styles,compositions,cuts,fabric_jobs:fab}=snapshot;
-  if(!lines.length){output.push({id:order.id,order_no:order.vch_no,item:'Order items unavailable',quantity:Number(order.total_qty||0),pending:null,components:null,pendingComponents:null,problem:'Sales Order has no item lines.',jobs:[],vouchers:[]});continue;}
+  if(!lines.length){output.push({id:order.id,order_no:order.vch_no,item:'Order items unavailable',quantity:Number(order.total_qty||0),pending:null,components:null,pendingComponents:null,problem:'Sales Order has no item lines.',problems:[{message:'Sales Order has no item lines.',href:'/sales-orders?search='+encodeURIComponent(order.vch_no),module:'sales'}],jobs:[],vouchers:[]});continue;}
   const groups=new Map<string,Row[]>();
   for(const line of lines){const key=norm(line.item_name)+'|'+norm(line.param_colour);groups.set(key,[...groups.get(key)||[],line]);}
   const rows=Array.from(groups.entries()).map(([key,group])=>{
@@ -18,6 +22,7 @@ export function automaticOrderOverview(snapshots:Row[]):Row[]{
    const quantity=group.reduce((n,l)=>n+Number(l.qty),0);
    return {id:order.id+'|'+key,order_no:order.vch_no,party:order.party_name,item:group[0].item_name,colour:group[0].param_colour,quantity,ratio,ratios,styleId:style?.id,style,components:ratio==null?null:quantity*ratio,problem:group.some(l=>!Number.isInteger(Number(l.qty))||Number(l.qty)<0)?'Invalid Sales Order quantity.':matches.length!==1?'Item Master link missing or ambiguous.':!validParts?'Item Master component composition missing.':'',jobs:[] as Row[],vouchers:[] as string[],ready:0 as number|null,pending:null as number|null,pendingComponents:null as number|null};
   });
+  for(const r of rows)if(r.problem)problem(r,r.problem,r.problem==='Invalid Sales Order quantity.'?'/sales-orders':'/item-master',r.problem==='Invalid Sales Order quantity.'?'sales':'items',r.problem==='Invalid Sales Order quantity.'?order.vch_no:r.item);
   for(const job of snapshot.jobs){
    const candidates=rows.filter(r=>job.item_style_id?r.styleId===job.item_style_id:[job.design_code,job.style_en].some(n=>norm(n)&&[r.item,r.style?.style_no,r.style?.design_code].some(k=>norm(k)&&norm(k)===norm(n))));
    const colours=(Array.isArray(job.colors)?job.colors:[]).map(norm).filter(Boolean);
@@ -25,21 +30,21 @@ export function automaticOrderOverview(snapshots:Row[]):Row[]{
    if(matched.length===1&&candidates.length===1){matched[0].jobs.push(job);continue;}
    // Exact single-colour allocation can disambiguate repeated styles on this order.
    if(matched.length===1&&colours.length===1){matched[0].jobs.push(job);continue;}
-   for(const r of candidates.length?candidates:rows)r.problem='Job Card '+job.job_card_no+' has an ambiguous item / colour link. Correct its source link.';
+   for(const r of candidates.length?candidates:rows)problem(r,'Job Card '+job.job_card_no+' has an ambiguous item / colour link. Correct its source link.','/job-card-management','jobs',job.job_card_no);
   }
   for(const r of rows){
    let hasUnquantifiedFabric=false;let completeSets=0;
    for(const job of r.jobs){
     const totals:Record<string,number>={};const linked=cuts.filter((c:Row)=>c.job_id===job.id);
-    if(linked.some((c:Row)=>c.invalid||!Number.isFinite(Number(c.qty))||Number(c.qty)<0))r.problem='Invalid cutting component quantity on '+job.job_card_no;
+    if(linked.some((c:Row)=>c.invalid||!Number.isFinite(Number(c.qty))||Number(c.qty)<0))problem(r,'Invalid cutting component quantity on '+job.job_card_no,'/cutting','cutting',job.job_card_no);
     for(const c of linked){totals[norm(c.component)]=(totals[norm(c.component)]||0)+Number(c.qty);r.vouchers.push(...c.vouchers||[]);}
     const keys=Object.keys(r.ratios);const supported=keys.length?Math.min(...keys.map(k=>Math.floor((totals[k]||0)/r.ratios[k]))):0;
-    if(!Number.isFinite(Number(job.total_pieces))||Number(job.total_pieces)<0)r.problem='Invalid Job Card quantity.';
+    if(!Number.isFinite(Number(job.total_pieces))||Number(job.total_pieces)<0)problem(r,'Invalid Job Card quantity.','/job-card-management','jobs',job.job_card_no);
     completeSets+=Math.min(supported,Math.max(0,Number(job.total_pieces)||0));
     if(fab.includes(job.id)&&supported<Number(job.total_pieces||0))hasUnquantifiedFabric=true;
    }
    r.ready=Math.min(r.quantity,completeSets);
-   if(hasUnquantifiedFabric&&r.ready<r.quantity&&!r.problem)r.problem='Fabric is linked, but its remaining metres cannot be converted to ready pieces without a per-item consumption / allocation quantity.';
+   if(hasUnquantifiedFabric&&r.ready<r.quantity&&!r.problem)problem(r,'Fabric is linked, but its remaining metres cannot be converted to ready pieces without a per-item consumption / allocation quantity.','/cutting','cutting',r.jobs.length===1?r.jobs[0].job_card_no:r.item);
    r.vouchers=Array.from(new Set(r.vouchers));
    if(r.problem){r.pending=null;r.pendingComponents=null;}
    else{r.pending=Math.max(0,r.quantity-r.ready);r.pendingComponents=r.ratio==null?null:r.pending*r.ratio;}

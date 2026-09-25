@@ -81,6 +81,7 @@ const navGroups: NavGroup[] = [
   {
     key: 'accounts_group', labelKey: 'nav.accounts_group', icon: <BarChart2 size={18} />,
     items: [
+      { key: 'work_accounts', labelKey: 'nav.work_accounts', href: '/production-accounts', icon: <BarChart2 size={16} /> },
       { key: 'printerledger', labelKey: 'nav.printerledger', href: '/printer-ledger', icon: <Printer size={16} /> },
     ],
   },

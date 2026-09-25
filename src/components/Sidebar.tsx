@@ -36,6 +36,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'nav-finished-goods', labelEn: 'Finished Goods', labelHi: 'तैयार माल', icon: <CheckCircle2 size={18} />, href: '/finished-goods', group: 'workflow' },
   { id: 'nav-dispatch', labelEn: 'Dispatch', labelHi: 'डिस्पैच', icon: <Truck size={18} />, href: '/dispatch', group: 'workflow' },
   { id: 'nav-purchases', labelEn: 'Purchases', labelHi: 'खरीद', icon: <ShoppingCart size={18} />, href: '#', group: 'accounts' },
+  { id: 'nav-work-accounts', labelEn: 'Production Accounts', labelHi: 'उत्पादन लेखा', icon: <BookOpen size={18} />, href: '/production-accounts', group: 'accounts' },
   { id: 'nav-ledger', labelEn: 'Ledger', labelHi: 'खाता बही', icon: <BookOpen size={18} />, href: '#', group: 'accounts' },
   { id: 'nav-settings', labelEn: 'Settings', labelHi: 'सेटिंग', icon: <Settings size={18} />, href: '#', group: 'system' },
 ];

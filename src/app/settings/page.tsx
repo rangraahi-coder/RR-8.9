@@ -1,5 +1,6 @@
 'use client';
+import ThemeSettings from './components/ThemeSettings';
 import DashboardSettings from './components/DashboardSettings';
 import AppLayout from '@/components/AppLayout';
 import ConnectionDiagnosticTab from './components/ConnectionDiagnosticTab';
-export default function Page(){return <AppLayout pageTitle="Settings" pageTitleHi="सेटिंग" render={()=> <div className="space-y-5"><h1 className="text-xl font-semibold">Settings</h1><DashboardSettings/><ConnectionDiagnosticTab/></div>}/>;}
+export default function Page(){return <AppLayout pageTitle="Settings" pageTitleHi="सेटिंग" render={()=> <div className="space-y-5"><h1 className="text-xl font-semibold">Settings</h1><ThemeSettings/><DashboardSettings/><ConnectionDiagnosticTab/></div>}/>;}

@@ -60,6 +60,7 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
   const {can}=useAuth();
   const [rateCard,setRateCard]=useState<JobCard|null>(null);
   const [search, setSearch] = useState('');
+  useEffect(() => { const q = new URLSearchParams(window.location.search).get('search'); if(q) setSearch(q); }, []);
   const [stageFilter, setStageFilter] = useState<string>('all');
   const [blockedOnly, setBlockedOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>('jobCardNo');

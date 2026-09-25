@@ -139,6 +139,8 @@ export default function CuttingContent({ lang = 'en' }: CuttingContentProps) {
   // Apply URL filter params on mount
   useEffect(() => {
     const filter = searchParams.get('filter');
+    const query = searchParams.get('search');
+    if(query) setEntrySearch(query);
     if (filter === 'pending') {
       setEntrySearch('');
       // Pending in cutting = entries with forStitching > 0 (not yet dispatched)
