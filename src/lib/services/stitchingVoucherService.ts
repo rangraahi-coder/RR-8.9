@@ -400,12 +400,10 @@ export const stitchingVoucherService = {
   // ── Receive Vouchers ───────────────────────────────────────────────────────
 
   async getNextReceiveVoucherNo(): Promise<string> {
-    const supabase = createClient();
-    const { count } = await supabase
-      .from('stitch_receive_vouchers')
-      .select('*', { count: 'exact', head: true });
-    const num = (count || 0) + 1;
-    return `SRV-${String(num).padStart(4, '0')}`;
+    const {data,error}=await createClient().rpc('erp_next_stitch_receive_number');
+    if(error)throw new Error(error.message);
+    return String(data);
+
   },
 
   async getReceiveVouchers(): Promise<StitchReceiveVoucher[]> {

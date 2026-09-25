@@ -126,7 +126,9 @@ export default function ContractorFinishingContent() {
       v.voucherNo.toLowerCase().includes(q) ||
       v.jobCardRef.toLowerCase().includes(q) ||
       v.contractorName.toLowerCase().includes(q) ||
-      v.process.toLowerCase().includes(q)
+      v.process.toLowerCase().includes(q) ||
+      (v.sourceOperatorName||'').toLowerCase().includes(q) ||
+      [v.size,...v.items.map(it=>it.size)].some(size=>(size||'').toLowerCase().includes(q))
     );
   });
 
@@ -368,10 +370,10 @@ export default function ContractorFinishingContent() {
                     <tr className="border-b border-border">
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Voucher No</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Date</th>
-                      <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Job Card</th>
+                      <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Size</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Stitch Ref</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Contractor</th>
-                      <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Process</th>
+                      <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Operator Name</th>
                       <th className="text-right py-2 px-3 text-xs font-600 text-muted-foreground font-body">Issued</th>
                       <th className="text-right py-2 px-3 text-xs font-600 text-muted-foreground font-body">Received</th>
                       <th className="text-right py-2 px-3 text-xs font-600 text-muted-foreground font-body">Balance</th>
@@ -386,7 +388,7 @@ export default function ContractorFinishingContent() {
                         <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                           <td className="py-2.5 px-3 font-600 text-primary font-body">{v.voucherNo}</td>
                           <td className="py-2.5 px-3 text-muted-foreground font-body">{v.voucherDate}</td>
-                          <td className="py-2.5 px-3 font-body">{v.jobCardRef}</td>
+                          <td className="py-2.5 px-3 font-body">{Array.from(new Set(v.items.map(it=>it.size?.trim()).filter(Boolean))).join(', ')||v.size||'—'}</td>
                           <td className="py-2.5 px-3 font-body">
                             {v.stitchReceiveRef ? (
                               <span className="inline-flex items-center gap-1 text-blue-700 text-xs font-600">
@@ -395,7 +397,7 @@ export default function ContractorFinishingContent() {
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>
                           <td className="py-2.5 px-3 font-body">{v.contractorName}</td>
-                          <td className="py-2.5 px-3"><ProcessBadge process={v.process} /></td>
+                          <td className="py-2.5 px-3"><span className="text-sm">{v.sourceOperatorName||(v.sourceOperatorUnavailable?'Operator unavailable':'Not recorded')}</span></td>
                           <td className="py-2.5 px-3 text-right font-600 font-body">{v.totalIssued}</td>
                           <td className="py-2.5 px-3 text-right text-success font-600 font-body">{received}</td>
                           <td className="py-2.5 px-3 text-right font-body">

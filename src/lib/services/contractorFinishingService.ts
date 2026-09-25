@@ -17,6 +17,8 @@ export interface ContractorIssueItem {
 }
 
 export interface ContractorIssueVoucher {
+  sourceOperatorName?: string;
+  sourceOperatorUnavailable?: boolean;
   id: string;
   voucherNo: string;
   voucherDate: string;
@@ -323,7 +325,18 @@ export const contractorFinishingService = {
       .select('*, contractor_issue_items(*)')
       .order('created_at', { ascending: false });
     if (error) { console.error('[getIssueVouchers]', error); return []; }
-    return (data || []).map(rowToIssueVoucher);
+    const vouchers=(data || []).map(rowToIssueVoucher);
+    const receipts: {id:string;voucher_no:string;operator_name:string|null}[]=[];
+    let unavailable=false;
+    for(const field of ['id','voucher_no'] as const){
+      const keys=Array.from(new Set(vouchers.map(v=>field==='id'?v.stitchReceiveVoucherId:(!v.stitchReceiveVoucherId?v.stitchReceiveRef:undefined)).filter(Boolean))) as string[];
+      for(let i=0;i<keys.length;i+=100){
+        const result=await supabase.from('stitch_receive_vouchers').select('id,voucher_no,operator_name').in(field,keys.slice(i,i+100));
+        if(result.error){unavailable=true;continue;}
+        receipts.push(...result.data||[]);
+      }
+    }
+    return vouchers.map(v=>{const matches=receipts.filter(r=>v.stitchReceiveVoucherId?r.id===v.stitchReceiveVoucherId:r.voucher_no===v.stitchReceiveRef);return {...v,sourceOperatorName:matches.length===1?matches[0].operator_name||undefined:undefined,sourceOperatorUnavailable:unavailable};});
   },
 
   async createIssueVoucher(

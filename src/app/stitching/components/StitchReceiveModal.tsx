@@ -309,7 +309,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-600 text-muted-foreground">Voucher No</label>
+              <label className="text-xs font-600 text-muted-foreground">Voucher No{!editVoucher?' (preview · assigned on save)':''}</label>
               <input type="text" value={voucherNo} readOnly className="input-field text-sm bg-muted/30 text-muted-foreground" />
             </div>
             <div className="flex flex-col gap-1.5">
