@@ -1,7 +1,7 @@
 .shell{--diwali-ink:#582f37;--diwali-gold:#d6ae6c}
 .shell :global(.erp-workspace){background-color:#fcf8f1;background-image:radial-gradient(ellipse at 95% 0%,#f4debc66,transparent 55%),radial-gradient(ellipse at 0% 90%,#f1dbe644,transparent 45%)}
 .shell :global(header.h-14){background:linear-gradient(95deg,#fffaf0,#fff5ee);border-bottom-color:#e5c999;box-shadow:0 2px 12px #71372008}
-.shell :global(aside){background:linear-gradient(165deg,#302634,#432531 65%,#282433);border-right:1px solid #9f79513d}
+.shell :global(aside.sidebar-bg){background:linear-gradient(165deg,#302634,#432531 65%,#282433);border-right:1px solid #9f79513d}
 .ribbon{position:relative;isolation:isolate;overflow:hidden;display:flex;align-items:center;justify-content:space-between;min-height:164px;margin-bottom:24px;padding:28px 38px;border:1px solid #bc8a56;border-radius:18px;background:radial-gradient(ellipse at 83% 80%,#a4533744,transparent 50%),linear-gradient(115deg,#302431,#542a38 60%,#3a2731);color:#fff4dd;box-shadow:0 8px 26px #56332714}
 .ribbon:after{content:'';position:absolute;inset:7px;border:1px solid #e4bb7433;border-radius:12px;pointer-events:none}.greeting{position:relative;z-index:1;max-width:68%}.eyebrow{display:block;font-size:10px;letter-spacing:.18em;color:#e9c68b;font-weight:600}.greeting h2{font-family:Georgia,'Times New Roman',serif;font-size:clamp(25px,2.8vw,40px);font-weight:400;line-height:1.15;margin:10px 0 9px;letter-spacing:-.025em}.greeting p{font-size:12px;line-height:1.5;color:#ead9d1;margin:0}
 .rangoli{position:absolute;width:285px;height:285px;left:43%;top:-120px;color:#d7ad70;opacity:.12;pointer-events:none;transform:rotate(12deg)}

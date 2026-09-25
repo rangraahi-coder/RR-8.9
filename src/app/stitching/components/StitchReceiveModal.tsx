@@ -1,8 +1,10 @@
 'use client';
+import {reportFieldIssue} from '@/lib/issueNavigation';
+import {erpErrorMessage} from '@/lib/erpError';
 import {createClient} from '@/lib/supabase/client';
 import SearchableSelect from '@/components/SearchableSelect';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { X, AlertTriangle, CheckCircle, Info } from 'lucide-react';
 import {
   stitchingVoucherService,
@@ -58,7 +60,10 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
   const [operators, setOperators] = useState<StitchOperator[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorState] = useState<string | null>(null);
+  const formRef=useRef<HTMLFormElement>(null),saveInFlight=useRef(false);
+  function setError(message:string|null,field?:string){setErrorState(message);if(message)requestAnimationFrame(()=>{const form=formRef.current;if(!form)return;const target=field?form.querySelector<HTMLElement>(`[data-receive-field="${field}"]`):form.querySelector<HTMLElement>('[data-save-feedback]');reportFieldIssue(message,target||form);});}
+
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   // Filter issue vouchers by selected job card
@@ -202,6 +207,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if(saveInFlight.current)return;
     const newErrors: Record<string, string> = {};
 
     if (!selectedIssueVoucherId) newErrors.issueVoucher = 'Please select an Issue Voucher.';
@@ -211,7 +217,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
     if (Object.values(newErrors).some(Boolean)) {
       setFieldErrors(newErrors);
-      setError('Please fill all required fields before saving.');
+      for(const [field,message] of Object.entries(newErrors))setError(message,field);
       return;
     }
 
@@ -224,11 +230,12 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     // Validate over-receive
     for (const r of rows) {
       if (r.receiveQty > r.pendingQty && !r.overrideAllowed) {
-        setError(`Component "${r.component}": Receive qty (${r.receiveQty}) exceeds pending qty (${r.pendingQty}). Enable override to proceed.`);
+        setError(`Component "${r.component}": Receive qty (${r.receiveQty}) exceeds pending qty (${r.pendingQty}). Enable override to proceed.`, `qty-${r.issueComponentId}`);
         return;
       }
     }
 
+    saveInFlight.current=true;
     setSaving(true);
     setError(null);
     try {
@@ -270,7 +277,10 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
       if (!result) { setError('Failed to save receive voucher. Please try again.'); return; }
       onSaved();
+    } catch(e) {
+      setError(erpErrorMessage(e));
     } finally {
+      saveInFlight.current=false;
       setSaving(false);
     }
   }
@@ -294,8 +304,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"><X size={16} /></button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
-          {error && <div className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{error}</div>}
+        <form ref={formRef} onSubmit={handleSubmit} className="p-6 flex flex-col gap-5">
+          {error && <div data-save-feedback tabIndex={-1} className="text-xs text-danger bg-danger-bg border border-danger-border rounded-lg px-3 py-2">{error}</div>}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -335,7 +345,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
             <label className="text-xs font-600 text-muted-foreground">Step 2: Select Issue Voucher *</label>
             <SearchableSelect
               required
-              value={selectedIssueVoucherId}
+              data-receive-field="issueVoucher" value={selectedIssueVoucherId}
               onChange={(e) => handleIssueVoucherChange(e.target.value)}
               className={`input-field text-sm ${fieldErrors.issueVoucher ? 'border-danger ring-1 ring-danger/30' : ''}`}
               disabled={!!editVoucher}
@@ -377,7 +387,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
               Step 3: Receive Operator *
               <span className="text-[10px] text-primary font-500 bg-primary/10 px-1.5 py-0.5 rounded-md">Can differ from Issue Operator</span>
             </label>
-            <SearchableSelect required value={operatorId} onChange={(e) => handleOperatorChange(e.target.value)} className={`input-field text-sm ${fieldErrors.operator ? 'border-danger ring-1 ring-danger/30' : ''}`}>
+            <SearchableSelect data-receive-field="operator" required value={operatorId} onChange={(e) => handleOperatorChange(e.target.value)} className={`input-field text-sm ${fieldErrors.operator ? 'border-danger ring-1 ring-danger/30' : ''}`}>
               <option value="">-- Select Receive Operator --</option>
               {operators.map((op) => (
                 <option key={op.id} value={op.id}>{op.operatorCode} — {op.operatorName} ({op.process || op.department})</option>
@@ -393,7 +403,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
           {rows.length > 0 && (
             <div className="flex flex-col gap-3">
               <p className="text-xs font-700 text-foreground">Step 4: Component-wise Receive</p>
-              <div className="overflow-x-auto">
+              <div data-receive-field="receiveQty" tabIndex={-1} className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[500px]">
                   <thead>
                     <tr className="bg-muted/40 border border-border rounded-lg">
@@ -426,7 +436,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                             <input
                               type="number"
                               min="0"
-                              value={r.receiveQty || ''}
+                              data-receive-field={`qty-${r.issueComponentId}`} aria-label={`${r.component} receive quantity`} value={r.receiveQty || ''}
                               onChange={(e) => updateReceiveQty(r.issueComponentId, parseInt(e.target.value) || 0)}
                               className={`input-field text-sm tabular-nums w-24 text-right ${isOver && !r.overrideAllowed ? 'border-danger' : ''}`}
                               placeholder="0"
@@ -437,7 +447,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                               type="number"
                               min="0"
                               step="0.01"
-                              readOnly value={r.stitchingChargePerPc || ''}
+                              data-receive-field="rate" readOnly value={r.stitchingChargePerPc || ''}
                               title="Rate from Stitching Issue / Job Card; edit rates only in Job Card"
                               onChange={(e) => updateChargePerPc(r.issueComponentId, parseFloat(e.target.value) || 0)}
                               className="input-field text-sm tabular-nums w-24 text-right"

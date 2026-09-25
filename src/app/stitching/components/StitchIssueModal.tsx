@@ -1,4 +1,5 @@
 'use client';
+import {reportFieldIssue} from '@/lib/issueNavigation';
 import {erpErrorMessage} from '@/lib/erpError';
 import SearchableSelect from '@/components/SearchableSelect';
 
@@ -69,7 +70,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
   const feedbackRef=useRef<HTMLDivElement>(null);
   const [feedbackAttempt,setFeedbackAttempt]=useState(0);
   function showError(message:string){setError(message);setFeedbackAttempt(n=>n+1);}
-  useEffect(()=>{if(error){feedbackRef.current?.scrollIntoView({block:'nearest'});feedbackRef.current?.focus({preventScroll:true});}},[error,feedbackAttempt]);
+  useEffect(()=>{if(error&&feedbackRef.current){const form=feedbackRef.current.closest('form');const target=form?.querySelector<HTMLElement>('[aria-invalid="true"],.border-danger input:not([readonly]),input:invalid,select:invalid');reportFieldIssue(error,target||feedbackRef.current);}},[error,feedbackAttempt]);
   useEffect(()=>{if(!saving){setSlowSave(false);return;}const timer=setTimeout(()=>setSlowSave(true),15000);return()=>clearTimeout(timer);},[saving]);
 
   const [sourcesReady,setSourcesReady]=useState(false);
