@@ -23,6 +23,7 @@ interface JobCardOption {
 }
 
 interface ComponentRow {
+  partNumber?: string;
   cuttingComponentId?: string;
   stitchingRate?: number;
   tempId: string;
@@ -145,6 +146,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                 size: c.sizeBreakdown && c.sizeBreakdown.length === 1 ? c.sizeBreakdown[0].size : '',
                 sizeBreakdown: c.sizeBreakdown || [],
                 remarks: c.remarks || '',
+                partNumber: c.partNumber || '',
               }))
             : [makeRow()]
         );
@@ -269,6 +271,7 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
           ? c.sizeBreakdown
           : undefined,
         remarks: c.remarks || undefined,
+        partNumber: c.partNumber?.trim() || undefined,
       }));
 
       let result;
@@ -474,6 +477,9 @@ export default function StitchIssueModal({ jobCards, onClose, onSaved, editVouch
                       </button>
                     )}
                   </div>
+                  <label className="block mt-3 text-xs text-muted-foreground">Part Number / Cutting Sequence
+                    <input maxLength={500} className="input-field mt-1 text-sm" value={row.partNumber||''} onChange={e=>updateRow(row.tempId,'partNumber',e.target.value)} placeholder="e.g. 1–50, 51–100, Bundle A / Part 03"/>
+                  </label>
                   {isExceeded && (
                     <div className="text-red-500 text-xs mt-1">
                       Issue quantity exceeds remaining available. Please adjust.

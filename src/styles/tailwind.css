@@ -69,13 +69,6 @@
   .tabular-nums {
     font-variant-numeric: tabular-nums;
   }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
   .sidebar-transition {
     transition: width 300ms ease, min-width 300ms ease;
   }
@@ -235,21 +228,6 @@
   .border-sidebar {
     border-color: var(--sidebar-border);
   }
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: var(--border) transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: var(--border);
-    border-radius: 2px;
-  }
   .animate-fade-in {
     animation: fadeIn 0.2s ease-out;
   }
@@ -342,4 +320,41 @@
  .erp-workspace [class*="max-h-"] { max-height:85dvh; }
  .erp-workspace form .flex.items-center.gap-3 { flex-wrap:wrap; }
  .erp-workspace button { min-height:40px; }
+}
+
+/* Visible ERP scrollbars, including modal portals and horizontal report tables. */
+:root {
+  --erp-scroll-thumb: rgba(100, 116, 139, .55);
+  --erp-scroll-hover: rgba(71, 85, 105, .9);
+  --erp-scroll-track: rgba(148, 163, 184, .12);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--erp-scroll-thumb) var(--erp-scroll-track);
+}
+*:hover { scrollbar-color: var(--erp-scroll-hover) var(--erp-scroll-track); }
+.sidebar-bg {
+  --erp-scroll-thumb: rgba(203, 213, 225, .5);
+  --erp-scroll-hover: rgba(226, 232, 240, .9);
+  --erp-scroll-track: rgba(203, 213, 225, .08);
+}
+/* Chromium/Safari use the thumb hover itself rather than container hover. */
+@supports selector(::-webkit-scrollbar) {
+  *, *:hover { scrollbar-width: auto; scrollbar-color: auto; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-track { background: var(--erp-scroll-track); border-radius: 8px; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--erp-scroll-thumb);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 8px;
+    min-height: 28px;
+    min-width: 28px;
+  }
+  *::-webkit-scrollbar-thumb:hover, *::-webkit-scrollbar-thumb:active { background-color: var(--erp-scroll-hover); }
+  *::-webkit-scrollbar-corner { background: var(--erp-scroll-track); }
+}
+@media (forced-colors: active) {
+  * { scrollbar-color: auto; }
+  *::-webkit-scrollbar-thumb { background-color: ButtonText; }
 }

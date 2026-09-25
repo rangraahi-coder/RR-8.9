@@ -50,6 +50,7 @@ function compKey(component: string, size: string, colour: string): string {
 export default function ContractorIssueModal({ jobCards, editVoucher, onClose, onSaved }: Props) {
   const { username } = useAuth();
   const inFlight=useRef(false);
+  const [committedId,setCommittedId]=useState('');
   const [selectedItem,setSelectedItem]=useState('');
   const [selectedComponents,setSelectedComponents]=useState<string[]>([]);
 
@@ -257,12 +258,12 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
   const matchingJobs=jobOptions.filter(j=>j.item===selectedItem);
   function clearSource(){setSelectedStitchRefId('');setSelectedStitchRef(null);setIssueRows([]);setSelectedComponents([]);setAlreadyIssuedMap({});setFieldErrors({});setError(null);}
   function toggleComponent(name:string){
-    setSelectedComponents(prev=>prev.includes(name)?prev.filter(c=>c!==name):[...prev,name]);
-    setIssueRows(prev=>prev.map(r=>r.component===name?{...r,issuedQty:selectedComponents.includes(name)?0:r.pendingQty}:r));
+    setSelectedComponents([name]);
+    setIssueRows(prev=>prev.map(r=>({...r,issuedQty:r.component===name?(selectedComponents.includes(name)?r.issuedQty:r.pendingQty):0})));
   }
 
   async function handleSave(confirmedDifference=false) {
-    if(inFlight.current||loadingRef)return;
+    if(inFlight.current||loadingRef||committedId)return;
     setError(null);
     const newErrors: Record<string, string> = {};
     if (!selectedItem) newErrors.item='Please select an Item.';
@@ -272,6 +273,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     if (selectedStitchRef && selectedStitchRef.jobCardRef !== selectedJobCard) newErrors.jobCard = 'The receiving voucher does not belong to this Job Card. Select it again.';
     if (!selectedStitchRefId || !selectedStitchRef) newErrors.stitchRef = 'Please select a Stitching Receive Reference.';
     if (!contractorName.trim()) newErrors.contractor = 'Contractor name is required.';
+    if (selectedComponents.length !== 1) newErrors.qty = 'Select exactly one component. Use separate vouchers for different components.';
     if (totalIssuedQty === 0) newErrors.qty = 'Enter issued quantity for at least one component.';
 
     if (Object.values(newErrors).some(Boolean)) {
@@ -329,7 +331,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
     setSaving(false);
     if (!result) { setError('Failed to save. Please try again.'); return; }
     onSaved();
-    }catch(e){setError((e as Error).message||'Could not save issue voucher.');}finally{inFlight.current=false;setSaving(false);}
+    }catch(e){if((e as {committedId?:string}).committedId)setCommittedId((e as {committedId:string}).committedId);setError((e as Error).message||'Could not save issue voucher.');}finally{inFlight.current=false;setSaving(false);}
   }
 
   if (loading) {
@@ -347,7 +349,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
         <div className="flex items-center justify-between p-5 border-b border-border flex-shrink-0">
           <div>
             <h2 className="text-lg font-700 font-display">{editVoucher ? 'Edit Contractor Issue' : 'Contractor Issue'}</h2>
-            <p className="text-sm text-muted-foreground font-body">One Item → Job Card → Components → Issue quantities</p>
+            <p className="text-sm text-muted-foreground font-body">One Item → Job Card → One Component → Issue quantities</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-muted text-muted-foreground transition-colors">
             <X size={18} />
@@ -365,7 +367,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
           {/* Voucher Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">Voucher No</label>
+              <label className="block text-xs font-600 text-muted-foreground mb-1.5 font-body">{editVoucher?'Voucher No':'Voucher No (preview · assigned on save)'}</label>
               <input value={voucherNo} readOnly className="w-full px-3 py-2 text-sm border border-border rounded-xl bg-muted/30 font-body" />
             </div>
             <div>
@@ -385,7 +387,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
               const item=e.target.value;setSelectedItem(item);clearSource();
               const matching=jobOptions.filter(j=>j.item===item);setSelectedJobCard(matching.length===1?matching[0].ref:'');
             }} className="input-field w-full"><option value="">— Select Item —</option>{[...new Set(jobOptions.map(j=>j.item))].sort().map(item=><option key={item} value={item}>{item}</option>)}</SearchableSelect>
-            <p className="text-xs text-muted-foreground">One item per voucher. Select its components below; use a separate voucher for another item.</p>
+            <p className="text-xs text-muted-foreground">One item and one component per voucher. Multiple sizes of that component are allowed.</p>
             {fieldErrors.item&&<p className="text-xs text-danger">{fieldErrors.item}</p>}
             <label className="block text-sm font-semibold" htmlFor="contractor-job-card">Job Card Number *</label>
             {matchingJobs.length===1?<input id="contractor-job-card" readOnly value={selectedJobCard} className="input-field w-full bg-muted/30"/>:
@@ -428,7 +430,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
                     })
                     .map((ref) => (
                     <option key={ref.id} value={ref.id}>
-                      {ref.voucherNo} | {ref.jobCardRef} | {ref.voucherDate} | Size: {ref.sizeLabel || 'Not recorded / unavailable'} | {ref.totalPiecesReceived} pcs
+                      {ref.voucherNo}{ref.qualityStatus==='final_reject'?' · FINAL REJECT · Stitching ₹0':''} | {ref.jobCardRef} | {ref.voucherDate} | Size: {ref.sizeLabel || 'Not recorded / unavailable'} | {ref.totalPiecesReceived} pcs
                     </option>
                   ))}
                 </SearchableSelect>
@@ -513,7 +515,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
               )}
 
               <p className="text-xs text-muted-foreground mb-3">Quantity starts from the selected stitching receipt minus earlier contractor issues. You can edit it; differences require confirmation and are recorded in voucher remarks.</p>
-              {!loadingRef&&issueRows.length>0&&<fieldset className="border rounded-xl p-3 mb-3"><legend className="text-sm font-semibold">Select components to issue</legend><div className="flex flex-wrap gap-3">{[...new Set(issueRows.map(r=>r.component))].map(name=><label key={name} className="flex items-center gap-2 text-sm"><input type="checkbox" disabled={saving} checked={selectedComponents.includes(name)} onChange={()=>toggleComponent(name)}/>{name}</label>)}</div></fieldset>}
+              {!loadingRef&&issueRows.length>0&&<fieldset className="border rounded-xl p-3 mb-3"><legend className="text-sm font-semibold">Select one component to issue</legend><div className="flex flex-wrap gap-3">{[...new Set(issueRows.map(r=>r.component))].map(name=><label key={name} className="flex items-center gap-2 text-sm"><input type="radio" name="contractor-issue-component" disabled={saving} checked={selectedComponents.includes(name)} onChange={()=>toggleComponent(name)}/>{name}</label>)}</div></fieldset>}
               {!loadingRef && issueRows.length > 0 && selectedComponents.length>0 && (
                 <div className="border border-border rounded-xl overflow-x-auto">
                   <table className="w-full text-sm min-w-[650px]">
@@ -657,7 +659,7 @@ export default function ContractorIssueModal({ jobCards, editVoucher, onClose, o
             </button>
             <button
               onClick={()=>void handleSave()}
-              disabled={saving || loadingRef}
+              disabled={!!committedId || saving || loadingRef}
               className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-600 font-body hover:bg-primary/90 transition-colors disabled:opacity-60"
             >
               {saving ? 'Saving...' : editVoucher ? 'Update Issue' : 'Save Issue'}

@@ -56,10 +56,13 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
   const [operatorId, setOperatorId] = useState('');
   const [operatorName, setOperatorName] = useState('');
   const [remarks, setRemarks] = useState('');
+  const [quality,setQuality]=useState<'normal'|'rework'|'final_reject'>(editVoucher?.qualityStatus||'normal');
+  const [qualityReason,setQualityReason]=useState(editVoucher?.qualityReason||'');
   const [rows, setRows] = useState<ReceiveRow[]>([]);
   const [operators, setOperators] = useState<StitchOperator[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [committedId,setCommittedId]=useState('');
   const [error, setErrorState] = useState<string | null>(null);
   const formRef=useRef<HTMLFormElement>(null),saveInFlight=useRef(false);
   function setError(message:string|null,field?:string){setErrorState(message);if(message)requestAnimationFrame(()=>{const form=formRef.current;if(!form)return;const target=field?form.querySelector<HTMLElement>(`[data-receive-field="${field}"]`):form.querySelector<HTMLElement>('[data-save-feedback]');reportFieldIssue(message,target||form);});}
@@ -116,14 +119,14 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
           setSelectedIssueVoucher(iv);
           const editRows: ReceiveRow[] = iv.components.map((ic) => {
             const existingReceive = editVoucher.components.find((rc) => rc.issueComponentId === ic.id);
-            const alreadyReceived = ic.receivedQty - (existingReceive?.receivedQty || 0);
+            const alreadyReceived = ic.receivedQty - ((existingReceive?.receivedQty || 0)+(existingReceive?.reworkQty||0));
             return {
               issueComponentId: ic.id,
               component: ic.component,
               issuedQty: ic.issuedQty,
               alreadyReceived,
               pendingQty: ic.issuedQty - alreadyReceived,
-              receiveQty: existingReceive?.receivedQty || 0,
+              receiveQty: (existingReceive?.receivedQty || 0)+(existingReceive?.reworkQty||0),
               unit: ic.unit,
               overrideAllowed: false,
               stitchingChargePerPc: existingReceive?.stitchingChargePerPc ?? ic.stitchingRate ?? 0,
@@ -203,16 +206,18 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
   }
 
   const totalReceiving = rows.reduce((s, r) => s + (r.receiveQty || 0), 0);
-  const totalStitchingCharges = rows.reduce((s, r) => s + (r.receiveQty || 0) * (r.stitchingChargePerPc || 0), 0);
+  const totalStitchingCharges = quality!=='normal'?0:rows.reduce((s, r) => s + (r.receiveQty || 0) * (r.stitchingChargePerPc || 0), 0);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if(saveInFlight.current)return;
+    if(saveInFlight.current||committedId)return;
     const newErrors: Record<string, string> = {};
+    if(quality!=='normal'&&!qualityReason.trim())newErrors.qualityReason='Enter a rejection / rework reason.';
+    if(editVoucher?.components.some(c=>c.reworkSourceComponentId)){setError('Use the rework completion history to review this linked receipt. Editing it here is not supported.');return;}
 
     if (!selectedIssueVoucherId) newErrors.issueVoucher = 'Please select an Issue Voucher.';
     if (!operatorId) newErrors.operator = 'Receive Operator is required.';
-    if(rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
+    if(quality==='normal'&&rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
     if (totalReceiving <= 0) newErrors.receiveQty = 'At least one component must have a receive quantity > 0.';
 
     if (Object.values(newErrors).some(Boolean)) {
@@ -224,13 +229,13 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     setFieldErrors({});
     if (!selectedIssueVoucherId) { setError('Please select an Issue Voucher.'); return; }
     if (!operatorId) { setError('Receive Operator is mandatory.'); return; }
-    if(rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
+    if(quality==='normal'&&rows.some(r=>r.receiveQty>0&&(!Number.isFinite(r.stitchingChargePerPc)||r.stitchingChargePerPc<=0)))newErrors.rate='Set the component Stitching Price in Job Card and reopen this voucher.';
     if (totalReceiving <= 0) { setError('At least one component must have a receive quantity > 0.'); return; }
 
     // Validate over-receive
     for (const r of rows) {
-      if (r.receiveQty > r.pendingQty && !r.overrideAllowed) {
-        setError(`Component "${r.component}": Receive qty (${r.receiveQty}) exceeds pending qty (${r.pendingQty}). Enable override to proceed.`, `qty-${r.issueComponentId}`);
+      if (r.receiveQty > r.pendingQty) {
+        setError(`Component "${r.component}": Receive qty (${r.receiveQty}) exceeds pending qty (${r.pendingQty}). Review the linked issue and earlier receipts.`, `qty-${r.issueComponentId}`);
         return;
       }
     }
@@ -250,7 +255,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
         partyName: iv?.partyName,
         operatorId,
         operatorName,
-        totalPiecesReceived: totalReceiving,
+        qualityStatus: quality, qualityReason: qualityReason.trim(),
+        totalPiecesReceived: quality==='rework'?0:totalReceiving,
         totalStitchingCharges,
         remarks,
       };
@@ -261,11 +267,12 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
           issueComponentId: r.issueComponentId,
           component: r.component,
           issuedQty: r.issuedQty,
-          receivedQty: r.receiveQty,
+          receivedQty: quality==='rework'?0:r.receiveQty,
+          reworkQty: quality==='rework'?r.receiveQty:0,
           balanceQty: Math.max(0, r.pendingQty - r.receiveQty),
           unit: r.unit,
-          stitchingChargePerPc: r.stitchingChargePerPc || 0,
-          totalStitchingCharge: (r.receiveQty || 0) * (r.stitchingChargePerPc || 0),
+          stitchingChargePerPc: quality==='normal'?(r.stitchingChargePerPc || 0):0,
+          totalStitchingCharge: quality==='normal'?(r.receiveQty || 0) * (r.stitchingChargePerPc || 0):0,
         }));
 
       let result;
@@ -278,6 +285,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
       if (!result) { setError('Failed to save receive voucher. Please try again.'); return; }
       onSaved();
     } catch(e) {
+      if((e as {committedId?:string}).committedId)setCommittedId((e as {committedId:string}).committedId);
       setError(erpErrorMessage(e));
     } finally {
       saveInFlight.current=false;
@@ -399,6 +407,13 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
             )}
           </div>
 
+          <section className="rounded-xl border p-3 space-y-3">
+            <label className="block text-sm font-semibold">Receipt treatment
+              <SearchableSelect disabled={!!editVoucher||saving} value={quality} onChange={e=>setQuality(e.target.value as typeof quality)} className="input-field mt-1"><option value="normal">Normal Accepted — payable, moves forward</option><option value="rework">Repair / Rework — hold, not yet payable</option><option value="final_reject">Final Reject — moves forward, stitching ₹0</option></SearchableSelect>
+            </label>
+            <p className="text-xs text-muted-foreground">Each receipt records one treatment. Use another receipt for quantities with a different treatment. Complete held repairs from Rework Pending.</p>
+            {quality!=='normal'&&<label className="block text-sm">Reason *<input data-receive-field="qualityReason" required value={qualityReason} onChange={e=>setQualityReason(e.target.value)} className="input-field mt-1"/></label>}
+          </section>
           {/* Component-wise Receive */}
           {rows.length > 0 && (
             <div className="flex flex-col gap-3">
@@ -415,7 +430,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                       <th className="text-right px-3 py-2 text-xs font-600 text-muted-foreground">Receive Now</th>
                       <th className="text-right px-3 py-2 text-xs font-600 text-muted-foreground">Rate/Pc (₹)</th>
                       <th className="text-right px-3 py-2 text-xs font-600 text-muted-foreground">Charges (₹)</th>
-                      <th className="text-center px-3 py-2 text-xs font-600 text-muted-foreground">Override</th>
+                      <th className="text-center px-3 py-2 text-xs font-600 text-muted-foreground">Check</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -424,7 +439,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                       const sizeLabel = r.sizeBreakdown && r.sizeBreakdown.length > 0
                         ? r.sizeBreakdown.map((s) => s.size).join(', ')
                         : '—';
-                      const lineCharge = (r.receiveQty || 0) * (r.stitchingChargePerPc || 0);
+                      const lineCharge = quality!=='normal'?0:(r.receiveQty || 0) * (r.stitchingChargePerPc || 0);
                       return (
                         <tr key={r.issueComponentId} className="border-b border-border/50">
                           <td className="px-3 py-2.5 font-600 text-foreground text-xs">{r.component}</td>
@@ -447,7 +462,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                               type="number"
                               min="0"
                               step="0.01"
-                              data-receive-field="rate" readOnly value={r.stitchingChargePerPc || ''}
+                              data-receive-field="rate" readOnly value={quality==='normal'?(r.stitchingChargePerPc || ''):0}
                               title="Rate from Stitching Issue / Job Card; edit rates only in Job Card"
                               onChange={(e) => updateChargePerPc(r.issueComponentId, parseFloat(e.target.value) || 0)}
                               className="input-field text-sm tabular-nums w-24 text-right"
@@ -455,19 +470,10 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
                             />
                           </td>
                           <td className="px-3 py-2.5 text-right tabular-nums text-xs font-600 text-primary">
-                            {lineCharge > 0 ? `₹${lineCharge.toFixed(2)}` : '—'}
+                            {`₹${lineCharge.toFixed(2)}`}
                           </td>
                           <td className="px-3 py-2.5 text-center">
-                            {isOver && (
-                              <button
-                                type="button"
-                                onClick={() => toggleOverride(r.issueComponentId)}
-                                title="Allow over-receive"
-                                className={`p-1 rounded-lg transition-colors ${r.overrideAllowed ? 'bg-warning-bg text-warning' : 'bg-muted text-muted-foreground hover:text-warning'}`}
-                              >
-                                <AlertTriangle size={13} />
-                              </button>
-                            )}
+                            {isOver && <AlertTriangle size={13} className="text-danger mx-auto"/>}
                             {!isOver && r.receiveQty > 0 && r.receiveQty === r.pendingQty && (
                               <CheckCircle size={13} className="text-success mx-auto" />
                             )}
@@ -501,7 +507,7 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="btn-secondary flex-1">Cancel</button>
-            <button type="submit" disabled={saving} className="btn-primary flex-1">
+            <button type="submit" disabled={saving||!!committedId} className="btn-primary flex-1">
               {saving ? 'Saving...' : editVoucher ? 'Update Receive Voucher' : 'Save Receive Voucher'}
             </button>
           </div>

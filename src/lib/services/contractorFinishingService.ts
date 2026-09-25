@@ -17,6 +17,7 @@ export interface ContractorIssueItem {
 }
 
 export interface ContractorIssueVoucher {
+  sourceQuality?: string;
   sourceOperatorName?: string;
   sourceOperatorUnavailable?: boolean;
   id: string;
@@ -106,6 +107,7 @@ export interface PendingContractorItem {
 // ─── NEW: Stitching Receive Reference types ───────────────────────────────────
 
 export interface StitchReceiveRef {
+  qualityStatus?: string;
   id: string;
   voucherNo: string;
   voucherDate: string;
@@ -290,12 +292,9 @@ export const contractorFinishingService = {
   // ── Voucher Number Generation ──────────────────────────────────────────────
 
   async getNextIssueVoucherNo(): Promise<string> {
-    const supabase = createClient();
-    const { count } = await supabase
-      .from('contractor_issue_vouchers')
-      .select('*', { count: 'exact', head: true });
-    const num = (count || 0) + 1;
-    return `CIV-${String(num).padStart(4, '0')}`;
+    const {data,error}=await createClient().rpc('erp_next_contractor_issue_number');
+    if(error)throw new Error(error.message);
+    return String(data);
   },
 
   async getNextReceiveVoucherNo(): Promise<string> {
@@ -326,17 +325,17 @@ export const contractorFinishingService = {
       .order('created_at', { ascending: false });
     if (error) { console.error('[getIssueVouchers]', error); return []; }
     const vouchers=(data || []).map(rowToIssueVoucher);
-    const receipts: {id:string;voucher_no:string;operator_name:string|null}[]=[];
+    const receipts: {id:string;voucher_no:string;operator_name:string|null;quality_status?:string}[]=[];
     let unavailable=false;
     for(const field of ['id','voucher_no'] as const){
       const keys=Array.from(new Set(vouchers.map(v=>field==='id'?v.stitchReceiveVoucherId:(!v.stitchReceiveVoucherId?v.stitchReceiveRef:undefined)).filter(Boolean))) as string[];
       for(let i=0;i<keys.length;i+=100){
-        const result=await supabase.from('stitch_receive_vouchers').select('id,voucher_no,operator_name').in(field,keys.slice(i,i+100));
+        const result=await supabase.from('stitch_receive_vouchers').select('id,voucher_no,operator_name,quality_status').in(field,keys.slice(i,i+100));
         if(result.error){unavailable=true;continue;}
         receipts.push(...result.data||[]);
       }
     }
-    return vouchers.map(v=>{const matches=receipts.filter(r=>v.stitchReceiveVoucherId?r.id===v.stitchReceiveVoucherId:r.voucher_no===v.stitchReceiveRef);return {...v,sourceOperatorName:matches.length===1?matches[0].operator_name||undefined:undefined,sourceOperatorUnavailable:unavailable};});
+    return vouchers.map(v=>{const matches=receipts.filter(r=>v.stitchReceiveVoucherId?r.id===v.stitchReceiveVoucherId:r.voucher_no===v.stitchReceiveRef);return {...v,sourceOperatorName:matches.length===1?matches[0].operator_name||undefined:undefined,sourceQuality:matches.length===1?matches[0].quality_status:undefined,sourceOperatorUnavailable:unavailable};});
   },
 
   async createIssueVoucher(
@@ -361,7 +360,7 @@ export const contractorFinishingService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError)throw new Error(readError.message);return rowToIssueVoucher(full);
+      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError||!full)throw Object.assign(new Error('Voucher saved, but details could not reload. Close the form and refresh the voucher list; do not save it again.'),{committedId:data.id});return rowToIssueVoucher(full);
   },
 
   async deleteIssueVoucher(id: string): Promise<boolean> {
@@ -393,7 +392,7 @@ export const contractorFinishingService = {
         stitch_receive_voucher_id: voucher.stitchReceiveVoucherId || null,
         remarks: voucher.remarks || null,
         updated_by: username || null,
-      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError)throw new Error(readError.message);return rowToIssueVoucher(full);
+      },p_lines:items.map(it=>({item:it.item,colour:it.colour||null,size:it.size||null,issued_qty:it.issuedQty,received_qty:0,balance_qty:it.issuedQty}))});if(error)throw new Error(error.message);const {data:full,error:readError}=await supabase.from('contractor_issue_vouchers').select('*, contractor_issue_items(*)').eq('id',data.id).single();if(readError||!full)throw Object.assign(new Error('Voucher saved, but details could not reload. Close the form and refresh the voucher list; do not save it again.'),{committedId:data.id});return rowToIssueVoucher(full);
   },
 
   // ── Pending Items for Receive ──────────────────────────────────────────────
@@ -495,7 +494,7 @@ export const contractorFinishingService = {
   async getStitchReceiveRefs(): Promise<StitchReceiveRef[]> {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from('stitch_receive_vouchers').select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, total_pieces_received, stitch_receive_components(*)').order('created_at', { ascending: false });
+      .from('stitch_receive_vouchers').select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, quality_status, total_pieces_received, stitch_receive_components(*)').order('created_at', { ascending: false });
     if (error) throw new Error('Could not load stitching receipts: '+error.message);
 
     // Load size references in batches, not one request per dropdown option.
@@ -514,7 +513,8 @@ export const contractorFinishingService = {
       }
     }
 
-    return (data || []).map((row: any): StitchReceiveRef => ({
+    return (data || []).filter((row:any)=>row.quality_status!=='rework').map((row: any): StitchReceiveRef => ({
+      qualityStatus: row.quality_status||'normal',
       id: row.id,
       voucherNo: row.voucher_no,
       voucherDate: row.voucher_date,
@@ -540,7 +540,7 @@ export const contractorFinishingService = {
 
     const { data: rv, error: rvErr } = await supabase
       .from('stitch_receive_vouchers')
-      .select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, total_pieces_received, stitch_receive_components(*)')
+      .select('id, voucher_no, voucher_date, job_card_ref, style_name, party_name, operator_name, quality_status, total_pieces_received, stitch_receive_components(*)')
       .eq('id', stitchReceiveVoucherId)
       .single();
 
@@ -576,6 +576,7 @@ export const contractorFinishingService = {
 
     return {
       id: rv.id,
+      qualityStatus: rv.quality_status||'normal',
       voucherNo: rv.voucher_no,
       voucherDate: rv.voucher_date,
       jobCardRef: rv.job_card_ref || '',

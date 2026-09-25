@@ -17,6 +17,7 @@ import { useRealtimeTable } from '@/lib/hooks/useRealtimeTable';
 import { useAuth } from '@/contexts/AuthContext';
 import StitchIssueModal from './StitchIssueModal';
 import StitchReceiveModal from './StitchReceiveModal';
+import StitchReworkPanel from './StitchReworkPanel';
 import { useSearchParams } from 'next/navigation';
 
 type ActiveTab = 'issue' | 'receive' | 'operator-reports' | 'audit';
@@ -522,7 +523,7 @@ export default function StitchingContent() {
                   ) : (
                     groupVouchers.map((v) => (
                       <tr key={v.id} className="border-b border-border/50 hover:bg-muted/20 transition-colors">
-                        <td className="px-4 py-3 font-600 text-success text-xs">{v.voucherNo}</td>
+                        <td className="px-4 py-3 font-600 text-success text-xs">{v.voucherNo}<small className="block text-amber-800">{v.qualityStatus==='final_reject'?'Final Reject · Stitching ₹0':v.qualityStatus==='rework'?'Repair / Rework Hold':v.components.some(c=>c.reworkSourceComponentId)?'Repair accepted':''}</small></td>
                         <td className="px-4 py-3 text-xs text-muted-foreground">{v.voucherDate}</td>
                         <td className="px-4 py-3 text-xs font-600 text-primary">{v.issueVoucherNo}</td>
                         <td className="px-4 py-3 text-xs font-600 text-foreground">{v.jobCardRef}</td>
@@ -802,6 +803,7 @@ export default function StitchingContent() {
         />
       )}
 
+      <StitchReworkPanel onSaved={()=>{void loadReceiveVouchers();void loadIssueVouchers();}}/>
       {/* Receive Modal */}
       {showReceiveModal && (
         <StitchReceiveModal

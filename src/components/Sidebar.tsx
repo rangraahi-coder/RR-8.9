@@ -122,7 +122,7 @@ export default function Sidebar({ lang = 'hi' }: SidebarProps) {
       </div>
 
       {/* Nav Groups */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 scrollbar-hide">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden py-3 scrollbar-thin">
         {groups.map((group) => {
           const items = visibleNavItems.filter((i) => i.group === group);
           if (items.length === 0) return null;

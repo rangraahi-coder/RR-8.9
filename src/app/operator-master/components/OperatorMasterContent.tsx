@@ -47,6 +47,7 @@ export default function OperatorMasterContent() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+  useEffect(() => { setSearch(new URLSearchParams(window.location.search).get('search') || ''); }, []);
   const [filterActive, setFilterActive] = useState<'all' | 'active' | 'inactive'>('all');
 
   useEffect(() => { loadOperators(); }, []);

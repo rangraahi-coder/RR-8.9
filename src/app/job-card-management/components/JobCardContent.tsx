@@ -245,16 +245,16 @@ export default function JobCardContent({ lang, searchQuery = '' }: JobCardConten
 
       {/* Filters */}
       <div className="card-surface p-4">
-        <div className="flex flex-col lg:flex-row gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
-          <div className="relative flex-1">
+          <div className="relative w-full min-w-0">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={search}
               onChange={(e) => { setSearch(e.target.value); }}
               placeholder={lang === 'hi' ? 'जॉब कार्ड नं, स्टाइल, पार्टी खोजें...' : 'Search job card no, style, party...'}
-              className="input-field pl-9"
+              className="input-field w-full pl-9 text-foreground"
             />
           </div>
 

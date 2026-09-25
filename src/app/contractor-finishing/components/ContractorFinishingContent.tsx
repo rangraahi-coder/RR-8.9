@@ -128,6 +128,7 @@ export default function ContractorFinishingContent() {
       v.contractorName.toLowerCase().includes(q) ||
       v.process.toLowerCase().includes(q) ||
       (v.sourceOperatorName||'').toLowerCase().includes(q) ||
+      [v.item,...v.items.map(it=>it.item)].some(item=>(item||'').toLowerCase().includes(q)) ||
       [v.size,...v.items.map(it=>it.size)].some(size=>(size||'').toLowerCase().includes(q))
     );
   });
@@ -370,6 +371,7 @@ export default function ContractorFinishingContent() {
                     <tr className="border-b border-border">
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Voucher No</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Date</th>
+                      <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Component</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Size</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Stitch Ref</th>
                       <th className="text-left py-2 px-3 text-xs font-600 text-muted-foreground font-body">Contractor</th>
@@ -381,18 +383,19 @@ export default function ContractorFinishingContent() {
                     </tr>
                   </thead>
                   <tbody>
-                    {<VoucherReportRows rows={filteredIssue} jobs={jobCards} columns={10}>{(v) => {
+                    {<VoucherReportRows rows={filteredIssue} jobs={jobCards} columns={11}>{(v) => {
                       const received = v.items.reduce((s, it) => s + it.receivedQty, 0);
                       const bal = v.totalIssued - received;
                       return (
                         <tr key={v.id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                           <td className="py-2.5 px-3 font-600 text-primary font-body">{v.voucherNo}</td>
                           <td className="py-2.5 px-3 text-muted-foreground font-body">{v.voucherDate}</td>
+                          <td className="py-2.5 px-3 font-body">{Array.from(new Set(v.items.map(it=>it.item?.trim()).filter(Boolean))).join(', ')||v.item||'—'}</td>
                           <td className="py-2.5 px-3 font-body">{Array.from(new Set(v.items.map(it=>it.size?.trim()).filter(Boolean))).join(', ')||v.size||'—'}</td>
                           <td className="py-2.5 px-3 font-body">
                             {v.stitchReceiveRef ? (
                               <span className="inline-flex items-center gap-1 text-blue-700 text-xs font-600">
-                                <Link2 size={10} />{v.stitchReceiveRef}
+                                <Link2 size={10} />{v.stitchReceiveRef}{v.sourceQuality==='final_reject'?' · Final Reject · Stitching ₹0':''}
                               </span>
                             ) : <span className="text-muted-foreground text-xs">—</span>}
                           </td>

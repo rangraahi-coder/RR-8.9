@@ -18,6 +18,7 @@ export interface StitchOperator {
 }
 
 export interface StitchIssueComponent {
+  partNumber?: string;
   cuttingComponentId?: string;
   stitchingRate?: number;
   id: string;
@@ -52,6 +53,8 @@ export interface StitchIssueVoucher {
 }
 
 export interface StitchReceiveComponent {
+  reworkQty?: number;
+  reworkSourceComponentId?: string;
   id: string;
   receiveVoucherId: string;
   issueComponentId: string;
@@ -66,6 +69,8 @@ export interface StitchReceiveComponent {
 }
 
 export interface StitchReceiveVoucher {
+  qualityStatus?: 'normal'|'rework'|'final_reject';
+  qualityReason?: string;
   id: string;
   voucherNo: string;
   voucherDate: string;
@@ -130,6 +135,7 @@ function rowToIssueComponent(row: any): StitchIssueComponent {
   return {
     id: row.id,
     issueVoucherId: row.issue_voucher_id,
+    partNumber: row.part_number || undefined,
     component: row.component, cuttingComponentId: row.cutting_component_id, stitchingRate: row.stitching_rate == null ? undefined : Number(row.stitching_rate),
     issuedQty: row.issued_qty || 0,
     receivedQty: row.received_qty || 0,
@@ -168,6 +174,8 @@ function rowToReceiveComponent(row: any): StitchReceiveComponent {
   return {
     id: row.id,
     receiveVoucherId: row.receive_voucher_id,
+    reworkQty: row.rework_qty || 0,
+    reworkSourceComponentId: row.rework_source_component_id || undefined,
     issueComponentId: row.issue_component_id,
     component: row.component,
     issuedQty: row.issued_qty || 0,
@@ -183,6 +191,8 @@ function rowToReceiveComponent(row: any): StitchReceiveComponent {
 function rowToReceiveVoucher(row: any): StitchReceiveVoucher {
   return {
     id: row.id,
+    qualityStatus: row.quality_status || 'normal',
+    qualityReason: row.quality_reason || '',
     voucherNo: row.voucher_no,
     voucherDate: row.voucher_date,
     issueVoucherId: row.issue_voucher_id,
@@ -353,7 +363,7 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({part_number:c.partNumber||null,component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
     if(!data?.id)throw new Error('Database did not return a voucher confirmation. Check the voucher list before retrying.');
     try {
@@ -380,7 +390,7 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         updated_by: username || null,
         updated_at: new Date().toISOString(),
-      },p_lines:components.map(c=>({component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({part_number:c.partNumber||null,component:c.component,cutting_component_id:c.cuttingComponentId,stitching_rate:c.stitchingRate,issued_qty:c.issuedQty,received_qty:0,pending_qty:c.issuedQty,unit:c.unit||'Pcs',size_breakdown:c.sizeBreakdown?JSON.stringify(c.sizeBreakdown):null,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
     if(!data?.id)throw new Error('Database did not return a voucher confirmation. Check the voucher list before retrying.');
     try {
@@ -436,6 +446,8 @@ export const stitchingVoucherService = {
     const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_receive',p_id:null,p_header:{
         voucher_no: voucher.voucherNo,
         voucher_date: voucher.voucherDate,
+        quality_status: voucher.qualityStatus || 'normal',
+        quality_reason: voucher.qualityReason || null,
         issue_voucher_id: voucher.issueVoucherId,
         issue_voucher_no: voucher.issueVoucherNo,
         job_card_ref: voucher.jobCardRef,
@@ -448,9 +460,11 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         created_by: username || null,
         updated_by: username || null,
-      },p_lines:components.map(c=>({issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({rework_qty:c.reworkQty||0,rework_source_component_id:c.reworkSourceComponentId||null,issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
-    return stitchingVoucherService.getReceiveVoucherById(data.id);
+    const saved=await stitchingVoucherService.getReceiveVoucherById(data.id);
+    if(!saved)throw Object.assign(new Error('Voucher saved, but details could not reload. Close the form and refresh the voucher list; do not save it again.'),{committedId:data.id});
+    return saved;
   },
 
   async updateReceiveVoucher(
@@ -462,6 +476,8 @@ export const stitchingVoucherService = {
     const supabase=createClient();
     const {data,error}=await supabase.rpc('erp_save_team_voucher',{p_kind:'stitch_receive',p_id:id,p_header:{
         voucher_date: voucher.voucherDate,
+        quality_status: voucher.qualityStatus || 'normal',
+        quality_reason: voucher.qualityReason || null,
         operator_id: voucher.operatorId || null,
         operator_name: voucher.operatorName,
         total_pieces_received: voucher.totalPiecesReceived,
@@ -469,9 +485,11 @@ export const stitchingVoucherService = {
         remarks: voucher.remarks || null,
         updated_by: username || null,
         updated_at: new Date().toISOString(),
-      },p_lines:components.map(c=>({issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
+      },p_lines:components.map(c=>({rework_qty:c.reworkQty||0,rework_source_component_id:c.reworkSourceComponentId||null,issue_component_id:c.issueComponentId,component:c.component,issued_qty:c.issuedQty,received_qty:c.receivedQty,balance_qty:c.balanceQty,unit:c.unit||'Pcs',stitching_charge_per_pc:c.stitchingChargePerPc||0,remarks:c.remarks||null}))});
     if(error)throw new Error(error.message);
-    return stitchingVoucherService.getReceiveVoucherById(data.id);
+    const saved=await stitchingVoucherService.getReceiveVoucherById(data.id);
+    if(!saved)throw Object.assign(new Error('Voucher saved, but details could not reload. Close the form and refresh the voucher list; do not save it again.'),{committedId:data.id});
+    return saved;
   },
 
   async deleteReceiveVoucher(id: string): Promise<boolean> {
