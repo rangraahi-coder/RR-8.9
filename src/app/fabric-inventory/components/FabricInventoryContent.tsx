@@ -3,7 +3,7 @@ import SearchableSelect from '@/components/SearchableSelect';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import {ReceiptJobSelect} from '@/components/ReceiptJobLink';
+import {FabricItemJobSelect} from '@/components/ReceiptJobLink';
 import {ViewModal,EditModal} from './FabricVoucherModals';
 import {erpErrorMessage} from '@/lib/erpError';
 import type {FabricVoucherEdit} from '@/lib/services/fabricInventoryService';
@@ -197,6 +197,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
   const [voucherCount, setVoucherCount] = useState(0);
   const [voucherNo, setVoucherNo] = useState('FV-001');
   const [source, setSource] = useState('');
+  const [entryJobCard, setEntryJobCard] = useState<string[]>([]);
   const [lines, setLines] = useState<FabricVoucherLine[]>([newLine()]);
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -525,6 +526,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
         voucherDate,
         source: source.trim() || 'Direct Entry',
         remarks: roll.remarks,
+        jobCardId: entryJobCard[0] || null,
         rollNo: roll.rollNo, width: line.width,
       }))
     );
@@ -552,6 +554,7 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
     setVoucherNo(generateVoucherNo(newCount));
     setVoucherDate(new Date().toISOString().slice(0, 10));
     setSource('');
+    setEntryJobCard([]);
     setErrors({});
     setSubmitError(null);
     setSubmitted(false);
@@ -782,6 +785,15 @@ export default function FabricInventoryContent({ lang = 'en' }: FabricInventoryC
                     </option>
                   ))}
                 </SearchableSelect>
+              </div>
+              <div className="sm:col-span-3">
+                <FabricItemJobSelect
+                  value={entryJobCard}
+                  onChange={setEntryJobCard}
+                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  Select the Item first. If it has one Job Card, it links automatically; if it has multiple Job Cards, select the required one.
+                </p>
               </div>
             </div>
           </div>
