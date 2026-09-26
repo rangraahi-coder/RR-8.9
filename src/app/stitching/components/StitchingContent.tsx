@@ -61,6 +61,7 @@ export default function StitchingContent() {
   const [deleteReceiveTarget, setDeleteReceiveTarget] = useState<StitchReceiveVoucher | null>(null);
   const [viewReceiveVoucher, setViewReceiveVoucher] = useState<StitchReceiveVoucher | null>(null);
   const [receiveSearch, setReceiveSearch] = useState('');
+  const [showPendingVouchers, setShowPendingVouchers] = useState(false);
 
   // Operator Reports
   const [operators, setOperators] = useState<StitchOperator[]>([]);
@@ -128,6 +129,10 @@ export default function StitchingContent() {
   const totalReceived = receiveVouchers.reduce((s, v) => s + v.totalPiecesReceived, 0);
   const openVouchers = issueVouchers.filter((v) => v.status === 'open' || v.status === 'partially_received').length;
   const fullyReceived = issueVouchers.filter((v) => v.status === 'fully_received').length;
+  const pendingIssueVouchers = useMemo(
+    () => issueVouchers.filter((v) => v.status === 'open' || v.status === 'partially_received'),
+    [issueVouchers]
+  );
 
   // Filtered Issue Vouchers
   const filteredIssueVouchers = useMemo(() => {
@@ -314,8 +319,15 @@ export default function StitchingContent() {
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Open / Partial</p>
-          <p className="text-2xl font-700 text-warning mt-1">{openVouchers}</p>
-          <p className="text-xs text-muted-foreground">Pending receive</p>
+          <button
+            type="button"
+            onClick={() => setShowPendingVouchers(true)}
+            className="text-2xl font-700 text-warning mt-1 hover:underline underline-offset-2 cursor-pointer"
+            title="View all pending stitching vouchers"
+          >
+            {openVouchers}
+          </button>
+          <p className="text-xs text-muted-foreground">Pending receive · Click to view</p>
         </div>
         <div className="bg-card border border-border rounded-xl p-4">
           <p className="text-xs text-muted-foreground font-500">Fully Received</p>
@@ -892,6 +904,71 @@ export default function StitchingContent() {
                 <div className="text-xs text-muted-foreground bg-muted/20 rounded-lg px-3 py-2">
                   <span className="font-600">Remarks:</span> {viewReceiveVoucher.remarks}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Stitching Vouchers */}
+      {showPendingVouchers && (
+        <div className="erp-modal-enter fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-card rounded-2xl shadow-modal w-full max-w-5xl max-h-[90vh] overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-700 text-foreground">Pending Stitching Vouchers</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {pendingIssueVouchers.length} open / partially received vouchers pending receive
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPendingVouchers(false)}
+                className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+                aria-label="Close pending vouchers"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="overflow-auto max-h-[calc(90vh-90px)]">
+              {pendingIssueVouchers.length === 0 ? (
+                <div className="py-16 text-center text-muted-foreground text-sm">
+                  No pending stitching vouchers.
+                </div>
+              ) : (
+                <table className="w-full text-sm min-w-[850px]">
+                  <thead className="sticky top-0 bg-card z-10">
+                    <tr className="bg-muted/40 border-b border-border">
+                      <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Voucher No</th>
+                      <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Date</th>
+                      <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Job Card</th>
+                      <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Style</th>
+                      <th className="text-left px-4 py-3 text-xs font-600 text-muted-foreground">Operator</th>
+                      <th className="text-right px-4 py-3 text-xs font-600 text-muted-foreground">Issued</th>
+                      <th className="text-right px-4 py-3 text-xs font-600 text-muted-foreground">Pending</th>
+                      <th className="text-center px-4 py-3 text-xs font-600 text-muted-foreground">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pendingIssueVouchers.map((v) => {
+                      const pendingQty = v.components.reduce((sum, component) => sum + component.pendingQty, 0);
+                      const receivedQty = v.components.reduce((sum, component) => sum + component.receivedQty, 0);
+                      const issuedQty = v.components.reduce((sum, component) => sum + component.issuedQty, 0);
+                      return (
+                        <tr key={v.id} className="border-b border-border/50 hover:bg-muted/20">
+                          <td className="px-4 py-3 font-600 text-primary text-xs">{v.voucherNo}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{v.voucherDate}</td>
+                          <td className="px-4 py-3 text-xs font-600 text-foreground">{v.jobCardRef}</td>
+                          <td className="px-4 py-3 text-xs text-muted-foreground">{v.styleName || '—'}</td>
+                          <td className="px-4 py-3 text-xs font-600 text-foreground">{v.operatorName}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-xs">{issuedQty.toLocaleString('en-IN')}</td>
+                          <td className="px-4 py-3 text-right tabular-nums text-xs font-700 text-warning">{pendingQty.toLocaleString('en-IN')}</td>
+                          <td className="px-4 py-3 text-center"><StatusBadge status={v.status} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           </div>
