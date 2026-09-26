@@ -54,12 +54,11 @@ export function FabricItemJobSelect({
 
   const itemKey = (j: any) => String(j.style_en || j.design_code || j.style_no || '').trim();
   const items = Array.from(
-    new Map(
-      jobs
-        .map((j) => [itemKey(j).toLowerCase(), { key: itemKey(j), label: itemKey(j) }])
-        .filter(([key, item]) => Boolean(key) && Boolean((item as any).label))
-    ).values()
-  );
+    new Set(jobs.map((j) => itemKey(j).toLowerCase()).filter(Boolean))
+  ).map((key) => {
+    const label = jobs.find((j) => itemKey(j).toLowerCase() === key);
+    return { key, label: itemKey(label) };
+  });
 
   const itemJobs = item
     ? jobs.filter((j) => itemKey(j).toLowerCase() === item.toLowerCase())
