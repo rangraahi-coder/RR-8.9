@@ -3,7 +3,7 @@ import SearchableSelect from '@/components/SearchableSelect';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
-import {FabricItemJobSelect} from '@/components/ReceiptJobLink';
+import {FabricItemJobSelect, ReceiptJobSelect} from '@/components/ReceiptJobLink';
 import {ViewModal,EditModal} from './FabricVoucherModals';
 import {erpErrorMessage} from '@/lib/erpError';
 import type {FabricVoucherEdit} from '@/lib/services/fabricInventoryService';
