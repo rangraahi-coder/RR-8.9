@@ -69,23 +69,29 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  // Filter issue vouchers by selected job card
-  const filteredIssueVouchers = useMemo(() => {
-    const openVouchers = allIssueVouchers.filter(
-      (iv) => iv.status !== 'fully_received' && iv.status !== 'closed'
+  // Receive flow is operator-first. Every downstream option must belong to the selected operator.
+  const operatorIssueVouchers = useMemo(() => {
+    if (!operatorId) return [];
+    return allIssueVouchers.filter(
+      (iv) =>
+        iv.operatorId === operatorId &&
+        iv.status !== 'fully_received' &&
+        iv.status !== 'closed'
     );
-    if (!selectedJobCardNo) return openVouchers;
-    return openVouchers.filter((iv) => iv.jobCardRef === selectedJobCardNo);
-  }, [allIssueVouchers, selectedJobCardNo]);
+  }, [allIssueVouchers, operatorId]);
 
-  // Job cards that have open issue vouchers
+  // Job cards are derived only from open issue vouchers linked to the selected operator.
   const jobCardsWithOpenVouchers = useMemo(() => {
-    const openVouchers = allIssueVouchers.filter(
-      (iv) => iv.status !== 'fully_received' && iv.status !== 'closed'
-    );
-    const jobCardNos = new Set(openVouchers.map((iv) => iv.jobCardRef));
+    const jobCardNos = new Set(operatorIssueVouchers.map((iv) => iv.jobCardRef));
     return jobCards.filter((jc) => jobCardNos.has(jc.jobCardNo));
-  }, [allIssueVouchers, jobCards]);
+  }, [operatorIssueVouchers, jobCards]);
+
+  // Issue vouchers are further narrowed by the selected job card.
+  const filteredIssueVouchers = useMemo(() => {
+    if (!operatorId) return [];
+    if (!selectedJobCardNo) return operatorIssueVouchers;
+    return operatorIssueVouchers.filter((iv) => iv.jobCardRef === selectedJobCardNo);
+  }, [operatorId, operatorIssueVouchers, selectedJobCardNo]);
 
   async function loadIssueWithRates(id:string) {
     const iv=await stitchingVoucherService.getIssueVoucherById(id);
@@ -182,7 +188,18 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
     setOperatorId(val);
     const op = operators.find((o) => o.id === val);
     setOperatorName(op?.operatorName || '');
-    if (val) setFieldErrors((prev) => ({ ...prev, operator: '' }));
+
+    // Operator is the parent filter. Changing it must clear every dependent selection.
+    setSelectedJobCardNo('');
+    setSelectedIssueVoucherId('');
+    setSelectedIssueVoucher(null);
+    setRows([]);
+    setFieldErrors((prev) => ({
+      ...prev,
+      operator: val ? '' : prev.operator,
+      jobCard: '',
+      issueVoucher: '',
+    }));
   }
 
   function updateReceiveQty(issueComponentId: string, qty: number) {
@@ -326,39 +343,60 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
             </div>
           </div>
 
-          {/* Step 1: Job Card Selection */}
+          {/* Step 1: Receive Operator — parent filter for the entire voucher */}
+          {/* Receive Operator */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-600 text-muted-foreground flex items-center gap-1.5">
-              Step 1: Select Job Card
-              <span className="text-[10px] text-muted-foreground font-400 bg-muted px-1.5 py-0.5 rounded-md">Filters issue vouchers below</span>
+              Step 1: Select Receive Operator *
+              <span className="text-[10px] text-primary font-500 bg-primary/10 px-1.5 py-0.5 rounded-md">This controls all options below</span>
+            </label>
+            <SearchableSelect data-receive-field="operator" required value={operatorId} onChange={(e) => handleOperatorChange(e.target.value)} className={`input-field text-sm ${fieldErrors.operator ? 'border-danger ring-1 ring-danger/30' : ''}`}>
+              <option value="">-- Select Receive Operator --</option>
+              {operators.map((op) => (
+                <option key={op.id} value={op.id}>{op.operatorCode} — {op.operatorName} ({op.process || op.department})</option>
+              ))}
+            </SearchableSelect>
+            {fieldErrors.operator && <p className="text-xs text-danger mt-0.5">{fieldErrors.operator}</p>}
+            {operators.length === 0 && (
+              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No active operators found. Add operators in Operator Master first.</p>
+            )}
+          </div>
+
+
+
+          {/* Step 2: Job Card Selection */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-600 text-muted-foreground flex items-center gap-1.5">
+              Step 2: Select Job Card
+              <span className="text-[10px] text-muted-foreground font-400 bg-muted px-1.5 py-0.5 rounded-md">Only job cards issued to selected operator</span>
             </label>
             <SearchableSelect
               value={selectedJobCardNo}
               onChange={(e) => handleJobCardChange(e.target.value)}
               className="input-field text-sm"
-              disabled={!!editVoucher}
+              disabled={!!editVoucher || !operatorId}
             >
-              <option value="">-- All Job Cards (or select to filter) --</option>
+              <option value="">{operatorId ? '-- Select Job Card --' : '-- Select operator first --'}</option>
               {jobCardsWithOpenVouchers.map((jc) => (
                 <option key={jc.id} value={jc.jobCardNo}>{jc.jobCardNo} — {jc.styleEn} ({jc.partyName})</option>
               ))}
             </SearchableSelect>
-            {jobCardsWithOpenVouchers.length === 0 && !editVoucher && (
-              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No job cards with open issue vouchers found.</p>
+            {operatorId && jobCardsWithOpenVouchers.length === 0 && !editVoucher && (
+              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No open stitching issues are linked to this operator.</p>
             )}
           </div>
 
-          {/* Step 2: Issue Voucher Selection */}
+          {/* Step 3: Issue Voucher Selection */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-600 text-muted-foreground">Step 2: Select Issue Voucher *</label>
+            <label className="text-xs font-600 text-muted-foreground">Step 3: Select Issue Voucher *</label>
             <SearchableSelect
               required
               data-receive-field="issueVoucher" value={selectedIssueVoucherId}
               onChange={(e) => handleIssueVoucherChange(e.target.value)}
               className={`input-field text-sm ${fieldErrors.issueVoucher ? 'border-danger ring-1 ring-danger/30' : ''}`}
-              disabled={!!editVoucher}
+              disabled={!!editVoucher || !operatorId}
             >
-              <option value="">-- Select Issue Voucher --</option>
+              <option value="">{operatorId ? '-- Select Issue Voucher --' : '-- Select operator first --'}</option>
               {filteredIssueVouchers.map((iv) => (
                 <option key={iv.id} value={iv.id}>
                   {iv.voucherNo} — JC: {iv.jobCardRef} ({iv.styleName || 'N/A'}) [{iv.status.replace(/_/g, ' ')}]
@@ -366,8 +404,8 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
               ))}
             </SearchableSelect>
             {fieldErrors.issueVoucher && <p className="text-xs text-danger mt-0.5">{fieldErrors.issueVoucher}</p>}
-            {filteredIssueVouchers.length === 0 && !editVoucher && (
-              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No open issue vouchers found. Create a Stitching Issue first.</p>
+            {operatorId && filteredIssueVouchers.length === 0 && !editVoucher && (
+              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No open issue vouchers are linked to this operator.</p>
             )}
           </div>
 
@@ -388,24 +426,6 @@ export default function StitchReceiveModal({ jobCards, onClose, onSaved, editVou
               </div>
             </div>
           )}
-
-          {/* Receive Operator */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-600 text-muted-foreground flex items-center gap-1.5">
-              Step 3: Receive Operator *
-              <span className="text-[10px] text-primary font-500 bg-primary/10 px-1.5 py-0.5 rounded-md">Can differ from Issue Operator</span>
-            </label>
-            <SearchableSelect data-receive-field="operator" required value={operatorId} onChange={(e) => handleOperatorChange(e.target.value)} className={`input-field text-sm ${fieldErrors.operator ? 'border-danger ring-1 ring-danger/30' : ''}`}>
-              <option value="">-- Select Receive Operator --</option>
-              {operators.map((op) => (
-                <option key={op.id} value={op.id}>{op.operatorCode} — {op.operatorName} ({op.process || op.department})</option>
-              ))}
-            </SearchableSelect>
-            {fieldErrors.operator && <p className="text-xs text-danger mt-0.5">{fieldErrors.operator}</p>}
-            {operators.length === 0 && (
-              <p className="text-xs text-warning flex items-center gap-1"><Info size={11} /> No active operators found. Add operators in Operator Master first.</p>
-            )}
-          </div>
 
           <section className="rounded-xl border p-3 space-y-3">
             <label className="block text-sm font-semibold">Receipt treatment
