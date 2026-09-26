@@ -58,6 +58,11 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
   const [step, setStep] = useState(1);
   const [selectedSizes, setSelectedSizes] = useState<string[]>(editCard?.sizes ?? []);
   const [selectedColors, setSelectedColors] = useState<string[]>(editCard?.colors ?? []);
+  const [customColors, setCustomColors] = useState<string[]>(() =>
+    (editCard?.colors ?? []).filter((color) => !COLOR_OPTIONS.some((opt) => opt.toLowerCase() === color.toLowerCase()))
+  );
+  const [addingColor, setAddingColor] = useState(false);
+  const [newColorInput, setNewColorInput] = useState('');
   // sizeRatios: editable per-size quantities — initialized from editCard if present
   const [sizeRatios, setSizeRatios] = useState<Record<string, number>>(
     editCard?.sizeRatios ? { ...editCard.sizeRatios } : {}
@@ -986,7 +991,9 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
                     </span>
                   </label>
                   <div className="flex gap-2 flex-wrap">
-                    {COLOR_OPTIONS.map((color) => (
+                    {[...COLOR_OPTIONS, ...customColors].filter((color, index, arr) =>
+                      arr.findIndex((item) => item.toLowerCase() === color.toLowerCase()) === index
+                    ).map((color) => (
                       <button
                         key={`color-opt-${color}`}
                         type="button"
@@ -999,6 +1006,77 @@ export default function CreateJobCardModal({ lang, onClose, onCreate, editCard }
                         {color}
                       </button>
                     ))}
+
+                    {!addingColor ? (
+                      <button
+                        type="button"
+                        onClick={() => { setAddingColor(true); setNewColorInput(''); }}
+                        className="px-3 py-2 rounded-lg text-xs font-700 border-2 border-dashed border-primary/50 text-primary bg-primary/5 hover:bg-primary/10 transition-all duration-150"
+                      >
+                        <Plus size={12} className="inline mr-1" />
+                        {lang === 'hi' ? 'नया रंग जोड़ें' : 'Add New Color'}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          autoFocus
+                          type="text"
+                          value={newColorInput}
+                          onChange={(e) => setNewColorInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              const trimmed = newColorInput.trim();
+                              if (trimmed) {
+                                const existing = [...COLOR_OPTIONS, ...customColors].find(
+                                  (color) => color.toLowerCase() === trimmed.toLowerCase()
+                                );
+                                const color = existing || trimmed.replace(/\s+/g, ' ');
+                                if (!existing) setCustomColors((prev) => [...prev, color]);
+                                setSelectedColors((prev) =>
+                                  prev.some((item) => item.toLowerCase() === color.toLowerCase()) ? prev : [...prev, color]
+                                );
+                              }
+                              setNewColorInput('');
+                              setAddingColor(false);
+                            } else if (e.key === 'Escape') {
+                              setNewColorInput('');
+                              setAddingColor(false);
+                            }
+                          }}
+                          placeholder={lang === 'hi' ? 'नए रंग का नाम' : 'New color name'}
+                          className="w-36 px-3 py-2 text-xs border-2 border-primary rounded-lg bg-background focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const trimmed = newColorInput.trim();
+                            if (trimmed) {
+                              const existing = [...COLOR_OPTIONS, ...customColors].find(
+                                (color) => color.toLowerCase() === trimmed.toLowerCase()
+                              );
+                              const color = existing || trimmed.replace(/\s+/g, ' ');
+                              if (!existing) setCustomColors((prev) => [...prev, color]);
+                              setSelectedColors((prev) =>
+                                prev.some((item) => item.toLowerCase() === color.toLowerCase()) ? prev : [...prev, color]
+                              );
+                            }
+                            setNewColorInput('');
+                            setAddingColor(false);
+                          }}
+                          className="px-2.5 py-2 text-xs font-700 bg-primary text-white rounded-lg hover:bg-primary/90"
+                        >
+                          Add
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setNewColorInput(''); setAddingColor(false); }}
+                          className="px-2.5 py-2 text-xs border border-border rounded-lg hover:bg-muted"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {selectedColors.length === 0 && (
                     <p className="text-xs text-danger mt-1.5 font-500">
