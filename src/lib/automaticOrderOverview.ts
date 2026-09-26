@@ -8,7 +8,7 @@ const norm=(v:unknown)=>String(v??'').trim().toLowerCase();
 export function automaticOrderOverview(snapshots:Row[]):Row[]{
  const output:Row[]=[];
  for(const snapshot of snapshots){
-  const {order,lines,styles,compositions,cuts,fabric_jobs:fab}=snapshot;
+  const {order,lines,styles,compositions,cuts}=snapshot;
   if(!lines.length){output.push({id:order.id,order_no:order.vch_no,item:'Order items unavailable',quantity:Number(order.total_qty||0),pending:null,components:null,pendingComponents:null,problem:'Sales Order has no item lines.',problems:[{message:'Sales Order has no item lines.',href:'/sales-orders?search='+encodeURIComponent(order.vch_no),module:'sales'}],jobs:[],vouchers:[]});continue;}
   const groups=new Map<string,Row[]>();
   for(const line of lines){const key=norm(line.item_name)+'|'+norm(line.param_colour);groups.set(key,[...groups.get(key)||[],line]);}
@@ -33,7 +33,7 @@ export function automaticOrderOverview(snapshots:Row[]):Row[]{
    for(const r of candidates.length?candidates:rows)problem(r,'Job Card '+job.job_card_no+' has an ambiguous item / colour link. Correct its source link.','/job-card-management','jobs',job.job_card_no);
   }
   for(const r of rows){
-   let hasUnquantifiedFabric=false;let completeSets=0;
+   let completeSets=0;
    for(const job of r.jobs){
     const totals:Record<string,number>={};const linked=cuts.filter((c:Row)=>c.job_id===job.id);
     if(linked.some((c:Row)=>c.invalid||!Number.isFinite(Number(c.qty))||Number(c.qty)<0))problem(r,'Invalid cutting component quantity on '+job.job_card_no,'/cutting','cutting',job.job_card_no);
@@ -41,10 +41,10 @@ export function automaticOrderOverview(snapshots:Row[]):Row[]{
     const keys=Object.keys(r.ratios);const supported=keys.length?Math.min(...keys.map(k=>Math.floor((totals[k]||0)/r.ratios[k]))):0;
     if(!Number.isFinite(Number(job.total_pieces))||Number(job.total_pieces)<0)problem(r,'Invalid Job Card quantity.','/job-card-management','jobs',job.job_card_no);
     completeSets+=Math.min(supported,Math.max(0,Number(job.total_pieces)||0));
-    if(fab.includes(job.id)&&supported<Number(job.total_pieces||0))hasUnquantifiedFabric=true;
    }
    r.ready=Math.min(r.quantity,completeSets);
-   if(hasUnquantifiedFabric&&r.ready<r.quantity&&!r.problem)problem(r,'Fabric is linked, but its remaining metres cannot be converted to ready pieces without a per-item consumption / allocation quantity.','/cutting','cutting',r.jobs.length===1?r.jobs[0].job_card_no:r.item);
+   // A linked fabric balance is normal production/WIP state. Do not turn it into
+   // a correction error unless there is an actual invalid source quantity/link.
    r.vouchers=Array.from(new Set(r.vouchers));
    if(r.problem){r.pending=null;r.pendingComponents=null;}
    else{r.pending=Math.max(0,r.quantity-r.ready);r.pendingComponents=r.ratio==null?null:r.pending*r.ratio;}
